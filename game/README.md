@@ -262,3 +262,13 @@ blockworld-3d/
 - Existing worlds remain loadable; newly generated water/lava block IDs are preserved in saves.
 
 This is a preview: rain is currently represented by a cloudy/dim sky, not animated rain particles.
+
+## CI build
+
+The repository runs a GitHub Actions build on pushes and pull requests that change `game/**`. The workflow uses JDK 17 and runs:
+
+```bash
+mvn --batch-mode --no-transfer-progress clean verify
+```
+
+Open the [Java CI workflow](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml) to see the latest build and test results. The CI check compiles the project and runs the JUnit test suite; it does not launch the 3D OpenGL window.
