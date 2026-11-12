@@ -53,7 +53,7 @@ The ZIP currently stored in this repository is the **0.8.5 Inventory & Crafting 
 
 [Download BLOCKWORLD 3D 0.8.5](BLOCKWORLD_3D_0.8.5_INVENTORY_CRAFTING_UPDATE.zip)
 
-The 1.0.0 package is newer than that repository snapshot. Check the project conversation or the Releases page for the latest package until the 1.0.0 archive is attached here.
+The 1.0.0 package is newer than that repository snapshot. To import it into this repository, upload `BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip` to the repository root. The `Import BLOCKWORLD 3D source archive` GitHub Actions workflow will safely extract the archive into `game/` and commit the source tree. The workflow also attempts a Maven build and test run; inspect its run summary for the actual result.
 
 ## Build from source
 
