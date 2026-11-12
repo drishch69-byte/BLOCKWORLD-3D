@@ -13,6 +13,7 @@ import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
 import com.jme3.scene.shape.Box;
+import com.jme3.texture.Texture;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,11 +22,28 @@ import java.util.Random;
 /** Low-cost blocky creature visuals and simple deterministic wandering. */
 public final class CreatureManager {
     private final AssetManager assets;
+    private final Map<String, Texture> creatureTextures = new HashMap<>();
     private final Node node = new Node("WorldCreatures");
     private final Map<Long, Visual> visuals = new HashMap<>();
 
     public CreatureManager(AssetManager assets) {
         this.assets = assets;
+        loadCreatureTextures();
+    }
+
+    /** Loads nearest-filtered PNG skins; color-only materials remain the safe fallback. */
+    private void loadCreatureTextures() {
+        for (CreatureType type : CreatureType.values()) {
+            try {
+                Texture texture = assets.loadTexture("Textures/Creatures/" + type.id() + ".png");
+                texture.setMagFilter(Texture.MagFilter.Nearest);
+                texture.setMinFilter(Texture.MinFilter.NearestNoMipMaps);
+                texture.setWrap(Texture.WrapMode.Repeat);
+                creatureTextures.put(type.id(), texture);
+            } catch (RuntimeException ignored) {
+                // Keep the existing color-only appearance when an optional texture is unavailable.
+            }
+        }
     }
 
     public Node getNode() { return node; }
@@ -189,6 +207,11 @@ public final class CreatureManager {
                         float px, float py, float pz, ColorRGBA color) {
         Geometry geometry = new Geometry(name, new Box(x, y, z));
         Material material = new Material(assets, "Common/MatDefs/Misc/Unshaded.j3md");
+        String rootName = parent.getName();
+        String textureId = rootName != null && rootName.startsWith("Creature-")
+                ? rootName.substring("Creature-".length()).split("-", 2)[0] : "";
+        Texture skin = creatureTextures.get(textureId);
+        if (skin != null) material.setTexture("ColorMap", skin);
         material.setColor("Color", color);
         geometry.setMaterial(material);
         geometry.setLocalTranslation(px, py, pz);

@@ -14,7 +14,8 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 - Five biomes: plains, forests, deserts, snowy tundra, and mountains.
 - Chunk-based voxel world, mining, and building.
-- Creatures, villagers, and trading.
+- Creatures, villagers, and trading, now with six original PNG creature textures.
+- A 64×64 player skin template and a 23-icon PNG item atlas.
 - Inventory, crafting, tools, and iron armor.
 - Farming, wheat, furnaces, smelting, and cooked food.
 - Fishing, copper and emerald ores, and achievements.
