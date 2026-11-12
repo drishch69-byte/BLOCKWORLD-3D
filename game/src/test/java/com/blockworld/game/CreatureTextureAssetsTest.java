@@ -32,6 +32,7 @@ class CreatureTextureAssetsTest {
     @Test
     void playerSkinAndItemAtlasHaveExpectedDimensions() throws IOException {
         assertImageSize("Textures/Player/player_skin.png", 64, 64);
+        assertImageSize("Textures/Player/player_sprite.png", 32, 48);
         assertImageSize("Textures/Items/items_atlas.png", 128, 64);
     }
 
