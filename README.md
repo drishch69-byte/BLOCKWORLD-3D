@@ -1,5 +1,7 @@
 # BLOCKWORLD 3D
 
+[![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
+
 **A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
@@ -79,8 +81,15 @@ Launch scripts are provided for Windows (`run.bat`) and Linux/macOS (`run.sh`).
 
 See [ROADMAP.md](ROADMAP.md) for proposed future features. Roadmap items are ideas, not promises or already implemented features.
 
+## Project documentation
+
+- [Player guide](docs/PLAYER_GUIDE.md) — controls, survival loop, and save reminders.
+- [Roadmap](ROADMAP.md) — proposed features for versions 1.1.0 through 2.0.0.
+- [Contributing](CONTRIBUTING.md) — development and testing guidelines.
+- [Security policy](SECURITY.md) — especially important when using Java mods.
+
 ## Contributing
 
-Bug reports, ideas, and improvement suggestions are welcome. Use the GitHub issue templates when opening an issue.
+Bug reports, ideas, and improvement suggestions are welcome. Use the GitHub issue templates when opening an issue. Pull requests are checked by the Java 17 Maven workflow.
 
 **Explore. Build. Craft. Create your world.**
