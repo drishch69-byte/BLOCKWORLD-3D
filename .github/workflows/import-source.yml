@@ -1,0 +1,60 @@
+name: Import BLOCKWORLD 3D source archive
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'distribution/BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Extract source safely
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          from zipfile import ZipFile
+          archive = Path("distribution/BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip")
+          destination = Path("game")
+          destination.mkdir(parents=True, exist_ok=True)
+          with ZipFile(archive) as zf:
+              for info in zf.infolist():
+                  member = PurePosixPath(info.filename)
+                  if member.is_absolute() or ".." in member.parts:
+                      raise SystemExit(f"Unsafe archive path: {info.filename}")
+                  parts = member.parts[1:] if member.parts and member.parts[0] == "blockworld-3d" else member.parts
+                  if not parts:
+                      continue
+                  target = destination.joinpath(*parts)
+                  if info.is_dir():
+                      target.mkdir(parents=True, exist_ok=True)
+                      continue
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  with zf.open(info) as source, target.open("wb") as output:
+                      output.write(source.read())
+          print(f"Extracted project into {destination}")
+          PY
+      - name: Verify Maven build and tests
+        continue-on-error: true
+        working-directory: game
+        run: mvn --batch-mode --no-transfer-progress clean verify
+      - name: Commit source tree
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game
+          if git diff --cached --quiet; then
+            echo "No source changes to commit."
+            exit 0
+          fi
+          git commit -m "build: import BLOCKWORLD 3D 1.0.0 source tree"
+          git push
