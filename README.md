@@ -8,78 +8,44 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 > BLOCKWORLD 3D is an independent voxel sandbox project. It is not an official Minecraft product and does not contain Minecraft source code.
 
-## Current development version
+## Current release
 
 **1.0.0 — Trading, Fishing & Achievements**
 
-The 1.0.0 project package has been prepared and checked as a ZIP in the development conversation. The archive currently stored in this repository is an older **0.8.5** snapshot; it has intentionally been kept so it is not mistaken for the newer build.
-
-### Features in version 1.0.0
-
-- **Voxel world:** chunk-based block terrain with five biomes: plains, forests, deserts, snowy tundra, and mountains.
-- **Building and mining:** place and break blocks and explore underground resources.
-- **Creatures and villages:** animals, villagers, and wandering slimes.
-- **Inventory and crafting:** collect resources and craft useful items.
-- **Tools and armor:** pickaxes with mining tiers, a shovel, and equippable iron armor.
-- **Farming and furnace:** prepare farmland, grow wheat, harvest crops, and smelt ores or cook fish.
-- **Villager trading:** exchange selected resources for emeralds and supplies.
-- **Fishing:** craft a fishing rod, catch fish, and cook them.
-- **New ores:** copper and emerald.
-- **Achievements:** track progress for mining, crafting, trading, fishing, farming, and exploring.
-- **Customization:** settings, mods, and resource packs with PNG block textures.
-- **Persistence:** world data and player sidecar data are saved separately; the world format remains 2.
-
-## Controls
-
-| Key | Action |
-| --- | --- |
-| `I` | Open or close inventory |
-| `C` | Open or close crafting |
-| `M` | View achievements |
-| `T` | Switch available tool |
-| `P` | Cast fishing rod while aiming at nearby water |
-| `F` | Interact with a villager or furnace |
-| `G` | Use farming / place a furnace where applicable |
-| `E` | Eat food |
-| `F6` | Save the world |
-| `ESC` | Pause menu |
-| `F10` | Exit the game |
-
-Some actions depend on the selected version profile and the item currently held.
+- Five biomes: plains, forests, deserts, snowy tundra, and mountains.
+- Chunk-based voxel world, mining, and building.
+- Creatures, villagers, and trading.
+- Inventory, crafting, tools, and iron armor.
+- Farming, wheat, furnaces, smelting, and cooked food.
+- Fishing, copper and emerald ores, and achievements.
+- Settings, mods, and PNG resource packs.
+- Separate persistence files for world and player progression data.
 
 ## Download
 
-The ZIP currently stored in this repository is the **0.8.5 Inventory & Crafting Update** snapshot:
+[**Download BLOCKWORLD 3D 1.0.0 (ZIP)**](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip)
 
-[Download BLOCKWORLD 3D 0.8.5](BLOCKWORLD_3D_0.8.5_INVENTORY_CRAFTING_UPDATE.zip)
+The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod.
 
-The 1.0.0 package is newer than that repository snapshot. To import it into this repository, upload `BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip` to the repository root. The `Import BLOCKWORLD 3D source archive` GitHub Actions workflow will safely extract the archive into `game/` and commit the source tree. The workflow also attempts a Maven build and test run; inspect its run summary for the actual result.
+The older [0.8.5 Inventory & Crafting Update](BLOCKWORLD_3D_0.8.5_INVENTORY_CRAFTING_UPDATE.zip) is retained as a previous snapshot.
 
-## Build from source
+## Build and test
 
 Requirements:
 - JDK 17
 - Apache Maven
 - A desktop graphics environment supporting the OpenGL features required by jMonkeyEngine
 
-From the folder containing `pom.xml`, run:
+From the source folder:
 
 ```bash
-mvn clean package
-mvn test
+cd game
+mvn clean verify
 ```
 
-Launch scripts are provided for Windows (`run.bat`) and Linux/macOS (`run.sh`).
+The GitHub Actions Java CI workflow runs the same Maven verification on pushes and pull requests that change the game source. The verified 1.0.0 source build completed successfully with **118 tests, 0 failures, 0 errors, and 0 skipped**.
 
-## Technology
-
-- Java 17
-- jMonkeyEngine 3.9.0
-- Maven
-
-## Roadmap
-
-See [ROADMAP.md](ROADMAP.md) for proposed future features. Roadmap items are ideas, not promises or already implemented features.
+Launch scripts are provided for Windows (run.bat) and Linux/macOS (run.sh).
 
 ## Project documentation
 
@@ -87,6 +53,12 @@ See [ROADMAP.md](ROADMAP.md) for proposed future features. Roadmap items are ide
 - [Roadmap](ROADMAP.md) — proposed features for versions 1.1.0 through 2.0.0.
 - [Contributing](CONTRIBUTING.md) — development and testing guidelines.
 - [Security policy](SECURITY.md) — especially important when using Java mods.
+
+## Technology
+
+- Java 17
+- jMonkeyEngine 3.9.0
+- Maven
 
 ## Contributing
 
