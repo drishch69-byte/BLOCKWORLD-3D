@@ -1,0 +1,100 @@
+{
+  "defaultVersion": "1.0.0",
+  "versions": [
+    {
+      "id": "0.1.0",
+      "name": "Classic",
+      "status": "previous"
+    },
+    {
+      "id": "0.2.0",
+      "name": "Builder Update",
+      "status": "previous"
+    },
+    {
+      "id": "0.3.0",
+      "name": "Adventure Update",
+      "status": "previous"
+    },
+    {
+      "id": "0.4.0",
+      "name": "Survival Update",
+      "status": "previous"
+    },
+    {
+      "id": "0.5.0",
+      "name": "Chunk Engine",
+      "status": "previous"
+    },
+    {
+      "id": "0.5.1",
+      "name": "Chunk Engine Hotfix",
+      "status": "previous"
+    },
+    {
+      "id": "0.5.2",
+      "name": "World Render Fix",
+      "status": "previous"
+    },
+    {
+      "id": "0.5.3",
+      "name": "Stable Render Diagnostics",
+      "status": "previous"
+    },
+    {
+      "id": "0.6.0",
+      "name": "Nature Engine",
+      "status": "previous"
+    },
+    {
+      "id": "0.6.1",
+      "name": "Nature Engine Compiler Fix",
+      "status": "previous"
+    },
+    {
+      "id": "0.6.2",
+      "name": "Nature Engine Safe Launch",
+      "status": "previous"
+    },
+    {
+      "id": "0.6.3",
+      "name": "Startup Crash Diagnostics",
+      "status": "previous"
+    },
+    {
+      "id": "0.7.0",
+      "name": "Customization Update",
+      "status": "previous"
+    },
+    {
+      "id": "0.7.5",
+      "name": "Texture Pack Engine",
+      "status": "previous"
+    },
+    {
+      "id": "0.8.0",
+      "name": "Creatures Update",
+      "status": "previous"
+    },
+    {
+      "id": "0.8.5",
+      "name": "Inventory & Crafting Update",
+      "status": "previous"
+    },
+    {
+      "id": "0.9.0",
+      "name": "Tools & Equipment Update",
+      "status": "previous"
+    },
+    {
+      "id": "0.9.5",
+      "name": "Biomes, Farming & Furnace Update",
+      "status": "previous"
+    },
+    {
+      "id": "1.0.0",
+      "name": "Trading, Fishing & Achievements",
+      "status": "current"
+    }
+  ]
+}

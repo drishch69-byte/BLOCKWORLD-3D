@@ -1,0 +1,805 @@
+package com.blockworld.core;
+
+import com.jme3.asset.AssetManager;
+import com.jme3.material.Material;
+import com.jme3.material.RenderState;
+import com.jme3.math.ColorRGBA;
+import com.jme3.math.Vector3f;
+import com.jme3.renderer.queue.RenderQueue;
+import com.jme3.scene.Geometry;
+import com.jme3.scene.Mesh;
+import com.jme3.scene.Node;
+import com.jme3.scene.VertexBuffer;
+import com.jme3.texture.Texture2D;
+import com.jme3.util.BufferUtils;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
+
+/** Block data plus streamed, face-culled 16x16 chunk meshes with optional atlas UVs. */
+public final class VoxelWorld {
+    private static final String FILE_HEADER = "BLOCKWORLD_WORLD";
+    private static final int MAX_SAVED_BLOCKS = 1_000_000;
+    private static final int DEFAULT_RENDER_DISTANCE = 4;
+    private static final int MAX_RENDER_DISTANCE = 12;
+
+    private static final int[][] QUAD_UV_CORNERS = {{0, 1}, {0, 0}, {1, 0}, {1, 1}};
+
+    private static final Face[] FACES = {
+            new Face(1, 0, 0, 1.00f, new float[]{1,0,0, 1,1,0, 1,1,1, 1,0,1}),
+            new Face(-1, 0, 0, 0.78f, new float[]{0,0,0, 0,0,1, 0,1,1, 0,1,0}),
+            new Face(0, 1, 0, 1.12f, new float[]{0,1,0, 0,1,1, 1,1,1, 1,1,0}),
+            new Face(0, -1, 0, 0.58f, new float[]{0,0,0, 1,0,0, 1,0,1, 0,0,1}),
+            new Face(0, 0, 1, 0.86f, new float[]{0,0,1, 1,0,1, 1,1,1, 0,1,1}),
+            new Face(0, 0, -1, 0.70f, new float[]{0,0,0, 0,1,0, 1,1,0, 1,0,0})
+    };
+
+    private final Node node = new Node("VoxelWorld");
+    private final Map<BlockPos, BlockType> blocks = new HashMap<>();
+    private final List<WorldCreature> creatures = new ArrayList<>();
+    private final Map<BlockPos, String> preservedUnknownIds = new HashMap<>();
+    private final Map<ChunkPos, Set<BlockPos>> chunkBlocks = new HashMap<>();
+    private final Map<ChunkPos, Geometry> chunkGeometries = new HashMap<>();
+    private final Map<Geometry, List<BlockHit>> triangleHits = new IdentityHashMap<>();
+    private final Map<Long, Integer> columnHeights = new HashMap<>();
+    private final Material chunkMaterial;
+    private final boolean texturedChunks;
+    private final EnumMap<BlockType, ColorRGBA> blockPalette = new EnumMap<>(BlockType.class);
+    private final LinkedHashSet<ChunkPos> pendingChunks = new LinkedHashSet<>();
+    private final Set<ChunkPos> desiredChunks = new HashSet<>();
+    private long seed = 20261112L;
+    private int renderDistanceChunks = DEFAULT_RENDER_DISTANCE;
+    private ChunkPos lastStreamCenter;
+    private boolean bulkUpdate;
+    private boolean hasBounds;
+    private String lastMeshError = "";
+    private boolean twoSidedRendering = true;
+    private boolean activeBiomes;
+    private int minBlockX;
+    private int maxBlockX;
+    private int minBlockZ;
+    private int maxBlockZ;
+
+    public VoxelWorld(AssetManager assetManager) { this(assetManager, Map.of(), null); }
+
+    public VoxelWorld(AssetManager assetManager, Map<BlockType, ColorRGBA> palette) {
+        this(assetManager, palette, null);
+    }
+
+    public VoxelWorld(AssetManager assetManager, Map<BlockType, ColorRGBA> palette, Texture2D textureAtlas) {
+        Objects.requireNonNull(assetManager, "assetManager");
+        if (palette != null) palette.forEach((type, color) -> blockPalette.put(type, color.clone()));
+        texturedChunks = textureAtlas != null;
+        chunkMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
+        chunkMaterial.setBoolean("VertexColor", true);
+        chunkMaterial.setColor("Color", ColorRGBA.White);
+        if (textureAtlas != null) chunkMaterial.setTexture("ColorMap", textureAtlas);
+        // Keep both sides visible in this diagnostic build. This also makes a
+        // winding mistake obvious instead of silently hiding an entire mesh.
+        chunkMaterial.getAdditionalRenderState().setFaceCullMode(RenderState.FaceCullMode.Off);
+    }
+
+    public Node getNode() { return node; }
+    public int getBlockCount() { return blocks.size(); }
+    public List<WorldCreature> getCreatures() { return List.copyOf(creatures); }
+    public int getCreatureCount() { return creatures.size(); }
+
+    public boolean addCreature(WorldCreature creature) {
+        Objects.requireNonNull(creature, "creature");
+        if (creatures.size() >= 256 || creatures.stream().anyMatch(existing -> existing.id() == creature.id())) return false;
+        creatures.add(creature);
+        return true;
+    }
+
+    public boolean updateCreature(WorldCreature updated) {
+        Objects.requireNonNull(updated, "updated");
+        for (int i = 0; i < creatures.size(); i++) {
+            if (creatures.get(i).id() == updated.id()) {
+                creatures.set(i, updated);
+                return true;
+            }
+        }
+        return false;
+    }
+    public int getChunkCount() { return chunkBlocks.size(); }
+    public int getRenderedChunkCount() { return chunkGeometries.size(); }
+    public int getPendingChunkCount() { return pendingChunks.size(); }
+    public int getRenderDistanceChunks() { return renderDistanceChunks; }
+    public long getSeed() { return seed; }
+    public BiomeType getBiomeAt(int x, int z) {
+        return activeBiomes ? BiomeGenerator.biomeAt(seed, x, z) : BiomeType.PLAINS;
+    }
+    public int getMinBlockX() { return hasBounds ? minBlockX : 0; }
+    public int getMaxBlockX() { return hasBounds ? maxBlockX : 0; }
+    public int getMinBlockZ() { return hasBounds ? minBlockZ : 0; }
+    public int getMaxBlockZ() { return hasBounds ? maxBlockZ : 0; }
+    public String getLastMeshError() { return lastMeshError; }
+    public boolean isTwoSidedRendering() { return twoSidedRendering; }
+
+    /** Toggle GPU back-face culling; useful on machines with different drivers. */
+    public void setTwoSidedRendering(boolean enabled) {
+        twoSidedRendering = enabled;
+        chunkMaterial.getAdditionalRenderState().setFaceCullMode(
+                enabled ? RenderState.FaceCullMode.Off : RenderState.FaceCullMode.Back);
+    }
+
+    /** Selects a nearby, open grass column so the player never starts inside a tree canopy. */
+    public Vector3f getSuggestedSpawn() {
+        if (columnHeights.isEmpty()) return new Vector3f(0f, 4.68f, 8f);
+        long bestKey = 0L;
+        double bestScore = Double.POSITIVE_INFINITY;
+        for (Map.Entry<Long, Integer> entry : columnHeights.entrySet()) {
+            long key = entry.getKey();
+            int x = (int) (key >> 32);
+            int z = (int) key;
+            int y = entry.getValue();
+            BlockType surface = blocks.get(new BlockPos(x, y, z));
+            boolean openAbove = !blocks.containsKey(new BlockPos(x, y + 1, z))
+                    && !blocks.containsKey(new BlockPos(x, y + 2, z));
+            boolean naturalSurface = surface == BlockType.GRASS || surface == BlockType.SAND;
+            double dx = x;
+            double dz = z - 8.0;
+            double score = dx * dx + dz * dz;
+            if (!naturalSurface) score += 100_000.0;
+            if (!openAbove) score += 1_000_000.0;
+            if (score < bestScore) {
+                bestScore = score;
+                bestKey = key;
+            }
+        }
+        int x = (int) (bestKey >> 32);
+        int z = (int) bestKey;
+        int y = columnHeights.get(bestKey);
+        return new Vector3f(x, y + 1.68f, z);
+    }
+
+    public void setRenderDistanceChunks(int distance) {
+        renderDistanceChunks = Math.max(2, Math.min(MAX_RENDER_DISTANCE, distance));
+        lastStreamCenter = null;
+    }
+
+    public boolean contains(BlockPos pos) { return blocks.containsKey(pos); }
+    public BlockType getBlock(BlockPos pos) { return blocks.get(pos); }
+
+    /** Returns the highest solid block in a column, or -13 below the world floor. */
+    public int highestBlockY(int x, int z) {
+        return columnHeights.getOrDefault(columnKey(x, z), -13);
+    }
+
+    public boolean isChunkRenderedAt(float worldX, float worldZ) {
+        return chunkGeometries.containsKey(ChunkPos.fromBlock(Math.round(worldX), Math.round(worldZ)));
+    }
+
+    /** Resolve the block/face from a triangle in one of the combined chunk meshes. */
+    public BlockHit getHitFace(Geometry geometry, int triangleIndex) {
+        List<BlockHit> hits = triangleHits.get(geometry);
+        if (hits == null || triangleIndex < 0) return null;
+        int faceIndex = triangleIndex / 2;
+        return faceIndex < hits.size() ? hits.get(faceIndex) : null;
+    }
+
+    public boolean addBlock(BlockPos pos, BlockType type) {
+        Objects.requireNonNull(pos, "pos");
+        Objects.requireNonNull(type, "type");
+        if (blocks.size() >= MAX_SAVED_BLOCKS || blocks.containsKey(pos)) return false;
+        blocks.put(pos, type);
+        if (!hasBounds) {
+            minBlockX = maxBlockX = pos.x();
+            minBlockZ = maxBlockZ = pos.z();
+            hasBounds = true;
+        } else {
+            minBlockX = Math.min(minBlockX, pos.x());
+            maxBlockX = Math.max(maxBlockX, pos.x());
+            minBlockZ = Math.min(minBlockZ, pos.z());
+            maxBlockZ = Math.max(maxBlockZ, pos.z());
+        }
+        ChunkPos chunk = ChunkPos.fromBlock(pos.x(), pos.z());
+        chunkBlocks.computeIfAbsent(chunk, ignored -> new HashSet<>()).add(pos);
+        columnHeights.merge(columnKey(pos.x(), pos.z()), pos.y(), Math::max);
+        if (!bulkUpdate) markBlockAndBorderChunksDirty(pos);
+        return true;
+    }
+
+    public boolean removeBlock(BlockPos pos) {
+        BlockType removed = blocks.remove(pos);
+        if (removed == null) return false;
+        preservedUnknownIds.remove(pos);
+        ChunkPos chunk = ChunkPos.fromBlock(pos.x(), pos.z());
+        Set<BlockPos> members = chunkBlocks.get(chunk);
+        if (members != null) {
+            members.remove(pos);
+            if (members.isEmpty()) chunkBlocks.remove(chunk);
+        }
+        if (columnHeights.getOrDefault(columnKey(pos.x(), pos.z()), -13) == pos.y()) {
+            updateColumnHeightAfterRemoval(pos.x(), pos.z());
+        }
+        if (!bulkUpdate) markBlockAndBorderChunksDirty(pos);
+        return true;
+    }
+
+    /** Call once per frame on the render thread; only a few pending chunks are meshed per frame. */
+    public void updateStreaming(Vector3f cameraPosition) {
+        updateStreaming(cameraPosition, 3);
+    }
+
+    public void updateStreaming(Vector3f cameraPosition, int maxChunkBuilds) {
+        Objects.requireNonNull(cameraPosition, "cameraPosition");
+        ChunkPos center = ChunkPos.fromBlock(Math.round(cameraPosition.x), Math.round(cameraPosition.z));
+        if (!center.equals(lastStreamCenter)) {
+            lastStreamCenter = center;
+            Set<ChunkPos> previousDesired = new HashSet<>(desiredChunks);
+            desiredChunks.clear();
+            List<ChunkPos> near = new ArrayList<>();
+            for (int dx = -renderDistanceChunks; dx <= renderDistanceChunks; dx++) {
+                for (int dz = -renderDistanceChunks; dz <= renderDistanceChunks; dz++) {
+                    ChunkPos candidate = new ChunkPos(center.x() + dx, center.z() + dz);
+                    if (dx * dx + dz * dz <= renderDistanceChunks * renderDistanceChunks
+                            && chunkBlocks.containsKey(candidate)) {
+                        near.add(candidate);
+                        desiredChunks.add(candidate);
+                    }
+                }
+            }
+            near.sort(Comparator.comparingInt((ChunkPos c) -> distanceSquared(c, center))
+                    .thenComparingInt(ChunkPos::x).thenComparingInt(ChunkPos::z));
+
+            for (ChunkPos existing : new ArrayList<>(chunkGeometries.keySet())) {
+                if (!desiredChunks.contains(existing)) detachChunk(existing);
+            }
+            pendingChunks.removeIf(chunk -> !desiredChunks.contains(chunk));
+            for (ChunkPos chunk : near) {
+                if (!chunkGeometries.containsKey(chunk)) {
+                    pendingChunks.add(chunk);
+                } else if (chunkBorderVisibilityChanged(chunk, previousDesired)) {
+                    detachChunk(chunk);
+                    pendingChunks.add(chunk);
+                }
+            }
+        }
+
+        int built = 0;
+        int budget = Math.max(1, maxChunkBuilds);
+        while (built < budget && !pendingChunks.isEmpty()) {
+            ChunkPos chunk = pendingChunks.iterator().next();
+            pendingChunks.remove(chunk);
+            if (desiredChunks.contains(chunk) && chunkBlocks.containsKey(chunk)) {
+                try {
+                    rebuildChunk(chunk);
+                } catch (RuntimeException ex) {
+                    lastMeshError = ex.getClass().getSimpleName() + ": "
+                            + (ex.getMessage() == null ? "без описания" : ex.getMessage());
+                    throw ex;
+                }
+                built++;
+            }
+        }
+    }
+
+    private int distanceSquared(ChunkPos a, ChunkPos b) {
+        int dx = a.x() - b.x();
+        int dz = a.z() - b.z();
+        return dx * dx + dz * dz;
+    }
+
+    private boolean chunkBorderVisibilityChanged(ChunkPos chunk, Set<ChunkPos> previousDesired) {
+        ChunkPos[] neighbors = {
+                new ChunkPos(chunk.x() - 1, chunk.z()),
+                new ChunkPos(chunk.x() + 1, chunk.z()),
+                new ChunkPos(chunk.x(), chunk.z() - 1),
+                new ChunkPos(chunk.x(), chunk.z() + 1)
+        };
+        for (ChunkPos neighbor : neighbors) {
+            if (previousDesired.contains(neighbor) != desiredChunks.contains(neighbor)) return true;
+        }
+        return false;
+    }
+
+    private void markBlockAndBorderChunksDirty(BlockPos pos) {
+        ChunkPos own = ChunkPos.fromBlock(pos.x(), pos.z());
+        markChunkDirty(own);
+        int localX = Math.floorMod(pos.x(), ChunkPos.SIZE);
+        int localZ = Math.floorMod(pos.z(), ChunkPos.SIZE);
+        if (localX == 0) markChunkDirty(new ChunkPos(own.x() - 1, own.z()));
+        if (localX == ChunkPos.SIZE - 1) markChunkDirty(new ChunkPos(own.x() + 1, own.z()));
+        if (localZ == 0) markChunkDirty(new ChunkPos(own.x(), own.z() - 1));
+        if (localZ == ChunkPos.SIZE - 1) markChunkDirty(new ChunkPos(own.x(), own.z() + 1));
+    }
+
+    private void markChunkDirty(ChunkPos chunk) {
+        if (!desiredChunks.contains(chunk)) return;
+        detachChunk(chunk);
+        pendingChunks.add(chunk);
+    }
+
+    private void detachChunk(ChunkPos chunk) {
+        Geometry geometry = chunkGeometries.remove(chunk);
+        if (geometry != null) geometry.removeFromParent();
+        if (geometry != null) triangleHits.remove(geometry);
+    }
+
+    private void rebuildChunk(ChunkPos chunk) {
+        detachChunk(chunk);
+        Set<BlockPos> members = chunkBlocks.get(chunk);
+        if (members == null || members.isEmpty()) return;
+
+        List<Float> positions = new ArrayList<>();
+        List<Float> colors = new ArrayList<>();
+        List<Float> texCoords = texturedChunks ? new ArrayList<>() : null;
+        List<Integer> indices = new ArrayList<>();
+        List<BlockHit> hits = new ArrayList<>();
+        int baseX = chunk.minBlockX();
+        int baseZ = chunk.minBlockZ();
+
+        for (BlockPos pos : members) {
+            BlockType type = blocks.get(pos);
+            if (type == null) continue;
+            ColorRGBA base = blockPalette.getOrDefault(type, type.color());
+            int localX = pos.x() - baseX;
+            int localZ = pos.z() - baseZ;
+            for (Face face : FACES) {
+                BlockPos neighbor = pos.add(face.nx, face.ny, face.nz);
+                if (blocks.containsKey(neighbor)
+                        && desiredChunks.contains(ChunkPos.fromBlock(neighbor.x(), neighbor.z()))) continue;
+                int firstVertex = positions.size() / 3;
+                int faceVariant = face.ny > 0 ? 0 : face.ny < 0 ? 2 : 1;
+                int tileIndex = ResourcePackManager.textureTileIndex(type, faceVariant);
+                int tileX = tileIndex % ResourcePackManager.ATLAS_COLUMNS;
+                int tileY = tileIndex / ResourcePackManager.ATLAS_COLUMNS;
+                float atlasSize = ResourcePackManager.ATLAS_SIZE;
+                float inset = 0.5f / atlasSize;
+                float u0 = tileX / (float) ResourcePackManager.ATLAS_COLUMNS + inset;
+                float u1 = (tileX + 1) / (float) ResourcePackManager.ATLAS_COLUMNS - inset;
+                float vTop = 1f - tileY / (float) ResourcePackManager.ATLAS_COLUMNS - inset;
+                float vBottom = 1f - (tileY + 1) / (float) ResourcePackManager.ATLAS_COLUMNS + inset;
+                for (int vertex = 0; vertex < 4; vertex++) {
+                    int offset = vertex * 3;
+                    positions.add(localX + face.vertices[offset]);
+                    positions.add(pos.y() + face.vertices[offset + 1]);
+                    positions.add(localZ + face.vertices[offset + 2]);
+                    if (texturedChunks) {
+                        // Texture pixels already contain the pack's base color; vertex color only shades each face.
+                        colors.add(clamp(face.shade));
+                        colors.add(clamp(face.shade));
+                        colors.add(clamp(face.shade));
+                        colors.add(1f);
+                        texCoords.add(QUAD_UV_CORNERS[vertex][0] == 0 ? u0 : u1);
+                        texCoords.add(QUAD_UV_CORNERS[vertex][1] == 0 ? vTop : vBottom);
+                    } else {
+                        // Compatibility path used by older tests and callers without a texture atlas.
+                        colors.add(clamp(base.r * face.shade));
+                        colors.add(clamp(base.g * face.shade));
+                        colors.add(clamp(base.b * face.shade));
+                        colors.add(1f);
+                    }
+                }
+                indices.add(firstVertex);
+                indices.add(firstVertex + 1);
+                indices.add(firstVertex + 2);
+                indices.add(firstVertex);
+                indices.add(firstVertex + 2);
+                indices.add(firstVertex + 3);
+                // One entry per quad; jME reports two triangles for each face.
+                hits.add(new BlockHit(pos, face.nx, face.ny, face.nz));
+            }
+        }
+
+        if (indices.isEmpty()) return;
+        float[] positionArray = toFloatArray(positions);
+        float[] colorArray = toFloatArray(colors);
+        int[] indexArray = indices.stream().mapToInt(Integer::intValue).toArray();
+        Mesh mesh = new Mesh();
+        mesh.setMode(Mesh.Mode.Triangles);
+        mesh.setBuffer(VertexBuffer.Type.Position, 3, BufferUtils.createFloatBuffer(positionArray));
+        mesh.setBuffer(VertexBuffer.Type.Color, 4, BufferUtils.createFloatBuffer(colorArray));
+        if (texturedChunks) mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, BufferUtils.createFloatBuffer(toFloatArray(texCoords)));
+        mesh.setBuffer(VertexBuffer.Type.Index, 3, BufferUtils.createIntBuffer(indexArray));
+        mesh.updateBound();
+        mesh.setStatic();
+
+        Geometry geometry = new Geometry("Chunk[" + chunk.x() + "," + chunk.z() + "]", mesh);
+        geometry.setMaterial(chunkMaterial);
+        geometry.setLocalTranslation(baseX, 0f, baseZ);
+        geometry.setQueueBucket(RenderQueue.Bucket.Opaque);
+        geometry.setShadowMode(RenderQueue.ShadowMode.Off);
+        node.attachChild(geometry);
+        chunkGeometries.put(chunk, geometry);
+        triangleHits.put(geometry, hits);
+    }
+
+    private float clamp(float value) { return Math.max(0f, Math.min(1f, value)); }
+
+    private float[] toFloatArray(List<Float> values) {
+        float[] result = new float[values.size()];
+        for (int i = 0; i < values.size(); i++) result[i] = values.get(i);
+        return result;
+    }
+
+    private long columnKey(int x, int z) {
+        return ((long) x << 32) ^ (z & 0xffffffffL);
+    }
+
+    private void updateColumnHeightAfterRemoval(int x, int z) {
+        int highest = -13;
+        for (BlockPos pos : blocks.keySet()) {
+            if (pos.x() == x && pos.z() == z && pos.y() > highest) highest = pos.y();
+        }
+        long key = columnKey(x, z);
+        if (highest == -13) columnHeights.remove(key);
+        else columnHeights.put(key, highest);
+    }
+
+    public void generate(GameVersion version, long worldSeed) {
+        Objects.requireNonNull(version, "version");
+        clear();
+        seed = worldSeed;
+        activeBiomes = supportsBiomes(version.id());
+        bulkUpdate = true;
+        try {
+            Random random = new Random(seed);
+            int radius = version.worldRadius();
+            int minY = version.caves() ? -12 : -2;
+            for (int x = -radius; x <= radius; x++) {
+                for (int z = -radius; z <= radius; z++) {
+                    int surface = terrainHeightFor(x, z);
+                    for (int y = minY; y <= surface; y++) {
+                        if (version.caves() && y < surface - 2 && y > minY + 1 && isCave(x, y, z)) continue;
+                        BlockType type;
+                        BiomeType biome = getBiomeAt(x, z);
+                        if (y == surface) type = biome.surfaceBlock();
+                        else if (y >= surface - 2) type = biome == BiomeType.DESERT ? BlockType.SANDSTONE : BlockType.DIRT;
+                        else {
+                            type = BlockType.STONE;
+                            if (version.ores()) type = supportsRelease100(version.id()) ? oreForRelease100(x, y, z) : oreFor(x, y, z);
+                        }
+                        addBlock(new BlockPos(x, y, z), type);
+                    }
+                }
+            }
+            if (version.trees()) {
+                for (int x = -radius + 3; x <= radius - 3; x += 4) {
+                    for (int z = -radius + 3; z <= radius - 3; z += 4) {
+                        BiomeType biome = getBiomeAt(x, z);
+                        float density = biome == BiomeType.FOREST ? 0.62f : biome == BiomeType.PLAINS ? 0.22f : 0f;
+                        if (random.nextFloat() < density && (Math.abs(x) > 3 || Math.abs(z) > 3)) addTree(x, z);
+                    }
+                }
+            }
+            if (version.id().compareTo("0.6.0") >= 0) {
+                // A winding surface river; water blocks are saved like every other block.
+                for (int x = -radius + 2; x <= radius - 2; x++) {
+                    int centerZ = (int) Math.round(Math.sin(x * 0.075) * 7.0);
+                    for (int dz = -1; dz <= 1; dz++) {
+                        int z = centerZ + dz;
+                        int surface = terrainHeightFor(x, z);
+                        addBlock(new BlockPos(x, surface, z), BlockType.WATER);
+                        if (surface <= 1) addBlock(new BlockPos(x, surface + 1, z), BlockType.WATER);
+                    }
+                }
+                // Small underground lava pockets, safely away from the spawn area.
+                for (int x = -radius + 4; x <= radius - 4; x += 5) {
+                    for (int z = -radius + 4; z <= radius - 4; z += 5) {
+                        if (Math.abs(x) + Math.abs(z) > 15 && random.nextFloat() < 0.12f) {
+                            int y = -7 - random.nextInt(3);
+                            for (int dx = 0; dx < 2; dx++) for (int dz = 0; dz < 2; dz++)
+                                addBlock(new BlockPos(x + dx, y, z + dz), BlockType.LAVA);
+                        }
+                    }
+                }
+            }
+            if (version.id().compareTo("0.8.0") >= 0) {
+                addVillageHouse(-34, 27);
+                addVillageHouse(29, 27);
+                spawnCreatures(random, radius);
+            }
+        } finally {
+            bulkUpdate = false;
+        }
+        lastStreamCenter = null;
+    }
+
+    private void addVillageHouse(int baseX, int baseZ) {
+        int groundY = terrainHeightFor(baseX + 2, baseZ + 2);
+        // Clear vegetation inside the small 5x5 footprint before placing the house.
+        for (int x = baseX; x < baseX + 5; x++) {
+            for (int z = baseZ; z < baseZ + 5; z++) {
+                for (int y = groundY + 1; y <= groundY + 4; y++) removeBlock(new BlockPos(x, y, z));
+                addBlock(new BlockPos(x, groundY + 1, z), BlockType.WOOD);
+            }
+        }
+        for (int dx = 0; dx < 5; dx++) {
+            for (int dz = 0; dz < 5; dz++) {
+                boolean wall = dx == 0 || dx == 4 || dz == 0 || dz == 4;
+                if (wall) {
+                    for (int dy = 2; dy <= 3; dy++) {
+                        boolean doorway = dz == 0 && dx == 2;
+                        boolean window = dy == 2 && ((dx == 0 || dx == 4) && dz == 2);
+                        if (!doorway && !window) addBlock(new BlockPos(baseX + dx, groundY + dy, baseZ + dz), BlockType.WOOD);
+                    }
+                }
+                addBlock(new BlockPos(baseX + dx, groundY + 4, baseZ + dz), BlockType.WOOD);
+            }
+        }
+        // A short dirt path marks the entrance of each small village home.
+        for (int step = 1; step <= 3; step++) {
+            BlockPos path = new BlockPos(baseX + 2, groundY, baseZ - step);
+            removeBlock(path);
+            addBlock(path, BlockType.DIRT);
+        }
+    }
+
+    private void spawnCreatures(Random random, int radius) {
+        long id = 1L;
+        // A villager is placed outside each simple wooden village house.
+        int firstY = terrainHeightFor(-32, 26);
+        int secondY = terrainHeightFor(31, 26);
+        addCreature(new WorldCreature(id++, CreatureType.VILLAGER, -31.5f, firstY + 1f, 26.5f, 0f));
+        addCreature(new WorldCreature(id++, CreatureType.VILLAGER, 31.5f, secondY + 1f, 26.5f, 1.2f));
+
+        CreatureType[] farmAnimals = {CreatureType.COW, CreatureType.SHEEP, CreatureType.PIG, CreatureType.CHICKEN};
+        for (int i = 0; i < 18; i++) {
+            CreatureType type = farmAnimals[i % farmAnimals.length];
+            WorldCreature creature = findCreatureSpawn(random, radius, id++, type);
+            if (creature != null) addCreature(creature);
+        }
+        for (int i = 0; i < 3; i++) {
+            WorldCreature creature = findCreatureSpawn(random, radius, id++, CreatureType.SLIME);
+            if (creature != null) addCreature(creature);
+        }
+    }
+
+    private WorldCreature findCreatureSpawn(Random random, int radius, long id, CreatureType type) {
+        for (int attempt = 0; attempt < 500; attempt++) {
+            int x = random.nextInt(radius * 2 - 12) - radius + 6;
+            int z = random.nextInt(radius * 2 - 12) - radius + 6;
+            if (x * x + z * z < 13 * 13) continue;
+            int surfaceY = highestBlockY(x, z);
+            if (surfaceY < -12) continue;
+            if (blocks.get(new BlockPos(x, surfaceY, z)) != BlockType.GRASS) continue;
+            if (blocks.containsKey(new BlockPos(x, surfaceY + 1, z))
+                    || blocks.containsKey(new BlockPos(x, surfaceY + 2, z))) continue;
+            boolean crowded = creatures.stream().anyMatch(existing -> {
+                float dx = existing.x() - (x + 0.5f);
+                float dz = existing.z() - (z + 0.5f);
+                return dx * dx + dz * dz < 9f;
+            });
+            if (crowded) continue;
+            return new WorldCreature(id, type, x + 0.5f, surfaceY + 1f, z + 0.5f,
+                    random.nextFloat() * (float) (Math.PI * 2.0));
+        }
+        return null;
+    }
+
+    private static boolean supportsBiomes(String versionId) {
+        if (versionId == null) return false;
+        String[] parts = versionId.split("\\.");
+        if (parts.length < 2) return false;
+        try {
+            int major = Integer.parseInt(parts[0]);
+            int minor = Integer.parseInt(parts[1]);
+            int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
+            return major > 0 || minor > 9 || (minor == 9 && patch >= 5);
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    private int terrainHeightFor(int x, int z) {
+        int base = terrainHeight(x, z);
+        return activeBiomes ? base + BiomeGenerator.mountainHeightBonus(seed, x, z) : base;
+    }
+
+    private int terrainHeight(int x, int z) {
+        double wave = Math.sin(x * 0.27) * 0.85 + Math.cos(z * 0.23) * 0.75
+                + Math.sin((x + z) * 0.13) * 0.55;
+        return Math.max(0, 2 + (int) Math.round(wave));
+    }
+
+    private boolean isCave(int x, int y, int z) {
+        double a = Math.sin(x * 0.27 + z * 0.08 + y * 0.11);
+        double b = Math.cos(z * 0.24 - x * 0.09 - y * 0.13);
+        double c = Math.sin((x + z) * 0.17 - y * 0.08);
+        return Math.abs(a + b + c) < 0.20;
+    }
+
+    private BlockType oreFor(int x, int y, int z) {
+        float roll = coordinateRandom(x, y, z);
+        if (y <= -9 && roll < 0.025f) return BlockType.GOLD_ORE;
+        if (y <= -4 && roll < 0.075f) return BlockType.IRON_ORE;
+        if (roll < 0.15f) return BlockType.COAL_ORE;
+        return BlockType.STONE;
+    }
+
+    private BlockType oreForRelease100(int x, int y, int z) {
+        return oreForRelease100(y, coordinateRandom(x, y, z));
+    }
+
+    /** Pure ore selection used by the 1.0.0 generator and deterministic tests. */
+    public static BlockType oreForRelease100(int y, float roll) {
+        return OreRules.selectRelease100(y, roll);
+    }
+
+    private static boolean supportsRelease100(String id) {
+        if (id == null) return false;
+        try {
+            String[] parts = id.split("\\.");
+            int major = Integer.parseInt(parts[0]);
+            return major >= 1;
+        } catch (RuntimeException ex) { return false; }
+    }
+
+    private float coordinateRandom(int x, int y, int z) {
+        long value = seed;
+        value ^= (long) x * 0x9E3779B97F4A7C15L;
+        value ^= (long) y * 0xC2B2AE3D27D4EB4FL;
+        value ^= (long) z * 0x165667B19E3779F9L;
+        value = (value ^ (value >>> 30)) * 0xBF58476D1CE4E5B9L;
+        value = (value ^ (value >>> 27)) * 0x94D049BB133111EBL;
+        value ^= value >>> 31;
+        return (value & 0xFFFFFFL) / 16777216f;
+    }
+
+    private void addTree(int x, int z) {
+        int baseY = terrainHeightFor(x, z) + 1;
+        for (int y = baseY; y < baseY + 4; y++) addBlock(new BlockPos(x, y, z), BlockType.WOOD);
+        int crownY = baseY + 3;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    if (!(dx == 0 && dz == 0 && dy == -1)) addBlock(new BlockPos(x + dx, crownY + dy, z + dz), BlockType.LEAVES);
+                }
+            }
+        }
+        addBlock(new BlockPos(x, crownY + 2, z), BlockType.LEAVES);
+    }
+
+    private void clear() {
+        node.detachAllChildren();
+        blocks.clear();
+        creatures.clear();
+        preservedUnknownIds.clear();
+        chunkBlocks.clear();
+        chunkGeometries.clear();
+        triangleHits.clear();
+        columnHeights.clear();
+        pendingChunks.clear();
+        desiredChunks.clear();
+        lastStreamCenter = null;
+        lastMeshError = "";
+        hasBounds = false;
+        minBlockX = maxBlockX = minBlockZ = maxBlockZ = 0;
+    }
+
+    public void save(Path file, GameVersion version) throws IOException {
+        Path parent = file.toAbsolutePath().getParent();
+        if (parent != null) Files.createDirectories(parent);
+        List<Map.Entry<BlockPos, BlockType>> entries = new ArrayList<>(blocks.entrySet());
+        entries.sort(Comparator.comparingInt((Map.Entry<BlockPos, BlockType> e) -> e.getKey().x())
+                .thenComparingInt(e -> e.getKey().z()).thenComparingInt(e -> e.getKey().y()));
+        StringBuilder data = new StringBuilder(Math.max(256, entries.size() * 22));
+        data.append(FILE_HEADER).append('\n');
+        data.append("format=").append(VersionManager.WORLD_FORMAT).append('\n');
+        data.append("gameVersion=").append(version.id()).append('\n');
+        data.append("seed=").append(seed).append('\n');
+        // Preserve the actual terrain feature set when an older world is saved from a newer profile.
+        data.append("biomes=").append(activeBiomes).append('\n');
+        data.append("--blocks--\n");
+        for (Map.Entry<BlockPos, BlockType> entry : entries) {
+            BlockPos p = entry.getKey();
+            String id = preservedUnknownIds.getOrDefault(p, entry.getValue().id());
+            data.append(p.x()).append(',').append(p.y()).append(',').append(p.z()).append(',').append(id).append('\n');
+        }
+        data.append("--creatures--\n");
+        for (WorldCreature creature : creatures) {
+            data.append(creature.id()).append(',').append(creature.type().id()).append(',')
+                    .append(creature.x()).append(',').append(creature.y()).append(',')
+                    .append(creature.z()).append(',').append(creature.yaw()).append('\n');
+        }
+        Path temp = file.resolveSibling(file.getFileName() + ".tmp");
+        Files.writeString(temp, data, StandardCharsets.UTF_8);
+        try {
+            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException ex) {
+            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    /** Loads a legacy-compatible block save. Rendering is deferred to updateStreaming(). */
+    public String load(Path file) throws IOException {
+        List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+        if (lines.size() < 5 || !FILE_HEADER.equals(lines.get(0).trim())) throw new IOException("Это не файл сохранения BlockWorld.");
+        int format = readIntProperty(lines, "format", -1);
+        if (format > VersionManager.WORLD_FORMAT) throw new IOException("Мир использует более новый формат сохранения (" + format + "). Обнови BlockWorld.");
+        if (format < 1) throw new IOException("Формат мира повреждён или не поддерживается.");
+        String savedVersion = readStringProperty(lines, "gameVersion", "неизвестно");
+        String biomeProperty = readStringProperty(lines, "biomes", "");
+        activeBiomes = "true".equalsIgnoreCase(biomeProperty) ? true
+                : "false".equalsIgnoreCase(biomeProperty) ? false : supportsBiomes(savedVersion);
+        long loadedSeed;
+        try { loadedSeed = Long.parseLong(readStringProperty(lines, "seed", "20261112")); }
+        catch (NumberFormatException ex) { loadedSeed = 20261112L; }
+        int marker = lines.indexOf("--blocks--");
+        if (marker < 0) throw new IOException("В файле отсутствует список блоков.");
+        int creatureMarker = lines.indexOf("--creatures--");
+        int blocksEnd = creatureMarker >= 0 ? creatureMarker : lines.size();
+
+        clear();
+        bulkUpdate = true;
+        try {
+            int loaded = 0;
+            for (int i = marker + 1; i < blocksEnd; i++) {
+                String line = lines.get(i).trim();
+                if (line.isEmpty()) continue;
+                if (++loaded > MAX_SAVED_BLOCKS) throw new IOException("В мире слишком много блоков. Загрузка отменена для безопасности.");
+                String[] parts = line.split(",", -1);
+                if (parts.length != 4) throw new IOException("Повреждена запись блока в строке " + (i + 1) + ".");
+                try {
+                    BlockPos pos = new BlockPos(Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()), Integer.parseInt(parts[2].trim()));
+                    String rawId = parts[3].trim();
+                    if (!rawId.matches("[A-Za-z0-9_-]{1,64}")) throw new IllegalArgumentException("Недопустимый ID блока");
+                    BlockType type;
+                    boolean unknown = false;
+                    try { type = BlockType.fromId(rawId); }
+                    catch (IllegalArgumentException ex) { type = BlockType.STONE; unknown = true; }
+                    if (addBlock(pos, type) && unknown) preservedUnknownIds.put(pos, rawId);
+                } catch (RuntimeException ex) {
+                    throw new IOException("Некорректный блок в строке " + (i + 1) + ".", ex);
+                }
+            }
+            if (creatureMarker >= 0) {
+                int loadedCreatures = 0;
+                for (int i = creatureMarker + 1; i < lines.size(); i++) {
+                    String line = lines.get(i).trim();
+                    if (line.isEmpty()) continue;
+                    if (++loadedCreatures > 256) throw new IOException("В мире слишком много существ. Загрузка отменена для безопасности.");
+                    String[] parts = line.split(",", -1);
+                    if (parts.length != 6) throw new IOException("Повреждена запись существа в строке " + (i + 1) + ".");
+                    try {
+                        WorldCreature creature = new WorldCreature(
+                                Long.parseLong(parts[0].trim()), CreatureType.fromId(parts[1].trim()),
+                                Float.parseFloat(parts[2].trim()), Float.parseFloat(parts[3].trim()),
+                                Float.parseFloat(parts[4].trim()), Float.parseFloat(parts[5].trim()));
+                        if (!addCreature(creature)) throw new IllegalArgumentException("Повторный ID существа или превышен лимит");
+                    } catch (RuntimeException ex) {
+                        throw new IOException("Некорректное существо в строке " + (i + 1) + ".", ex);
+                    }
+                }
+            }
+        } catch (IOException ex) {
+            clear();
+            throw ex;
+        } finally {
+            bulkUpdate = false;
+        }
+        seed = loadedSeed;
+        return savedVersion;
+    }
+
+    private int readIntProperty(List<String> lines, String key, int fallback) {
+        try { return Integer.parseInt(readStringProperty(lines, key, Integer.toString(fallback))); }
+        catch (NumberFormatException ex) { return fallback; }
+    }
+
+    private String readStringProperty(List<String> lines, String key, String fallback) {
+        String prefix = key + "=";
+        for (String line : lines) if (line.startsWith(prefix)) return line.substring(prefix.length()).trim();
+        return fallback;
+    }
+
+    private record Face(int nx, int ny, int nz, float shade, float[] vertices) { }
+}

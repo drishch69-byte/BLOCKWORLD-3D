@@ -1,0 +1,51 @@
+package com.blockworld.core;
+
+import java.util.List;
+
+/** Central registry for all selectable game profiles. */
+public final class VersionManager {
+    public static final int WORLD_FORMAT = 2;
+
+    private static final List<GameVersion> VERSIONS = List.of(
+            new GameVersion("0.1.0", "Classic", "Первый блочный мир", 9, false, false, false, false, false),
+            new GameVersion("0.2.0", "Builder Update", "Большой мир, деревья и строительство", 13, true, false, false, true, false),
+            new GameVersion("0.3.0", "Adventure Update", "Пещеры, руды и панель из 9 слотов", 16, true, true, true, true, false),
+            new GameVersion("0.4.0", "Survival Update", "Ходьба, прыжки, здоровье, голод и сбор блоков", 18, true, true, true, true, true),
+            new GameVersion("0.5.0", "Chunk Engine", "Чанки 16×16, потоковая загрузка и оптимизация FPS", 64, true, true, true, true, true),
+            new GameVersion("0.5.1", "Chunk Engine Hotfix", "Исправление запуска мира, камеры и диагностики чанков", 64, true, true, true, true, true),
+            new GameVersion("0.5.2", "World Render Fix", "Диагностика отрисовки, безопасная точка появления и улучшенный HUD", 64, true, true, true, true, true),
+            new GameVersion("0.5.3", "Stable Render Diagnostics", "Двусторонний режим мешей, тестовая площадка загрузки и расширенная диагностика", 64, true, true, true, true, true),
+            new GameVersion("0.6.0", "Nature Engine", "Вода, лава, реки, день и ночь, динамическая погода", 64, true, true, true, true, true),
+            new GameVersion("0.6.1", "Nature Engine Compiler Fix", "Исправление совместимости Math.max и метаданных запуска 0.6.0", 64, true, true, true, true, true),
+            new GameVersion("0.6.2", "Nature Engine Safe Launch", "Защита запуска, журнал ошибок графики и безопасное закрытие", 64, true, true, true, true, true),
+            new GameVersion("0.6.3", "Startup Crash Diagnostics", "Диагностика аварий JVM, отметки этапов запуска и отдельные crash-отчёты", 64, true, true, true, true, true),
+            new GameVersion("0.7.0", "Customization Update", "Главное меню, настройки, моды и ресурс-паки", 64, true, true, true, true, true),
+            new GameVersion("0.7.5", "Texture Pack Engine", "Настоящие PNG-текстуры блоков, атлас 8×8, варианты верх/сторона/низ", 64, true, true, true, true, true),
+            new GameVersion("0.8.0", "Creatures Update", "Животные, жители деревни, маленькие деревни и блуждающие существа", 64, true, true, true, true, true),
+            new GameVersion("0.8.5", "Inventory & Crafting Update", "Инвентарь игрока, рецепты крафта, доски, палки, верстак и факелы", 64, true, true, true, true, true),
+            new GameVersion("0.9.0", "Tools & Equipment Update", "Кирки с уровнями добычи, лопата, экипируемая броня и защита при падении", 64, true, true, true, true, true),
+            new GameVersion("0.9.5", "Biomes, Farming & Furnace Update", "Пять биомов, расширенный мир, фермерство с ростом урожая и плавка руды в печи", 88, true, true, true, true, true),
+            new GameVersion("1.0.0", "Trading, Fishing & Achievements", "Торговля с жителями, рыбалка, новые руды, достижения и звуковые эффекты", 96, true, true, true, true, true)
+    );
+
+    private VersionManager() {
+    }
+
+    public static List<GameVersion> getSupportedVersions() {
+        return VERSIONS;
+    }
+
+    public static GameVersion getDefaultVersion() {
+        return VERSIONS.get(VERSIONS.size() - 1);
+    }
+
+    public static GameVersion find(String id) {
+        if (id == null) {
+            return getDefaultVersion();
+        }
+        return VERSIONS.stream()
+                .filter(version -> version.id().equals(id))
+                .findFirst()
+                .orElse(getDefaultVersion());
+    }
+}
