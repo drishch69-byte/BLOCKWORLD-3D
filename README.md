@@ -2,25 +2,30 @@
 
 **A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0.**
 
-Explore a block-based world, gather resources, build structures, discover creatures, manage your inventory, and craft useful items. BLOCKWORLD 3D is an actively evolving sandbox project focused on expanding its world, gameplay systems, and customization options.
+Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
-## Current release
+> BLOCKWORLD 3D is an independent voxel sandbox project. It is not an official Minecraft product and does not contain Minecraft source code.
 
-**0.8.5 — Inventory & Crafting Update**
+## Current development version
 
-The current project package is available here:
+**1.0.0 — Trading, Fishing & Achievements**
 
-[Download BLOCKWORLD 3D 0.8.5 (ZIP)](BLOCKWORLD_3D_0.8.5_INVENTORY_CRAFTING_UPDATE.zip)
+The 1.0.0 project package has been prepared and checked as a ZIP in the development conversation. The archive currently stored in this repository is an older **0.8.5** snapshot; it has intentionally been kept so it is not mistaken for the newer build.
 
-## Features
+### Features in version 1.0.0
 
-- **Voxel world:** block-based terrain with a chunk system.
-- **Building and mining:** place and break blocks while exploring.
-- **Creatures:** animals and other world inhabitants.
-- **Inventory:** collect and manage block stacks and crafted items.
-- **Crafting:** create planks, sticks, crafting tables, and torches.
-- **World saves:** save and load worlds, with player inventory data stored separately.
-- **Customization:** main menu, settings, texture packs, and mod support.
+- **Voxel world:** chunk-based block terrain with five biomes: plains, forests, deserts, snowy tundra, and mountains.
+- **Building and mining:** place and break blocks and explore underground resources.
+- **Creatures and villages:** animals, villagers, and wandering slimes.
+- **Inventory and crafting:** collect resources and craft useful items.
+- **Tools and armor:** pickaxes with mining tiers, a shovel, and equippable iron armor.
+- **Farming and furnace:** prepare farmland, grow wheat, harvest crops, and smelt ores or cook fish.
+- **Villager trading:** exchange selected resources for emeralds and supplies.
+- **Fishing:** craft a fishing rod, catch fish, and cook them.
+- **New ores:** copper and emerald.
+- **Achievements:** track progress for mining, crafting, trading, fishing, farming, and exploring.
+- **Customization:** settings, mods, and resource packs with PNG block textures.
+- **Persistence:** world data and player sidecar data are saved separately; the world format remains 2.
 
 ## Controls
 
@@ -28,35 +33,41 @@ The current project package is available here:
 | --- | --- |
 | `I` | Open or close inventory |
 | `C` | Open or close crafting |
-| `1–4` | Select a recipe while the crafting panel is open |
-| `1–9` | Select a hotbar slot during normal gameplay |
+| `M` | View achievements |
+| `T` | Switch available tool |
+| `P` | Cast fishing rod while aiming at nearby water |
+| `F` | Interact with a villager or furnace |
+| `G` | Use farming / place a furnace where applicable |
+| `E` | Eat food |
 | `F6` | Save the world |
-| `F` | Interact |
-| `E` | Eat |
 | `ESC` | Pause menu |
 | `F10` | Exit the game |
 
-## Requirements
+Some actions depend on the selected version profile and the item currently held.
 
-- Java Development Kit (JDK) 17
+## Download
+
+The ZIP currently stored in this repository is the **0.8.5 Inventory & Crafting Update** snapshot:
+
+[Download BLOCKWORLD 3D 0.8.5](BLOCKWORLD_3D_0.8.5_INVENTORY_CRAFTING_UPDATE.zip)
+
+The 1.0.0 package is newer than that repository snapshot. Check the project conversation or the Releases page for the latest package until the 1.0.0 archive is attached here.
+
+## Build from source
+
+Requirements:
+- JDK 17
 - Apache Maven
-- A graphics environment that supports the OpenGL features required by jMonkeyEngine
+- A desktop graphics environment supporting the OpenGL features required by jMonkeyEngine
 
-## Build
-
-1. Download and extract the ZIP archive above.
-2. Open a terminal in the extracted project folder (the folder containing `pom.xml`).
-3. Run:
+From the folder containing `pom.xml`, run:
 
 ```bash
 mvn clean package
-```
-
-To run the automated tests:
-
-```bash
 mvn test
 ```
+
+Launch scripts are provided for Windows (`run.bat`) and Linux/macOS (`run.sh`).
 
 ## Technology
 
@@ -66,12 +77,10 @@ mvn test
 
 ## Roadmap
 
-Planned areas for future development include tools and armor, furnaces, farming, additional blocks and creatures, new biomes, and expanded world-building options. These are planned features and are not all part of release 0.8.5.
+See [ROADMAP.md](ROADMAP.md) for proposed future features. Roadmap items are ideas, not promises or already implemented features.
 
-## Project status
+## Contributing
 
-BLOCKWORLD 3D is a hobby development project. Features and controls may change between releases. Bug reports and suggestions are welcome through GitHub Issues.
-
----
+Bug reports, ideas, and improvement suggestions are welcome. Use the GitHub issue templates when opening an issue.
 
 **Explore. Build. Craft. Create your world.**
