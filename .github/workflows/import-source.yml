@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'distribution/source-parts/part-*.b64'
+      - 'BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip'
   workflow_dispatch:
 
 permissions:
@@ -16,60 +16,53 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-      - name: Reassemble and verify source archive
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import base64
-          import hashlib
-
-          parts = sorted(Path("distribution/source-parts").glob("part-*.b64"))
-          if not parts:
-              raise SystemExit("No source archive parts found.")
-          encoded = "".join(p.read_text(encoding="ascii").strip() for p in parts)
-          data = base64.b64decode(encoded, validate=True)
-          expected = "d9a6e7d800c4c722b88aa1c327d05a297bb5a1c87fa0558e3b2e7256bcb4347a"
-          actual = hashlib.sha256(data).hexdigest()
-          if actual != expected:
-              raise SystemExit(f"Archive SHA-256 mismatch: {actual}")
-          Path("distribution").mkdir(exist_ok=True)
-          Path("distribution/BLOCKWORLD_3D_1.0.0_SOURCE.tar.gz").write_bytes(data)
-          print(f"Verified source archive SHA-256: {actual}")
-          PY
-      - name: Extract source safely
+      - name: Validate and extract the release ZIP
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path, PurePosixPath
+          from zipfile import ZipFile
           import shutil
-          import tarfile
+          import stat
 
-          archive = Path("distribution/BLOCKWORLD_3D_1.0.0_SOURCE.tar.gz")
+          archive = Path("BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip")
+          if not archive.is_file():
+              raise SystemExit(f"Missing release archive: {archive}")
           destination = Path("game")
           if destination.exists():
               shutil.rmtree(destination)
           destination.mkdir(parents=True)
-          with tarfile.open(archive, "r:gz") as tar:
-              for member in tar.getmembers():
-                  path = PurePosixPath(member.name)
-                  if path.is_absolute() or ".." in path.parts or member.issym() or member.islnk():
-                      raise SystemExit(f"Unsafe archive path: {member.name}")
-                  parts = path.parts[1:] if path.parts and path.parts[0] == "blockworld-3d" else path.parts
-                  if not parts or (not member.isfile() and not member.isdir()):
+          with ZipFile(archive) as zf:
+              bad = zf.testzip()
+              if bad:
+                  raise SystemExit(f"Corrupt ZIP member: {bad}")
+              for info in zf.infolist():
+                  member = PurePosixPath(info.filename)
+                  if member.is_absolute() or ".." in member.parts:
+                      raise SystemExit(f"Unsafe archive path: {info.filename}")
+                  mode = info.external_attr >> 16
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit(f"Symbolic links are not accepted: {info.filename}")
+                  parts = member.parts[1:] if member.parts and member.parts[0] == "blockworld-3d" else member.parts
+                  if not parts:
                       continue
                   target = destination.joinpath(*parts)
-                  if member.isdir():
+                  if info.is_dir():
                       target.mkdir(parents=True, exist_ok=True)
-                  else:
-                      target.parent.mkdir(parents=True, exist_ok=True)
-                      source = tar.extractfile(member)
-                      if source is None:
-                          raise SystemExit(f"Cannot read archive member: {member.name}")
-                      target.write_bytes(source.read())
-          print("Extracted verified source tree into game/")
+                      continue
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  with zf.open(info) as source, target.open("wb") as output:
+                      shutil.copyfileobj(source, output)
+                  if mode:
+                      target.chmod(mode & 0o755)
+          if not (destination / "pom.xml").is_file():
+              raise SystemExit("Archive did not contain a Maven pom.xml at the project root.")
+          if not (destination / "src/main/java").is_dir():
+              raise SystemExit("Archive did not contain the Java source tree.")
+          print("Imported verified BLOCKWORLD 3D 1.0.0 source into game/")
           PY
-      - name: Verify Maven build and tests
+      - name: Attempt Maven build and tests
+        id: maven
         continue-on-error: true
         working-directory: game
         run: mvn --batch-mode --no-transfer-progress clean verify
@@ -78,7 +71,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add game distribution/BLOCKWORLD_3D_1.0.0_SOURCE.tar.gz
+          git add game
           if git diff --cached --quiet; then
             echo "No source changes to commit."
             exit 0
