@@ -1,4 +1,4 @@
-# BLOCKWORLD 3D — Multiplayer Preview 1.8.0
+# CUBEVERSE 3D — Multiplayer Preview 1.8.0
 
 ## Included
 - Player avatars, shared block placement/removal, host-controlled creature movement

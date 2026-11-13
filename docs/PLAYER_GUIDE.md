@@ -1,4 +1,4 @@
-# BLOCKWORLD 3D — Player Guide
+# CUBEVERSE 3D — Player Guide
 
 This is a quick reference for the gameplay systems available in version 1.1.0. Some actions depend on having the required item and selecting a compatible version profile.
 

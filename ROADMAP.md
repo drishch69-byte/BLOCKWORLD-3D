@@ -1,4 +1,4 @@
-# BLOCKWORLD 3D — Roadmap
+# CUBEVERSE 3D — Roadmap
 
 This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
 

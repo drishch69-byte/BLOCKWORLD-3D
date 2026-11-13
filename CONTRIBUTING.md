@@ -1,4 +1,4 @@
-# Contributing to BLOCKWORLD 3D
+# Contributing to CUBEVERSE 3D
 
 Thanks for helping improve the project.
 

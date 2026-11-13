@@ -1,4 +1,4 @@
-# BLOCKWORLD 3D — PNG texture assets
+# CUBEVERSE 3D — PNG texture assets
 
 This folder contains original pixel-art PNG resources.
 
@@ -12,4 +12,4 @@ This folder contains original pixel-art PNG resources.
 
 `game/src/main/resources/Textures/Blocks/` is populated from the selected resource pack at startup. The block atlas is now 256×256 (16×16 tiles) with three face tiles per block, including the 1.2.0 treasure chest. Existing block slots 0–20 keep their positions; the chest is appended at slot 21.
 
-The artwork is original to BLOCKWORLD 3D. Textures use nearest-neighbour filtering for crisp pixel edges.
+The artwork is original to CUBEVERSE 3D. Textures use nearest-neighbour filtering for crisp pixel edges.

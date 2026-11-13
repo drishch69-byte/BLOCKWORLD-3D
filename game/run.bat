@@ -15,7 +15,7 @@ if defined MAVEN_OPTS (
 )
 
 > "%LOG_FILE%" echo ============================================================
->> "%LOG_FILE%" echo BLOCKWORLD 3D 1.0.0 - TRADING, FISHING AND ACHIEVEMENTS
+>> "%LOG_FILE%" echo CUBEVERSE 3D 1.9.0 - LIVING WORLD AND COMPANIONS
 >> "%LOG_FILE%" echo Started: %DATE% %TIME%
 >> "%LOG_FILE%" echo Project: %CD%
 >> "%LOG_FILE%" echo JVM fatal reports: .logs\hs_err_pid*.log
@@ -23,7 +23,7 @@ if defined MAVEN_OPTS (
 >> "%LOG_FILE%" echo ============================================================
 
 echo ============================================================
-echo BLOCKWORLD 3D 1.0.0 - TRADING, FISHING AND ACHIEVEMENTS
+echo CUBEVERSE 3D 1.9.0 - LIVING WORLD AND COMPANIONS
 echo Log: %LOG_FILE%
 echo ============================================================
 echo.
@@ -54,7 +54,7 @@ if not exist "%MAVEN_HOME%\bin\mvn.cmd" (
     )
 )
 
-echo Starting BLOCKWORLD with downloaded Maven...
+echo Starting CUBEVERSE with downloaded Maven...
 call "%MAVEN_HOME%\bin\mvn.cmd" -B -Dstyle.color=never clean compile exec:java >> "%LOG_FILE%" 2>&1
 set "EXIT_CODE=%ERRORLEVEL%"
 
@@ -62,9 +62,9 @@ set "EXIT_CODE=%ERRORLEVEL%"
 echo.
 echo ============================================================
 if not "%EXIT_CODE%"=="0" (
-    echo BLOCKWORLD finished with an error. Log tail:
+    echo CUBEVERSE finished with an error. Log tail:
 ) else (
-    echo BLOCKWORLD process ended. If the game window vanished unexpectedly, inspect this log:
+    echo CUBEVERSE process ended. If the game window vanished unexpectedly, inspect this log:
 )
 echo %LOG_FILE%
 echo ============================================================

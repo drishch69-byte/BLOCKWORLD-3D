@@ -2,7 +2,7 @@
 
 ## Scope
 
-This project includes a Java mod loading system. A mod JAR can execute code with the permissions of the user running BLOCKWORLD 3D.
+This project includes a Java mod loading system. A mod JAR can execute code with the permissions of the user running CUBEVERSE 3D.
 
 ## Safe mod use
 

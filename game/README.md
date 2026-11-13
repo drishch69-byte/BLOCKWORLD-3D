@@ -1,6 +1,6 @@
-# BLOCKWORLD 3D — Living World & Companions
+# CUBEVERSE 3D — Living World & Companions
 
-**BLOCKWORLD 3D** — самостоятельная Java voxel-игра на jMonkeyEngine. Это независимый проект в жанре строительства из блоков и выживания.
+**CUBEVERSE 3D** — самостоятельная Java voxel-игра на jMonkeyEngine. Это независимый проект в жанре строительства из блоков и выживания.
 
 ## 1.9.0 — LIVING WORLD & COMPANIONS
 

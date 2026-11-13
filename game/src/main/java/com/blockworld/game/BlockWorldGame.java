@@ -189,7 +189,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private boolean paused;
     private List<BlockType> hotbar;
     private BlockType selectedBlock = BlockType.GRASS;
-    private volatile String statusMessage = "Добро пожаловать в BlockWorld!";
+    private volatile String statusMessage = "Добро пожаловать в CUBEVERSE!";
     private boolean exitNotified;
     private volatile boolean runtimeFault;
     private volatile String runtimeFaultMessage = "";
@@ -286,7 +286,7 @@ public final class BlockWorldGame extends SimpleApplication {
 
     public void launch() {
         AppSettings settings = new AppSettings(true);
-        settings.setTitle("BLOCKWORLD 3D  |  " + version.id() + " " + version.displayName());
+        settings.setTitle("CUBEVERSE 3D  |  " + version.id() + " " + version.displayName());
         settings.setResolution(gameSettings.width(), gameSettings.height());
         settings.setFullscreen(gameSettings.fullscreen());
         settings.setResizable(true);
@@ -578,7 +578,7 @@ public final class BlockWorldGame extends SimpleApplication {
         pauseText.setSize(22f);
         pauseText.setColor(ColorRGBA.White);
         pauseText.setQueueBucket(RenderQueue.Bucket.Gui);
-        pauseText.setText("BLOCKWORLD 3D — ПАУЗА\n\nESC — продолжить игру\nF6 — сохранить мир\nF10 — выйти в главное меню");
+        pauseText.setText("CUBEVERSE 3D — ПАУЗА\n\nESC — продолжить игру\nF6 — сохранить мир\nF10 — выйти в главное меню");
         pauseText.setLocalTranslation(settings.getWidth() / 2f - 205f, settings.getHeight() / 2f + 82f, 5f);
 
         Material inventoryMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
@@ -769,7 +769,7 @@ public final class BlockWorldGame extends SimpleApplication {
             SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
                     "Игровой цикл встретил ошибку и приостановлен, чтобы окно не исчезло.\n"
                             + runtimeFaultMessage + "\n\nЖурнал: .logs\\latest-run.log",
-                    "BLOCKWORLD 3D — ошибка игрового цикла", JOptionPane.ERROR_MESSAGE));
+                    "CUBEVERSE 3D — ошибка игрового цикла", JOptionPane.ERROR_MESSAGE));
         }
     }
 
@@ -1045,7 +1045,7 @@ public final class BlockWorldGame extends SimpleApplication {
         SwingUtilities.invokeLater(() -> {
             String message = JOptionPane.showInputDialog(null,
                     "Сообщение или обмен предметами:\n/trade Ник ПРЕДМЕТ_ОТДАЮ Количество ПРЕДМЕТ_ПОЛУЧАЮ Количество",
-                    "BLOCKWORLD 3D — Чат", JOptionPane.PLAIN_MESSAGE);
+                    "CUBEVERSE 3D — Чат", JOptionPane.PLAIN_MESSAGE);
             if (message == null || message.isBlank()) return;
             try { multiplayerClient.sendChat(message); }
             catch (IOException error) {
@@ -2336,7 +2336,7 @@ public final class BlockWorldGame extends SimpleApplication {
         if (inventoryText == null) return;
         StringBuilder text = new StringBuilder();
         if (chestOpen) {
-            text.append("BLOCKWORLD 3D — ОБЩИЙ СУНДУК\n\n");
+            text.append("CUBEVERSE 3D — ОБЩИЙ СУНДУК\n\n");
             text.append("Предметы сундука доступны всем игрокам сервера.\n");
             List<ItemType> slots = chestItemSlots();
             int start = chestPage * 9;
@@ -2352,7 +2352,7 @@ public final class BlockWorldGame extends SimpleApplication {
             text.append("\nСтраница ").append(chestPage + 1).append(" | ←/→ — страницы\n");
             text.append("Z — забрать 1 предмет, X — положить 1 предмет, F — закрыть");
         } else if (furnaceOpen) {
-            text.append("BLOCKWORLD 3D — ПЕЧЬ\n\n");
+            text.append("CUBEVERSE 3D — ПЕЧЬ\n\n");
             for (int i = 0; i < FurnaceRecipe.values().length; i++) {
                 FurnaceRecipe recipe = FurnaceRecipe.values()[i];
                 text.append(i + 1).append(". ").append(recipe.displayName()).append(" ×1\n");
@@ -2364,7 +2364,7 @@ public final class BlockWorldGame extends SimpleApplication {
             text.append("Сырая рыба: ").append(craftedItems.getOrDefault(ItemType.RAW_FISH, 0)).append("\n\n");
             text.append("Нажми 1–3 для плавки, F — закрыть.");
         } else if (tradeOpen) {
-            text.append("BLOCKWORLD 3D — ТОРГОВЕЦ\n\n");
+            text.append("CUBEVERSE 3D — ТОРГОВЕЦ\n\n");
             text.append("Обменяй ресурсы на полезные предметы.\n\n");
             for (int i = 0; i < tradeRecipes.size(); i++) {
                 TradeRecipe offer = tradeRecipes.get(i);
@@ -2373,7 +2373,7 @@ public final class BlockWorldGame extends SimpleApplication {
             }
             text.append("\nНажми 1–4 для обмена, F — закрыть.");
         } else if (achievementsOpen) {
-            text.append("BLOCKWORLD 3D — ДОСТИЖЕНИЯ\n\n");
+            text.append("CUBEVERSE 3D — ДОСТИЖЕНИЯ\n\n");
             text.append("Открыто: ").append(achievements.unlockedCount()).append("/").append(achievements.totalCount())
                     .append("    Биомы: ").append(achievements.discoveredBiomeCount()).append("/5\n\n");
             for (Achievement achievement : Achievement.values()) {
@@ -2385,7 +2385,7 @@ public final class BlockWorldGame extends SimpleApplication {
             int pageCount = Math.max(1, (craftingRecipes.size() + 8) / 9);
             int start = craftingPage * 9;
             int end = Math.min(craftingRecipes.size(), start + 9);
-            text.append("BLOCKWORLD 3D — МАСТЕРСКАЯ  |  СТРАНИЦА ").append(craftingPage + 1)
+            text.append("CUBEVERSE 3D — МАСТЕРСКАЯ  |  СТРАНИЦА ").append(craftingPage + 1)
                     .append("/").append(pageCount).append("\n\n");
             text.append(craftingRecipes.size() > 9 ? "1–9 — создать рецепт    ←/→ — страницы    C — закрыть\n\n"
                     : "1–4 — создать рецепт    C — закрыть\n\n");
@@ -2400,7 +2400,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 text.append("\nСтрелка вправо — следующая страница, влево — предыдущая.");
             }
         } else {
-            text.append("BLOCKWORLD 3D — ИНВЕНТАРЬ\n\nБлоки:\n");
+            text.append("CUBEVERSE 3D — ИНВЕНТАРЬ\n\nБлоки:\n");
             for (BlockType block : BlockType.values()) {
                 int count = inventory.getOrDefault(block, 0);
                 if (count > 0) text.append("• ").append(block.displayName()).append(" × ").append(count).append("\n");
@@ -2587,7 +2587,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 world.getPendingChunkCount(), world.getRenderDistanceChunks(), world.getBlockCount());
         String spawn = String.format(java.util.Locale.ROOT, "Spawn: X %.0f / Y %.0f / Z %.0f",
                 spawnPosition.x, spawnPosition.y, spawnPosition.z);
-        hud.setText("BLOCKWORLD 3D  |  " + version.id() + " " + version.displayName()
+        hud.setText("CUBEVERSE 3D  |  " + version.id() + " " + version.displayName()
                 + "\n" + controls + (multiplayerClient != null && multiplayerClient.isConnected() ? "    Enter — чат/обмен" : "") + "    F6 — сохранить    F7 — дальность    F8 — режим граней    F10 — выход из паузы"
                 + "\n" + needs
                 + (nature.isEmpty() ? "" : "\n" + nature)
@@ -2639,7 +2639,7 @@ public final class BlockWorldGame extends SimpleApplication {
         SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null,
                 "jMonkeyEngine сообщил об ошибке. Полный стек сохранён в .logs\\latest-run.log.\n\n"
                         + details,
-                "BLOCKWORLD 3D — ошибка графического движка", JOptionPane.ERROR_MESSAGE));
+                "CUBEVERSE 3D — ошибка графического движка", JOptionPane.ERROR_MESSAGE));
     }
 
 

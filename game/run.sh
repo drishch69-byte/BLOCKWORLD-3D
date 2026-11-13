@@ -7,7 +7,7 @@ MAVEN_OPTS="${MAVEN_OPTS:-} -XX:ErrorFile=.logs/hs_err_pid%p.log -XX:+HeapDumpOn
 export MAVEN_OPTS
 {
   echo "============================================================"
-  echo "BLOCKWORLD 3D 1.0.0 - TRADING, FISHING AND ACHIEVEMENTS"
+  echo "CUBEVERSE 3D 1.9.0 - LIVING WORLD AND COMPANIONS"
   date
   echo "Project: $PWD"
   echo "============================================================"
@@ -29,7 +29,7 @@ else
 fi
 
 echo "
-BLOCKWORLD exited with code $EXIT_CODE. Log: $LOG_FILE"
+CUBEVERSE exited with code $EXIT_CODE. Log: $LOG_FILE"
 tail -n 70 "$LOG_FILE"
 for crash_log in .logs/hs_err_pid*.log; do
   [ -e "$crash_log" ] && echo "JVM FATAL REPORT: $crash_log"
