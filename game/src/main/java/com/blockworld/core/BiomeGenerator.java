@@ -29,6 +29,29 @@ public final class BiomeGenerator {
         return BiomeType.PLAINS;
     }
 
+    /** Rare, deterministic surface biome used by the 1.9.9 profile only. */
+    public static BiomeType biomeAtV199(long seed, int x, int z) {
+        BiomeType base = biomeAtV110(seed, x, z);
+        if ((base == BiomeType.PLAINS || base == BiomeType.FOREST || base == BiomeType.TAIGA)
+                && valueNoise(seed, x, z, 96, 0xE11C4E6D1234L) > 0.84) {
+            return BiomeType.ENCHANTED_GROVE;
+        }
+        return base;
+    }
+
+    public static boolean supportsEnchantedGrove(String versionId) {
+        if (versionId == null) return false;
+        try {
+            String[] parts = versionId.split("\\\\.");
+            int major = Integer.parseInt(parts[0]);
+            int minor = Integer.parseInt(parts[1]);
+            int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
+            return major > 1 || (major == 1 && (minor > 9 || (minor == 9 && patch >= 9)));
+        } catch (RuntimeException ex) {
+            return false;
+        }
+    }
+
     public static int mountainHeightBonus(long seed, int x, int z) {
         return mountainHeightBonus(seed, x, z, biomeAt(seed, x, z));
     }

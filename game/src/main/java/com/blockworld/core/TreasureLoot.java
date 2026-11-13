@@ -26,7 +26,7 @@ public final class TreasureLoot {
         return Collections.unmodifiableMap(loot);
     }
 
-    /** Deterministic artifact reward table for newly generated 1.9.8 temples. */
+    /** Deterministic artifact reward table; opposite temple locations guarantee both sigils. */
     public static Map<ItemType, Integer> rollAncientCache(long seed, BlockPos cache) {
         if (cache == null) throw new IllegalArgumentException("Позиция древнего тайника обязательна");
         long mixedSeed = seed
@@ -37,7 +37,7 @@ public final class TreasureLoot {
         Random random = new Random(mixedSeed);
         EnumMap<ItemType, Integer> loot = new EnumMap<>(ItemType.class);
         loot.put(ItemType.ANCIENT_RELIC, 1);
-        loot.put(random.nextBoolean() ? ItemType.SUN_SIGIL : ItemType.MOON_SIGIL, 1);
+        loot.put(cache.x() >= 0 ? ItemType.SUN_SIGIL : ItemType.MOON_SIGIL, 1);
         loot.put(ItemType.EMERALD, 3 + random.nextInt(4));
         if (random.nextBoolean()) loot.put(ItemType.IRON_INGOT, 5 + random.nextInt(3));
         else loot.put(ItemType.COPPER_INGOT, 5 + random.nextInt(4));

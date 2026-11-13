@@ -27,11 +27,20 @@ public final class AchievementTracker {
     public int totalCount() { return Achievement.values().length; }
     public int discoveredBiomeCount() { return discoveredBiomes.size(); }
 
-    /** Older game profiles only generate the original five biomes. */
+    /** Older profiles use five biomes; expanded profiles use the seven-biome set. */
     public void setExtendedBiomeSet(boolean extended) {
-        requiredBiomes = extended ? EnumSet.allOf(BiomeType.class) : BiomeType.legacySet();
+        requiredBiomes = extended ? BiomeType.extendedSet() : BiomeType.legacySet();
         if (hasDiscoveredAllBiomes()) unlocked.add(Achievement.ALL_BIOMES);
     }
+
+    /** The enchanted grove is required only for the 1.9.9 profile. */
+    public void setEnchantedBiomeSet(boolean enchanted) {
+        requiredBiomes = enchanted ? BiomeType.enchantedSet()
+                : requiredBiomes.contains(BiomeType.TAIGA) ? BiomeType.extendedSet() : BiomeType.legacySet();
+        if (hasDiscoveredAllBiomes()) unlocked.add(Achievement.ALL_BIOMES);
+    }
+
+    public int requiredBiomeCount() { return requiredBiomes.size(); }
 
     public boolean hasDiscoveredAllBiomes() { return discoveredBiomes.containsAll(requiredBiomes); }
     public Set<Achievement> unlocked() { return Collections.unmodifiableSet(EnumSet.copyOf(unlocked)); }

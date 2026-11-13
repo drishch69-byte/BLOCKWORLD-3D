@@ -9,7 +9,11 @@ public enum Achievement {
     FIRST_HARVEST("first_harvest", "Первый урожай", "Собери созревшую пшеницу."),
     ALL_BIOMES("all_biomes", "Исследователь", "Посети все биомы текущего профиля."),
     FIND_COPPER("find_copper", "Медный век", "Добудь медную руду."),
-    FIND_EMERALD("find_emerald", "Редкая находка", "Найди изумрудную руду.");
+    FIND_EMERALD("find_emerald", "Редкая находка", "Найди изумрудную руду."),
+    FIND_ANCIENT_RELIC("find_ancient_relic", "Археолог", "Найди древнюю реликвию."),
+    FIND_SUN_SIGIL("find_sun_sigil", "Солнечный знак", "Найди солнечную печать."),
+    FIND_MOON_SIGIL("find_moon_sigil", "Лунный знак", "Найди лунную печать."),
+    COMPLETE_ARTIFACT_SET("complete_artifact_set", "Древнее наследие", "Собери реликвию и обе древние печати.");
 
     private final String id;
     private final String title;

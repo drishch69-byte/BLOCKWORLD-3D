@@ -10,7 +10,8 @@ public enum BiomeType {
     SNOWY_TUNDRA("Снежная тундра", BlockType.SNOW),
     MOUNTAINS("Горы", BlockType.STONE),
     TAIGA("Тайга", BlockType.PODZOL),
-    SWAMP("Болото", BlockType.MUD);
+    SWAMP("Болото", BlockType.MUD),
+    ENCHANTED_GROVE("Зачарованная роща", BlockType.CAVE_MOSS);
 
     private final String displayName;
     private final BlockType surfaceBlock;
@@ -25,5 +26,18 @@ public enum BiomeType {
 
     public static EnumSet<BiomeType> legacySet() {
         return EnumSet.of(PLAINS, FOREST, DESERT, SNOWY_TUNDRA, MOUNTAINS);
+    }
+
+    public static EnumSet<BiomeType> extendedSet() {
+        EnumSet<BiomeType> result = legacySet();
+        result.add(TAIGA);
+        result.add(SWAMP);
+        return result;
+    }
+
+    public static EnumSet<BiomeType> enchantedSet() {
+        EnumSet<BiomeType> result = extendedSet();
+        result.add(ENCHANTED_GROVE);
+        return result;
     }
 }

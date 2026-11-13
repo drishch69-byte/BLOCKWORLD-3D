@@ -76,6 +76,7 @@ public final class VoxelWorld {
     private boolean activeBiomes;
     private boolean extendedBiomes;
     private boolean caveBiomesEnabled;
+    private boolean enchantedBiomeEnabled;
     private int worldRadius;
     private List<WorldNavigation.Landmark> landmarks = List.of();
     private int minBlockX;
@@ -144,6 +145,7 @@ public final class VoxelWorld {
     public boolean hasActiveBiomes() { return activeBiomes; }
     public boolean hasExtendedBiomes() { return extendedBiomes; }
     public boolean hasCaveBiomes() { return caveBiomesEnabled; }
+    public boolean hasEnchantedBiomes() { return enchantedBiomeEnabled; }
     public CaveBiomeType getCaveBiomeAt(int x, int y, int z) {
         return caveBiomesEnabled ? CaveBiomeGenerator.biomeAt(seed, x, y, z) : CaveBiomeType.NONE;
     }
@@ -158,6 +160,12 @@ public final class VoxelWorld {
     /** Replace block data with an authoritative multiplayer snapshot. Call on the render thread. */
     public void replaceBlockSnapshot(long worldSeed, boolean hasBiomes, boolean hasExtendedBiomes,
                                      int snapshotRadius, Map<BlockPos, BlockType> snapshot) {
+        replaceBlockSnapshot(worldSeed, hasBiomes, hasExtendedBiomes, false, snapshotRadius, snapshot);
+    }
+
+    public void replaceBlockSnapshot(long worldSeed, boolean hasBiomes, boolean hasExtendedBiomes,
+                                     boolean hasEnchantedBiomes, int snapshotRadius,
+                                     Map<BlockPos, BlockType> snapshot) {
         Objects.requireNonNull(snapshot, "snapshot");
         if (snapshot.size() > MAX_SAVED_BLOCKS) throw new IllegalArgumentException("World snapshot exceeds block limit");
         node.detachAllChildren();
@@ -176,6 +184,7 @@ public final class VoxelWorld {
         seed = worldSeed;
         activeBiomes = hasBiomes;
         extendedBiomes = hasExtendedBiomes;
+        enchantedBiomeEnabled = hasEnchantedBiomes;
         caveBiomesEnabled = snapshot.values().stream().anyMatch(type -> type == BlockType.GLOWING_CRYSTAL
                 || type == BlockType.CAVE_MOSS || type == BlockType.CAVE_FERN);
         worldRadius = Math.max(0, Math.min(100_000, snapshotRadius));
@@ -197,6 +206,7 @@ public final class VoxelWorld {
 
     public BiomeType getBiomeAt(int x, int z) {
         if (!activeBiomes) return BiomeType.PLAINS;
+        if (enchantedBiomeEnabled) return BiomeGenerator.biomeAtV199(seed, x, z);
         return extendedBiomes ? BiomeGenerator.biomeAtV110(seed, x, z) : BiomeGenerator.biomeAt(seed, x, z);
     }
     public int getMinBlockX() { return hasBounds ? minBlockX : 0; }
@@ -563,6 +573,7 @@ public final class VoxelWorld {
         worldRadius = requestedRadius;
         activeBiomes = supportsBiomes(version.id());
         extendedBiomes = supportsExtendedBiomes(version.id());
+        enchantedBiomeEnabled = BiomeGenerator.supportsEnchantedGrove(version.id());
         caveBiomesEnabled = CaveBiomeGenerator.supports(version.id());
         bulkUpdate = true;
         try {
@@ -596,6 +607,7 @@ public final class VoxelWorld {
                             case FOREST -> 0.62f;
                             case TAIGA -> 0.48f;
                             case SWAMP -> 0.34f;
+                            case ENCHANTED_GROVE -> 0.70f;
                             case PLAINS -> 0.22f;
                             default -> 0f;
                         };
@@ -603,6 +615,7 @@ public final class VoxelWorld {
                     }
                 }
             }
+            if (enchantedBiomeEnabled) addEnchantedGroveDecorations(random, radius);
             if (version.id().compareTo("0.6.0") >= 0) {
                 // A winding surface river; water blocks are saved like every other block.
                 for (int x = -radius + 2; x <= radius - 2; x++) {
@@ -940,6 +953,38 @@ public final class VoxelWorld {
             BlockPos branch = new BlockPos(x + dx, baseY + 1, z);
             removeBlock(branch);
             addBlock(branch, BlockType.GLOWING_CRYSTAL);
+        }
+    }
+
+    /** Adds sparse crystal and fern markers to the surface of the enchanted grove. */
+    private void addEnchantedGroveDecorations(Random random, int radius) {
+        int placed = 0;
+        for (int x = -radius + 4; x <= radius - 4; x += 5) {
+            for (int z = -radius + 4; z <= radius - 4; z += 5) {
+                if (getBiomeAt(x, z) != BiomeType.ENCHANTED_GROVE || random.nextFloat() >= 0.18f) continue;
+                int surfaceY = highestBlockY(x, z);
+                if (getBlock(new BlockPos(x, surfaceY, z)) != BlockType.CAVE_MOSS) continue;
+                BlockPos decoration = new BlockPos(x, surfaceY + 1, z);
+                if (!contains(decoration)) {
+                    addBlock(decoration, random.nextBoolean() ? BlockType.GLOWING_CRYSTAL : BlockType.CAVE_FERN);
+                    placed++;
+                }
+            }
+        }
+        if (placed == 0) {
+            search:
+            for (int x = -radius + 2; x <= radius - 2; x++) {
+                for (int z = -radius + 2; z <= radius - 2; z++) {
+                    if (getBiomeAt(x, z) == BiomeType.ENCHANTED_GROVE) {
+                        int y = highestBlockY(x, z);
+                        if (getBlock(new BlockPos(x, y, z)) == BlockType.CAVE_MOSS
+                                && !contains(new BlockPos(x, y + 1, z))) {
+                            addBlock(new BlockPos(x, y + 1, z), BlockType.GLOWING_CRYSTAL);
+                            break search;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1363,6 +1408,7 @@ public final class VoxelWorld {
         activeBiomes = false;
         extendedBiomes = false;
         caveBiomesEnabled = false;
+        enchantedBiomeEnabled = false;
         worldRadius = 0;
         landmarks = List.of();
         seed = 20261112L;
@@ -1383,6 +1429,7 @@ public final class VoxelWorld {
             writer.write("worldRadius=" + worldRadius); writer.newLine();
             writer.write("biomes=" + activeBiomes); writer.newLine();
             writer.write("extendedBiomes=" + extendedBiomes); writer.newLine();
+            writer.write("enchantedBiomes=" + enchantedBiomeEnabled); writer.newLine();
             writer.write("caveBiomes=" + caveBiomesEnabled); writer.newLine();
             writer.write("--blocks--"); writer.newLine();
             for (Map.Entry<BlockPos, BlockType> entry : blocks.entrySet()) {
@@ -1427,6 +1474,7 @@ public final class VoxelWorld {
         long loadedSeed;
         boolean loadedActiveBiomes;
         boolean loadedExtendedBiomes;
+        boolean loadedEnchantedBiomes;
         boolean loadedCaveBiomes;
         try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             String header = reader.readLine();
@@ -1439,6 +1487,7 @@ public final class VoxelWorld {
             String versionProperty = "неизвестно";
             String biomeProperty = "";
             String extendedBiomeProperty = "";
+            String enchantedBiomeProperty = "";
             String caveBiomeProperty = "";
             String seedProperty = "20261112";
             String worldRadiusProperty = "";
@@ -1455,6 +1504,7 @@ public final class VoxelWorld {
                 else if (value.startsWith("gameVersion=")) versionProperty = value.substring(12).trim();
                 else if (value.startsWith("biomes=")) biomeProperty = value.substring(7).trim();
                 else if (value.startsWith("extendedBiomes=")) extendedBiomeProperty = value.substring(15).trim();
+                else if (value.startsWith("enchantedBiomes=")) enchantedBiomeProperty = value.substring(16).trim();
                 else if (value.startsWith("caveBiomes=")) caveBiomeProperty = value.substring(11).trim();
                 else if (value.startsWith("seed=")) seedProperty = value.substring(5).trim();
                 else if (value.startsWith("worldRadius=")) worldRadiusProperty = value.substring(12).trim();
@@ -1471,6 +1521,9 @@ public final class VoxelWorld {
                     : "false".equalsIgnoreCase(biomeProperty) ? false : supportsBiomes(savedVersion);
             loadedExtendedBiomes = "true".equalsIgnoreCase(extendedBiomeProperty) ? true
                     : "false".equalsIgnoreCase(extendedBiomeProperty) ? false : supportsExtendedBiomes(savedVersion);
+            loadedEnchantedBiomes = "true".equalsIgnoreCase(enchantedBiomeProperty) ? true
+                    : "false".equalsIgnoreCase(enchantedBiomeProperty) ? false
+                    : BiomeGenerator.supportsEnchantedGrove(savedVersion);
             loadedCaveBiomes = "true".equalsIgnoreCase(caveBiomeProperty) ? true
                     : "false".equalsIgnoreCase(caveBiomeProperty) ? false : CaveBiomeGenerator.supports(savedVersion);
 
@@ -1478,6 +1531,7 @@ public final class VoxelWorld {
             dataStarted = true;
             activeBiomes = loadedActiveBiomes;
             extendedBiomes = loadedExtendedBiomes;
+            enchantedBiomeEnabled = loadedEnchantedBiomes;
             caveBiomesEnabled = loadedCaveBiomes;
             seed = loadedSeed;
             int defaultRadius = VersionManager.find(savedVersion).worldRadius();

@@ -463,10 +463,14 @@ public final class BlockWorldGame extends SimpleApplication {
                 try { PetDataStore.load(saveFile, pendingPetModes); }
                 catch (IOException ex) { GameLog.error("Не удалось загрузить команды питомцев", ex); }
             }
-            if (release100Enabled) achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
+            if (release100Enabled) {
+                achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
+                achievements.setEnchantedBiomeSet(world.hasEnchantedBiomes());
+            }
             if (loaded && release100Enabled) {
                 try { AchievementDataStore.load(saveFile, achievements); }
                 catch (IOException ex) { GameLog.error("Не удалось загрузить достижения", ex); }
+                refreshArtifactAchievements(false);
             }
             if (!loaded) {
                 if (recoveryReason != null) {
@@ -1446,7 +1450,9 @@ public final class BlockWorldGame extends SimpleApplication {
                     if (pendingNetworkWorld != null
                             && pendingNetworkWorld.size() == pendingNetworkBlockCount && world != null) {
                         world.replaceBlockSnapshot(pendingNetworkSeed, pendingNetworkActiveBiomes,
-                                pendingNetworkExtendedBiomes, pendingNetworkRadius, pendingNetworkWorld);
+                                pendingNetworkExtendedBiomes,
+                                com.blockworld.core.BiomeGenerator.supportsEnchantedGrove(version.id()),
+                                pendingNetworkRadius, pendingNetworkWorld);
                         farmGrowth.keySet().removeIf(position -> world.getBlock(position) != BlockType.WHEAT_CROP);
                         world.replaceCreatureSnapshot(new ArrayList<>(pendingNetworkCreatures.values()));
                         if (creatureManager != null) creatureManager.sync(world);
@@ -2099,6 +2105,7 @@ public final class BlockWorldGame extends SimpleApplication {
                             ? TreasureLoot.rollCrystalCache(world.getSeed(), hit.position())
                             : TreasureLoot.roll(world.getSeed(), hit.position());
                 loot.forEach((item, count) -> craftedItems.merge(item, count, Integer::sum));
+                refreshArtifactAchievements(true);
                 String found = loot.entrySet().stream()
                         .map(entry -> entry.getKey().displayName() + " ×" + entry.getValue())
                         .collect(java.util.stream.Collectors.joining(", "));
@@ -2229,6 +2236,7 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void toggleAchievements() {
         if (!release100Enabled || !worldReady || !version.survival()) return;
+        if (!achievementsOpen) refreshArtifactAchievements(false);
         achievementsOpen = !achievementsOpen;
         inventoryOpen = false;
         craftingOpen = false;
@@ -2244,6 +2252,30 @@ public final class BlockWorldGame extends SimpleApplication {
         statusMessage = "Новое достижение: " + achievement.title() + "!";
         playSound(GameSounds.Effect.ACHIEVEMENT);
         saveAchievementsQuietly();
+    }
+
+    private void refreshArtifactAchievements(boolean notify) {
+        if (!release100Enabled) return;
+        Achievement latest = null;
+        if (craftedItems.getOrDefault(ItemType.ANCIENT_RELIC, 0) > 0
+                && achievements.unlock(Achievement.FIND_ANCIENT_RELIC)) latest = Achievement.FIND_ANCIENT_RELIC;
+        if (craftedItems.getOrDefault(ItemType.SUN_SIGIL, 0) > 0
+                && achievements.unlock(Achievement.FIND_SUN_SIGIL)) latest = Achievement.FIND_SUN_SIGIL;
+        if (craftedItems.getOrDefault(ItemType.MOON_SIGIL, 0) > 0
+                && achievements.unlock(Achievement.FIND_MOON_SIGIL)) latest = Achievement.FIND_MOON_SIGIL;
+        boolean complete = craftedItems.getOrDefault(ItemType.ANCIENT_RELIC, 0) > 0
+                && craftedItems.getOrDefault(ItemType.SUN_SIGIL, 0) > 0
+                && craftedItems.getOrDefault(ItemType.MOON_SIGIL, 0) > 0;
+        if (complete && achievements.unlock(Achievement.COMPLETE_ARTIFACT_SET)) {
+            latest = Achievement.COMPLETE_ARTIFACT_SET;
+        }
+        if (latest != null) {
+            if (notify) {
+                statusMessage = "Новое достижение: " + latest.title() + "!";
+                playSound(GameSounds.Effect.ACHIEVEMENT);
+            }
+            saveAchievementsQuietly();
+        }
     }
 
     private void saveAchievementsQuietly() {
@@ -2550,8 +2582,14 @@ public final class BlockWorldGame extends SimpleApplication {
             text.append("\nНажми 1–4 для обмена, F — закрыть.");
         } else if (achievementsOpen) {
             text.append("Minecraft 3D — ДОСТИЖЕНИЯ\n\n");
+            int artifactTypesCollected = 0;
+            if (craftedItems.getOrDefault(ItemType.ANCIENT_RELIC, 0) > 0) artifactTypesCollected++;
+            if (craftedItems.getOrDefault(ItemType.SUN_SIGIL, 0) > 0) artifactTypesCollected++;
+            if (craftedItems.getOrDefault(ItemType.MOON_SIGIL, 0) > 0) artifactTypesCollected++;
             text.append("Открыто: ").append(achievements.unlockedCount()).append("/").append(achievements.totalCount())
-                    .append("    Биомы: ").append(achievements.discoveredBiomeCount()).append("/5\n\n");
+                    .append("    Биомы: ").append(achievements.discoveredBiomeCount()).append("/")
+                    .append(achievements.requiredBiomeCount())
+                    .append("    Артефакты: ").append(artifactTypesCollected).append("/3\n\n");
             for (Achievement achievement : Achievement.values()) {
                 text.append(achievements.isUnlocked(achievement) ? "[✓] " : "[ ] ")
                         .append(achievement.title()).append(" — ").append(achievement.description()).append("\n");

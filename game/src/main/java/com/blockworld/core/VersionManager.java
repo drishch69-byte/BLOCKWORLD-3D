@@ -41,7 +41,8 @@ public final class VersionManager {
             new GameVersion("1.9.5", "Crystal Caverns & Gem Veins", "Большие подземные пещеры, кристальные камеры, рубиновая и сапфировая руда и новые пиксельные текстуры", 144, true, true, true, true, true),
             new GameVersion("1.9.6", "Cave Biomes & Glowflora", "Кристальные гроты, мшистые пещеры, подземные озёра, светящиеся кристаллы и пещерные растения", 144, true, true, true, true, true),
             new GameVersion("1.9.7", "Crystal Guardians & Hidden Treasures", "Кристальные деревья, кристальные тайники с редкой добычей и пещерный босс Кристальный страж", 144, true, true, true, true, true),
-            new GameVersion("1.9.8", "Ancient Temples & Relics", "Два древних храма с храмовыми стражами, древними тайниками и тремя редкими артефактами", 144, true, true, true, true, true)
+            new GameVersion("1.9.8", "Ancient Temples & Relics", "Два древних храма с храмовыми стражами, древними тайниками и тремя редкими артефактами", 144, true, true, true, true, true),
+            new GameVersion("1.9.9", "Enchanted Grove & Artifact Collection", "Зачарованная роща, редкие светящиеся растения и коллекция древних артефактов с достижениями", 144, true, true, true, true, true)
     );
 
     private VersionManager() {
