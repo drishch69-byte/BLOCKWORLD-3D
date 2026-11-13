@@ -31,6 +31,21 @@ class TreasureLootTest {
     }
 
     @Test
+    void ancientTempleCacheAlwaysContainsAnArtifactAndASeededSigil() {
+        BlockPos cache = new BlockPos(124, 8, -126);
+        Map<ItemType, Integer> first = TreasureLoot.rollAncientCache(20261114L, cache);
+        Map<ItemType, Integer> second = TreasureLoot.rollAncientCache(20261114L, cache);
+        assertEquals(first, second);
+        assertEquals(1, first.getOrDefault(ItemType.ANCIENT_RELIC, 0));
+        assertEquals(1, first.getOrDefault(ItemType.SUN_SIGIL, 0)
+                + first.getOrDefault(ItemType.MOON_SIGIL, 0));
+        assertTrue(first.getOrDefault(ItemType.EMERALD, 0) >= 3);
+        assertTrue(first.getOrDefault(ItemType.IRON_INGOT, 0) >= 5
+                || first.getOrDefault(ItemType.COPPER_INGOT, 0) >= 5);
+        assertThrows(IllegalArgumentException.class, () -> TreasureLoot.rollAncientCache(1L, null));
+    }
+
+    @Test
     void chestLootChangesWithWorldSeedOrChestPosition() {
         BlockPos firstChest = new BlockPos(18, -6, 42);
         Map<ItemType, Integer> first = TreasureLoot.roll(778899L, firstChest);

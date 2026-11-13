@@ -23,6 +23,10 @@ class WorldCreatureTest {
         assertTrue(CreatureType.CRYSTAL_SENTINEL.isHostile());
         assertEquals(70f, CreatureType.CRYSTAL_SENTINEL.maxHealth());
         assertEquals(3.5f, CreatureType.CRYSTAL_SENTINEL.attackDamage());
+        assertEquals("temple_warden", CreatureType.fromId("temple_warden").id());
+        assertTrue(CreatureType.TEMPLE_WARDEN.isHostile());
+        assertEquals(95f, CreatureType.TEMPLE_WARDEN.maxHealth());
+        assertEquals(4f, CreatureType.TEMPLE_WARDEN.attackDamage());
         assertEquals("Кролик", CreatureType.RABBIT.displayName());
         assertEquals(0f, CreatureType.RABBIT.attackDamage());
         assertTrue(!CreatureType.RABBIT.isHostile());

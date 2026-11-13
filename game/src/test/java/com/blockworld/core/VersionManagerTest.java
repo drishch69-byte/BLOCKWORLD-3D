@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionManagerTest {
     @Test
-    void includesAllProfilesAndDefaultsToCaveBiomes() {
-        assertEquals(34, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.7", VersionManager.getDefaultVersion().id());
+    void includesAllProfilesAndDefaultsToAncientTemples() {
+        assertEquals(35, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.8", VersionManager.getDefaultVersion().id());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());
@@ -36,6 +36,9 @@ class VersionManagerTest {
         assertEquals("Crystal Guardians & Hidden Treasures", VersionManager.find("1.9.7").displayName());
         assertEquals(144, VersionManager.find("1.9.7").worldRadius());
         assertTrue(VersionManager.find("1.9.7").survival());
+        assertEquals("Ancient Temples & Relics", VersionManager.find("1.9.8").displayName());
+        assertEquals(144, VersionManager.find("1.9.8").worldRadius());
+        assertTrue(VersionManager.find("1.9.8").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());

@@ -390,4 +390,45 @@ class VoxelWorldSaveTest {
                 .anyMatch(creature -> creature.type() == CreatureType.CRYSTAL_SENTINEL));
     }
 
+    @Test
+    void version198AddsTwoAncientTemplesAndPersistsTempleWardensAndCaches() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion previous = VersionManager.find("1.9.7");
+        GameVersion updated = VersionManager.find("1.9.8");
+
+        VoxelWorld oldWorld = new VoxelWorld(assets);
+        oldWorld.generate(previous, 8675309L);
+        assertEquals(0L, oldWorld.countBlocks(BlockType.ANCIENT_CACHE));
+        assertEquals(0L, oldWorld.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.TEMPLE_WARDEN).count());
+
+        VoxelWorld world = new VoxelWorld(assets);
+        world.generate(updated, 8675309L);
+        assertEquals(2L, world.countBlocks(BlockType.ANCIENT_CACHE));
+        assertEquals(2L, world.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.TEMPLE_WARDEN).count());
+        for (WorldCreature guardian : world.getCreatures()) {
+            if (guardian.type() != CreatureType.TEMPLE_WARDEN) continue;
+            int x = (int) Math.floor(guardian.x());
+            int z = (int) Math.floor(guardian.z());
+            int floorY = world.highestBlockY(x, z);
+            assertEquals(BlockType.SANDSTONE, world.getBlock(new BlockPos(x, floorY, z)));
+            assertEquals(floorY + 1f, guardian.y());
+        }
+
+        Path file = tempDir.resolve("version-198-ancient-temples.bwworld");
+        world.save(file, updated);
+        String saved = Files.readString(file);
+        assertTrue(saved.contains(",ancient_cache"));
+        assertTrue(saved.contains(",temple_warden,"));
+        assertTrue(saved.contains("format=2"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(updated.id(), restored.load(file));
+        assertEquals(2L, restored.countBlocks(BlockType.ANCIENT_CACHE));
+        assertEquals(2L, restored.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.TEMPLE_WARDEN).count());
+        assertEquals(world.getBlockCount(), restored.getBlockCount());
+    }
+
 }
