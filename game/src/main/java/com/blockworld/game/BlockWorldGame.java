@@ -1507,8 +1507,11 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void setPaused(boolean value) {
         if (paused == value || guiNode == null) return;
+        // Persist the active interval before pausing; paused wall-clock time is not play time.
+        if (value) checkpointPlayerProfile(true);
         if (value && chestOpen) { chestOpen = false; chestOperationPending = false; }
         paused = value;
+        if (profileSessionStarted) profileCheckpointNanos = System.nanoTime();
         if (paused) {
             inventoryOpen = false;
             craftingOpen = false;
@@ -2642,7 +2645,7 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void checkpointPlayerProfile(boolean force) {
-        if (!profileSessionStarted || profileCheckpointNanos <= 0L) return;
+        if (paused || !profileSessionStarted || profileCheckpointNanos <= 0L) return;
         long now = System.nanoTime();
         long elapsedSeconds = Math.max(0L, (now - profileCheckpointNanos) / 1_000_000_000L);
         if (elapsedSeconds <= 0L || (!force && elapsedSeconds < 60L)) return;
