@@ -200,11 +200,18 @@ class MultiplayerNetworkTest {
              MultiplayerClient host = new MultiplayerClient();
              MultiplayerClient guest = new MultiplayerClient()) {
             int port = server.start(0);
+            CountDownLatch worldAccepted = new CountDownLatch(1);
             CountDownLatch promoted = new CountDownLatch(1);
+            host.setEventListener(event -> {
+                if (event.equals("WORLD_ACCEPTED")) worldAccepted.countDown();
+            });
+            host.connect("127.0.0.1", port, "", "Host", ignored -> { });
+            host.sendWorldSnapshot(1L, false, false, 0, Map.of());
+            assertTrue(worldAccepted.await(3, TimeUnit.SECONDS));
+
             guest.setEventListener(event -> {
                 if (event.equals("HOST_CHANGED " + guest.playerId())) promoted.countDown();
             });
-            host.connect("127.0.0.1", port, "", "Host", ignored -> { });
             guest.connect("127.0.0.1", port, "", "Guest", ignored -> { });
             assertFalse(guest.isHost());
             host.close();
