@@ -22,6 +22,8 @@ import com.blockworld.core.BiomeType;
 import com.blockworld.core.WorldNavigation;
 import com.blockworld.core.TreasureLoot;
 import com.blockworld.core.PlayerDataStore;
+import com.blockworld.core.PetDataStore;
+import com.blockworld.core.PetMode;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
@@ -128,10 +130,12 @@ public final class BlockWorldGame extends SimpleApplication {
     private final Map<ItemType, Integer> craftedItems = new EnumMap<>(ItemType.class);
     private final Set<ArmorSlot> equippedArmor = EnumSet.noneOf(ArmorSlot.class);
     private final Map<BlockPos, Float> farmGrowth = new HashMap<>();
+    private final Map<Long, PetMode> pendingPetModes = new HashMap<>();
     private final boolean equipmentEnabled;
     private final boolean agricultureEnabled;
     private final boolean release100Enabled;
     private final boolean explorationEnabled;
+    private final boolean petsEnabled;
     private final List<CraftingRecipe> craftingRecipes;
     private final List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
     private final AchievementTracker achievements = new AchievementTracker();
@@ -237,6 +241,7 @@ public final class BlockWorldGame extends SimpleApplication {
         this.agricultureEnabled = supportsAgriculture(version);
         this.release100Enabled = supportsRelease100(version);
         this.explorationEnabled = WorldNavigation.supportsExploration(version.id());
+        this.petsEnabled = version.id().compareTo("1.9.0") >= 0;
         List<CraftingRecipe> allRecipes = release100Enabled ? CraftingRecipe.release100Recipes()
                 : agricultureEnabled ? CraftingRecipe.advancedRecipes() : CraftingRecipe.starterRecipes();
         this.craftingRecipes = equipmentEnabled ? allRecipes : List.copyOf(allRecipes.subList(0, 4));
@@ -437,6 +442,10 @@ public final class BlockWorldGame extends SimpleApplication {
                 catch (IOException ex) { GameLog.error("Не удалось загрузить состояние грядок", ex); }
                 farmGrowth.keySet().removeIf(position -> world.getBlock(position) != BlockType.WHEAT_CROP);
             }
+            if (loaded && petsEnabled) {
+                try { PetDataStore.load(saveFile, pendingPetModes); }
+                catch (IOException ex) { GameLog.error("Не удалось загрузить команды питомцев", ex); }
+            }
             if (release100Enabled) achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
             if (loaded && release100Enabled) {
                 try { AchievementDataStore.load(saveFile, achievements); }
@@ -596,6 +605,7 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addMapping(SAVE, new KeyTrigger(KeyInput.KEY_F6));
         inputManager.addMapping("TOGGLE_CAMERA", new KeyTrigger(KeyInput.KEY_F5));
         inputManager.addMapping("CYCLE_PLAYER_STYLE", new KeyTrigger(KeyInput.KEY_V));
+        inputManager.addMapping("PET_COMMAND", new KeyTrigger(KeyInput.KEY_N));
         inputManager.addMapping("TOGGLE_MAP", new KeyTrigger(KeyInput.KEY_B));
         inputManager.addMapping("SLOT_1", new KeyTrigger(KeyInput.KEY_1));
         inputManager.addMapping("SLOT_2", new KeyTrigger(KeyInput.KEY_2));
@@ -685,6 +695,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 case SAVE -> saveWorld();
                 case "TOGGLE_CAMERA" -> toggleCameraView();
                 case "CYCLE_PLAYER_STYLE" -> cyclePlayerStyle();
+                case "PET_COMMAND" -> commandNearestPet();
                 case "TOGGLE_MAP" -> toggleMap();
                 case EAT -> eatFood();
                 case TALK -> interactCreature();
@@ -728,7 +739,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 "SLOT_6", "SLOT_7", "SLOT_8", "SLOT_9", "RENDER_DISTANCE", "TOGGLE_CULLING", "WEATHER", TALK,
                 "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
                 "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA", "CYCLE_PLAYER_STYLE", "TOGGLE_MAP",
-                "OPEN_CHAT", "CHEST_TAKE", "CHEST_PUT");
+                "OPEN_CHAT", "CHEST_TAKE", "CHEST_PUT", "PET_COMMAND");
     }
 
     @Override
@@ -778,6 +789,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (!worldNodeAttached) {
                 rootNode.attachChild(world.getNode());
                 creatureManager.sync(world);
+                if (petsEnabled) creatureManager.setPetModes(pendingPetModes);
                 rootNode.attachChild(creatureManager.getNode());
                 natureDecorations.rebuild(world);
                 rootNode.attachChild(natureDecorations.getNode());
@@ -2488,6 +2500,21 @@ public final class BlockWorldGame extends SimpleApplication {
         updateHud();
     }
 
+    private void commandNearestPet() {
+        if (!petsEnabled || !worldReady || creatureManager == null) return;
+        if (multiplayerClient != null && multiplayerClient.isConnected() && !multiplayerClient.isHost()) {
+            statusMessage = "Команды питомцам доступны ведущему мира.";
+            updateHud();
+            return;
+        }
+        Vector3f playerPosition = version.survival() ? playerEyePosition : cam.getLocation();
+        PetMode mode = creatureManager.toggleNearestDogMode(playerPosition, 12f);
+        if (mode == null) statusMessage = "Рядом нет пса-компаньона. Подойди ближе и нажми N.";
+        else if (mode == PetMode.STAY) statusMessage = "Пёс останется здесь. Нажми N рядом с ним, чтобы позвать обратно.";
+        else statusMessage = "Пёс снова следует за тобой.";
+        updateHud();
+    }
+
     private void selectSlot(int index) {
         if (index < 0 || index >= hotbar.size()) return;
         selectedBlock = hotbar.get(index);
@@ -2506,8 +2533,10 @@ public final class BlockWorldGame extends SimpleApplication {
             world.save(saveFile, version);
             if (version.survival()) PlayerDataStore.save(saveFile, inventory, craftedItems, equippedArmor);
             if (agricultureEnabled) FarmDataStore.save(saveFile, farmGrowth);
+            if (petsEnabled && creatureManager != null)
+                PetDataStore.save(saveFile, creatureManager.petModesSnapshot());
             if (release100Enabled) AchievementDataStore.save(saveFile, achievements);
-            statusMessage = "Мир, инвентарь, ферма и достижения сохранены!";
+            statusMessage = "Мир, инвентарь, питомцы, ферма и достижения сохранены!";
         } catch (IOException ex) {
             statusMessage = "Ошибка сохранения: " + ex.getMessage();
             GameLog.error("Ошибка сохранения мира " + saveFile, ex);
@@ -2531,9 +2560,11 @@ public final class BlockWorldGame extends SimpleApplication {
                     + "I — инвентарь    C — крафт    F — печь/общение"
                     + (agricultureEnabled ? "    G — ферма/печь" : "")
                     + (release100Enabled ? "    P — рыбалка    M — достижения" : "")
-                    + (explorationEnabled ? "    B — карта/компас" : "") + "    ESC — пауза"
+                    + (explorationEnabled ? "    B — карта/компас" : "")
+                    + (petsEnabled ? "    N — команда псу" : "") + "    ESC — пауза"
                 : "WASD — движение    Мышь — обзор    F — общение/контакт"
-                    + (explorationEnabled ? "    B — карта/компас" : "") + "    ESC — пауза";
+                    + (explorationEnabled ? "    B — карта/компас" : "")
+                    + (petsEnabled ? "    N — команда псу" : "") + "    ESC — пауза";
         String needs = version.survival()
                 ? "Здоровье: " + (int) health + "/20    Голод: " + (int) hunger + "/20    Еда: " + foodCount
                     + (equipmentEnabled ? "    Защита: " + armorDefense() + "/8"
@@ -2678,7 +2709,9 @@ public final class BlockWorldGame extends SimpleApplication {
                     if (version.survival()) PlayerDataStore.save(saveFile, inventory, craftedItems, equippedArmor);
                     if (agricultureEnabled) FarmDataStore.save(saveFile, farmGrowth);
                     if (release100Enabled) AchievementDataStore.save(saveFile, achievements);
-                    GameLog.info("Мир, инвентарь и достижения автоматически сохранены при закрытии: " + saveFile.toAbsolutePath());
+                    if (petsEnabled && creatureManager != null)
+                        PetDataStore.save(saveFile, creatureManager.petModesSnapshot());
+                    GameLog.info("Мир, инвентарь, питомцы, ферма и достижения автоматически сохранены при закрытии: " + saveFile.toAbsolutePath());
                 } catch (Throwable error) {
                     GameLog.error("Не удалось сохранить мир при закрытии", error);
                 }

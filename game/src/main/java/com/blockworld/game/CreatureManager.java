@@ -5,6 +5,7 @@ import com.blockworld.core.BlockType;
 import com.blockworld.core.CreatureType;
 import com.blockworld.core.VoxelWorld;
 import com.blockworld.core.WorldCreature;
+import com.blockworld.core.PetMode;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
@@ -27,6 +28,7 @@ public final class CreatureManager {
     private final Map<String, Texture> creatureTextures = new HashMap<>();
     private final Node node = new Node("WorldCreatures");
     private final Map<Long, Visual> visuals = new HashMap<>();
+    private final Map<Long, PetMode> petModes = new HashMap<>();
 
     public CreatureManager(AssetManager assets) {
         this.assets = assets;
@@ -50,6 +52,51 @@ public final class CreatureManager {
 
     public Node getNode() { return node; }
     public int size() { return visuals.size(); }
+
+    public void setPetModes(Map<Long, PetMode> savedModes) {
+        petModes.clear();
+        if (savedModes == null) return;
+        for (Map.Entry<Long, PetMode> entry : savedModes.entrySet()) {
+            Visual visual = visuals.get(entry.getKey());
+            if (visual != null && visual.state.type() == CreatureType.DOG
+                    && entry.getValue() == PetMode.STAY) petModes.put(entry.getKey(), PetMode.STAY);
+        }
+    }
+
+    public Map<Long, PetMode> petModesSnapshot() {
+        Map<Long, PetMode> snapshot = new HashMap<>();
+        for (Map.Entry<Long, PetMode> entry : petModes.entrySet()) {
+            Visual visual = visuals.get(entry.getKey());
+            if (visual != null && visual.state.type() == CreatureType.DOG
+                    && entry.getValue() == PetMode.STAY) snapshot.put(entry.getKey(), PetMode.STAY);
+        }
+        return Map.copyOf(snapshot);
+    }
+
+    public PetMode toggleNearestDogMode(Vector3f position, float maxDistance) {
+        if (position == null || !Float.isFinite(position.x) || !Float.isFinite(position.y)
+                || !Float.isFinite(position.z) || !Float.isFinite(maxDistance) || maxDistance < 0f) return null;
+        float limit = maxDistance * maxDistance;
+        Visual nearestDog = null;
+        float bestDistance = limit;
+        for (Visual visual : visuals.values()) {
+            if (visual.state.type() != CreatureType.DOG) continue;
+            float dx = visual.state.x() - position.x;
+            float dy = visual.state.y() - position.y;
+            float dz = visual.state.z() - position.z;
+            float distance = dx * dx + dy * dy + dz * dz;
+            if (distance <= bestDistance) {
+                bestDistance = distance;
+                nearestDog = visual;
+            }
+        }
+        if (nearestDog == null) return null;
+        long id = nearestDog.state.id();
+        PetMode next = petModes.getOrDefault(id, PetMode.FOLLOW).toggle();
+        if (next == PetMode.FOLLOW) petModes.remove(id);
+        else petModes.put(id, next);
+        return next;
+    }
 
     public String attackAlongRay(Vector3f origin, Vector3f direction, float reach,
                                  float hitRadius, float damage, VoxelWorld world) {
@@ -231,13 +278,15 @@ public final class CreatureManager {
                     nextZ = visual.nextZ;
                 }
             } else if (state.type() == CreatureType.DOG && playerPosition != null) {
-                float dx = playerPosition.x - state.x();
-                float dz = playerPosition.z - state.z();
-                float distance = (float) Math.sqrt(dx * dx + dz * dz);
-                if (distance > .001f) visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
-                float step = companionStep(distance, state.type().moveSpeed(), tpf);
-                nextX += (float) Math.sin(visual.yaw) * step;
-                nextZ += (float) Math.cos(visual.yaw) * step;
+                if (petModes.getOrDefault(state.id(), PetMode.FOLLOW) == PetMode.FOLLOW) {
+                    float dx = playerPosition.x - state.x();
+                    float dz = playerPosition.z - state.z();
+                    float distance = (float) Math.sqrt(dx * dx + dz * dz);
+                    if (distance > .001f) visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+                    float step = companionStep(distance, state.type().moveSpeed(), tpf);
+                    nextX += (float) Math.sin(visual.yaw) * step;
+                    nextZ += (float) Math.cos(visual.yaw) * step;
+                }
             } else {
                 wander(visual, tpf, state);
                 nextX = visual.nextX;

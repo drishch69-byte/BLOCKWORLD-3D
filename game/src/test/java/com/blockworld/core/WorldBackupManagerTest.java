@@ -41,21 +41,25 @@ class WorldBackupManagerTest {
         Path player = PlayerDataStore.sidecar(world);
         Path farm = FarmDataStore.sidecar(world);
         Path achievements = AchievementDataStore.sidecar(world);
+        Path pets = PetDataStore.sidecar(world);
         Files.writeString(player, "inventory=old\n");
         Files.writeString(farm, "farm=old\n");
         Files.writeString(achievements, "achievement=old\n");
+        Files.writeString(pets, "pet.17=stay\n");
 
         Path backup = WorldBackupManager.create(world);
         Files.writeString(world, worldState("new"));
         Files.writeString(player, "inventory=new\n");
         Files.writeString(farm, "farm=new\n");
         Files.writeString(achievements, "achievement=new\n");
+        Files.writeString(pets, "pet.17=follow\n");
 
         WorldBackupManager.restore(world, backup);
 
         assertEquals("inventory=old\n", Files.readString(player));
         assertEquals("farm=old\n", Files.readString(farm));
         assertEquals("achievement=old\n", Files.readString(achievements));
+        assertEquals("pet.17=stay\n", Files.readString(pets));
         assertEquals(2, WorldBackupManager.list(world).size());
     }
 
@@ -83,18 +87,22 @@ class WorldBackupManagerTest {
         Path world = tempDir.resolve("World.bwworld");
         Files.writeString(world, worldState("old"));
         Files.writeString(PlayerDataStore.sidecar(world), "inventory=old\n");
+        Files.writeString(PetDataStore.sidecar(world), "pet.3=stay\n");
         Path backup = WorldBackupManager.create(world);
 
         assertEquals(List.of(backup), WorldBackupManager.list(world));
         Path backupSidecar = backup.resolveSibling(backup.getFileName() + ".player.properties");
         Path manifest = backup.resolveSibling(backup.getFileName() + ".manifest");
+        Path backupPets = backup.resolveSibling(backup.getFileName() + ".pets.properties");
         assertTrue(Files.exists(backupSidecar));
+        assertTrue(Files.exists(backupPets));
         assertTrue(Files.exists(manifest));
 
         WorldBackupManager.delete(world, backup);
 
         assertFalse(Files.exists(backup));
         assertFalse(Files.exists(backupSidecar));
+        assertFalse(Files.exists(backupPets));
         assertFalse(Files.exists(manifest));
         assertTrue(WorldBackupManager.list(world).isEmpty());
     }
@@ -148,6 +156,21 @@ class WorldBackupManagerTest {
 
         assertTrue(Files.readString(world).contains("seed=legacy"));
         assertEquals("inventory=current\n", Files.readString(player));
+    }
+
+    @Test
+    void restoresOlderBackupManifestThatPredatesPetSidecars() throws IOException {
+        Path world = tempDir.resolve("Legacy.bwworld");
+        Files.writeString(world, worldState("current"));
+        Path pets = PetDataStore.sidecar(world);
+        Files.writeString(pets, "pet.7=stay\n");
+        Path legacyBackup = tempDir.resolve("Legacy.bwworld.backup-old-format");
+        Files.writeString(legacyBackup, worldState("backup"));
+        Files.writeString(legacyBackup.resolveSibling(legacyBackup.getFileName() + ".manifest"),
+                "format=1\nsidecar.player.properties=false\nsidecar.farm.properties=false\nsidecar.achievements.properties=false\n");
+        WorldBackupManager.restore(world, legacyBackup);
+        assertTrue(Files.readString(world).contains("seed=backup"));
+        assertFalse(Files.exists(pets));
     }
 
     @Test
