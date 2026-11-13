@@ -5,6 +5,8 @@ import com.blockworld.core.GameLog;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.VersionManager;
 import com.blockworld.core.WorldCatalog;
+import com.blockworld.core.WorldFavorites;
+import com.blockworld.core.WorldBackupManager;
 import com.blockworld.core.WorldEntry;
 import com.blockworld.core.GameSettings;
 import com.blockworld.core.ModManager;
@@ -17,6 +19,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.DefaultListModel;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.JFileChooser;
 import javax.swing.JList;
 import javax.swing.JSpinner;
@@ -45,8 +48,8 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.util.Set;
+import java.util.List;
 
 /** Desktop launcher: every saved world is visible regardless of selected game profile. */
 public final class Launcher {
@@ -55,6 +58,10 @@ public final class Launcher {
     private JComboBox<GameVersion> versionSelector;
     private JComboBox<WorldEntry> worldSelector;
     private JLabel status;
+    private JLabel worldInfo;
+    private JCheckBox favoritesOnly;
+    private JButton favoriteButton;
+    private Set<String> favoriteNames = Set.of();
 
     private Launcher() {
         activeLauncher = this;
@@ -130,7 +137,7 @@ public final class Launcher {
         JPanel center = new JPanel(new BorderLayout(8, 12));
         center.setBorder(BorderFactory.createEmptyBorder(8, 24, 8, 24));
 
-        JPanel selectors = new JPanel(new GridLayout(2, 2, 10, 8));
+        JPanel selectors = new JPanel(new GridLayout(4, 2, 10, 8));
         selectors.add(new JLabel("Версия игры:"));
         versionSelector = new JComboBox<>(VersionManager.getSupportedVersions().toArray(GameVersion[]::new));
         versionSelector.setSelectedItem(VersionManager.getDefaultVersion());
@@ -139,7 +146,31 @@ public final class Launcher {
         selectors.add(new JLabel("Сохранённый мир (общий для всех версий):"));
         worldSelector = new JComboBox<>();
         worldSelector.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        worldSelector.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(
+                        list, value, index, isSelected, cellHasFocus);
+                if (value instanceof WorldEntry entry) {
+                    String marker = favoriteNames.contains(entry.file().getFileName().toString()) ? "★ " : "";
+                    label.setText(marker + entry.name() + "  |  " + entry.lastVersion()
+                            + "  |  " + entry.integrityStatus());
+                }
+                return label;
+            }
+        });
         selectors.add(worldSelector);
+        favoritesOnly = new JCheckBox("Показывать только избранные миры");
+        favoritesOnly.addActionListener(event -> refreshWorldList(selectedWorldPath()));
+        selectors.add(favoritesOnly);
+        worldInfo = new JLabel("Выбери мир, чтобы увидеть размер и состояние сохранения.");
+        worldInfo.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        selectors.add(worldInfo);
+        worldSelector.addActionListener(event -> {
+            updateSelectedWorldInfo();
+            updateFavoriteButtonText();
+        });
         center.add(selectors, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
@@ -174,7 +205,7 @@ public final class Launcher {
 
         JPanel bottom = new JPanel(new BorderLayout(8, 8));
         bottom.setBorder(BorderFactory.createEmptyBorder(0, 24, 18, 24));
-        JPanel buttons = new JPanel(new GridLayout(2, 4, 7, 7));
+        JPanel buttons = new JPanel(new GridLayout(3, 4, 7, 7));
         JButton play = new JButton("ИГРАТЬ");
         JButton newWorld = new JButton("НОВЫЙ МИР");
         JButton settings = new JButton("НАСТРОЙКИ");
@@ -183,6 +214,9 @@ public final class Launcher {
         JButton multiplayer = new JButton("СЕТЕВАЯ ИГРА");
         JButton refresh = new JButton("ОБНОВИТЬ СПИСОК");
         JButton worlds = new JButton("ПАПКА МИРОВ");
+        favoriteButton = new JButton("В ИЗБРАННОЕ");
+        JButton backups = new JButton("РЕЗЕРВНЫЕ КОПИИ");
+        JButton diagnostics = new JButton("ДИАГНОСТИКА");
         JButton close = new JButton("ВЫХОД");
         play.addActionListener(event -> launchSelectedWorld());
         newWorld.addActionListener(event -> createWorld());
@@ -192,6 +226,9 @@ public final class Launcher {
         multiplayer.addActionListener(event -> showMultiplayerDialog());
         refresh.addActionListener(event -> refreshWorldList(selectedWorldPath()));
         worlds.addActionListener(event -> openWorldFolder());
+        favoriteButton.addActionListener(event -> toggleFavorite());
+        backups.addActionListener(event -> showBackupDialog());
+        diagnostics.addActionListener(event -> showDiagnosticsDialog());
         close.addActionListener(event -> frame.dispose());
         buttons.add(play);
         buttons.add(newWorld);
@@ -201,6 +238,9 @@ public final class Launcher {
         buttons.add(multiplayer);
         buttons.add(refresh);
         buttons.add(worlds);
+        buttons.add(favoriteButton);
+        buttons.add(backups);
+        buttons.add(diagnostics);
         buttons.add(close);
         bottom.add(buttons, BorderLayout.CENTER);
         status = new JLabel("Миры общие для всех версий. Создай новый мир или выбери сохранённый.");
@@ -221,7 +261,12 @@ public final class Launcher {
             return;
         }
         try {
-            var worlds = WorldCatalog.list();
+            favoriteNames = WorldFavorites.list();
+            List<WorldEntry> allWorlds = WorldCatalog.list();
+            List<WorldEntry> worlds = allWorlds.stream()
+                    .filter(world -> !favoritesOnly.isSelected()
+                            || favoriteNames.contains(world.file().getFileName().toString()))
+                    .toList();
             worldSelector.removeAllItems();
             for (WorldEntry world : worlds) {
                 worldSelector.addItem(world);
@@ -236,13 +281,193 @@ public final class Launcher {
                 }
             }
             if (worlds.isEmpty()) {
-                status.setText("Пока нет сохранённых миров. Нажми «НОВЫЙ МИР».");
+                status.setText(favoritesOnly.isSelected()
+                        ? "В избранном пока нет миров."
+                        : "Пока нет сохранённых миров. Нажми «НОВЫЙ МИР».");
             } else {
-                status.setText("Найдено миров: " + worlds.size() + ". Они доступны во всех версиях.");
+                long damaged = worlds.stream().filter(world ->
+                        !"ЗАГОЛОВОК В ПОРЯДКЕ".equals(world.integrityStatus())).count();
+                status.setText("Миров: " + worlds.size() + "; избранных: " + favoriteNames.size()
+                        + "; требуют проверки: " + damaged + ".");
             }
+            updateSelectedWorldInfo();
+            updateFavoriteButtonText();
         } catch (IOException ex) {
             status.setText("Не удалось прочитать список миров: " + ex.getMessage());
         }
+    }
+
+    private void updateSelectedWorldInfo() {
+        if (worldInfo == null) return;
+        WorldEntry selected = (WorldEntry) worldSelector.getSelectedItem();
+        if (selected == null) {
+            worldInfo.setText("Нет выбранного мира.");
+            return;
+        }
+        double kib = selected.sizeBytes() / 1024.0;
+        String size = kib >= 1024.0
+                ? String.format(java.util.Locale.ROOT, "%.2f MiB", kib / 1024.0)
+                : String.format(java.util.Locale.ROOT, "%.1f KiB", kib);
+        String changed = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
+                .withZone(java.time.ZoneId.systemDefault()).format(selected.modified());
+        worldInfo.setText(selected.name() + "  |  " + size + "  |  " + selected.integrityStatus()
+                + "  |  изменён: " + changed);
+    }
+
+    private void updateFavoriteButtonText() {
+        if (favoriteButton == null) return;
+        Path selected = selectedWorldPath();
+        favoriteButton.setEnabled(selected != null);
+        favoriteButton.setText(selected != null && favoriteNames.contains(selected.getFileName().toString())
+                ? "УБРАТЬ ИЗ ИЗБРАННОГО" : "В ИЗБРАННОЕ");
+    }
+
+    private void toggleFavorite() {
+        Path selected = selectedWorldPath();
+        if (selected == null) return;
+        boolean currentlyFavorite = favoriteNames.contains(selected.getFileName().toString());
+        try {
+            WorldFavorites.setFavorite(selected, !currentlyFavorite);
+            refreshWorldList(selected);
+            status.setText(currentlyFavorite ? "Мир удалён из избранного." : "Мир добавлен в избранное.");
+        } catch (IOException error) {
+            JOptionPane.showMessageDialog(frame, "Не удалось изменить избранное:\n" + error.getMessage(),
+                    "Избранные миры", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void showBackupDialog() {
+        WorldEntry selected = (WorldEntry) worldSelector.getSelectedItem();
+        if (selected == null) {
+            JOptionPane.showMessageDialog(frame, "Сначала выбери сохранённый мир.",
+                    "Резервные копии", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        JDialog dialog = new JDialog(frame, "Резервные копии — " + selected.name(), true);
+        dialog.setLayout(new BorderLayout(8, 8));
+        DefaultListModel<Path> model = new DefaultListModel<>();
+        JList<Path> backups = new JList<>(model);
+        backups.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        backups.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        backups.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(
+                        list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Path path) label.setText(path.getFileName().toString());
+                return label;
+            }
+        });
+        JLabel info = new JLabel("Восстановление сначала создаёт копию текущего мира.");
+        info.setBorder(BorderFactory.createEmptyBorder(10, 12, 4, 12));
+        dialog.add(info, BorderLayout.NORTH);
+        dialog.add(new JScrollPane(backups), BorderLayout.CENTER);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton restore = new JButton("ВОССТАНОВИТЬ");
+        JButton delete = new JButton("УДАЛИТЬ КОПИЮ");
+        JButton refresh = new JButton("ОБНОВИТЬ");
+        JButton close = new JButton("ЗАКРЫТЬ");
+        Runnable reload = () -> {
+            model.clear();
+            try {
+                for (Path backup : WorldBackupManager.list(selected.file())) model.addElement(backup);
+                info.setText("Найдено копий: " + model.size()
+                        + ". При восстановлении текущий мир тоже будет сохранён.");
+            } catch (IOException error) {
+                info.setText("Не удалось прочитать копии: " + error.getMessage());
+            }
+        };
+        restore.addActionListener(event -> {
+            Path backup = backups.getSelectedValue();
+            if (backup == null) return;
+            int answer = JOptionPane.showConfirmDialog(dialog,
+                    "Восстановить эту копию? Текущее сохранение автоматически получит резервную копию.",
+                    "Восстановление мира", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (answer != JOptionPane.YES_OPTION) return;
+            try {
+                Path safety = WorldBackupManager.restore(selected.file(), backup);
+                refreshWorldList(selected.file());
+                status.setText("Мир восстановлен. Предыдущее состояние сохранено: " + safety.getFileName());
+                dialog.dispose();
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(dialog, "Не удалось восстановить копию:\n" + error.getMessage(),
+                        "Ошибка восстановления", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        delete.addActionListener(event -> {
+            Path backup = backups.getSelectedValue();
+            if (backup == null) return;
+            int answer = JOptionPane.showConfirmDialog(dialog,
+                    "Удалить резервную копию «" + backup.getFileName() + "»?",
+                    "Удаление копии", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (answer != JOptionPane.YES_OPTION) return;
+            try {
+                // The selected path came from WorldBackupManager.list for this exact world.
+                Files.deleteIfExists(backup);
+                reload.run();
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(dialog, error.getMessage(),
+                        "Ошибка удаления", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        refresh.addActionListener(event -> reload.run());
+        close.addActionListener(event -> dialog.dispose());
+        buttons.add(restore); buttons.add(delete); buttons.add(refresh); buttons.add(close);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        reload.run();
+        dialog.setSize(680, 420);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
+    }
+
+    private void showDiagnosticsDialog() {
+        GameSettings current = GameSettings.load();
+        Path logFile = Path.of(".logs", "latest-run.log");
+        String log;
+        try {
+            log = Files.isRegularFile(logFile) ? Files.readString(logFile, java.nio.charset.StandardCharsets.UTF_8)
+                    : "Журнал ещё не создан. Запусти игру для сбора диагностических записей.";
+        } catch (IOException error) {
+            log = "Не удалось прочитать журнал: " + error.getMessage();
+        }
+        int maxChars = 28_000;
+        if (log.length() > maxChars) {
+            log = "[Показан конец журнала; начало опущено]\n" + log.substring(log.length() - maxChars);
+        }
+        long freeMiB = Runtime.getRuntime().freeMemory() / (1024L * 1024L);
+        long totalMiB = Runtime.getRuntime().totalMemory() / (1024L * 1024L);
+        long maxMiB = Runtime.getRuntime().maxMemory() / (1024L * 1024L);
+        String summary = "BLOCKWORLD 3D — ДИАГНОСТИКА\n"
+                + "Java: " + System.getProperty("java.version") + "\n"
+                + "Система: " + System.getProperty("os.name") + " " + System.getProperty("os.version")
+                + " (" + System.getProperty("os.arch") + ")\n"
+                + "Процессоры: " + Runtime.getRuntime().availableProcessors() + "\n"
+                + "Память JVM: свободно " + freeMiB + " MiB, выделено " + totalMiB
+                + " MiB, максимум " + maxMiB + " MiB\n"
+                + "Графика: " + current.width() + "x" + current.height()
+                + ", FPS limit " + (current.fpsLimit() < 0 ? "без ограничения" : current.fpsLimit())
+                + ", чанков/кадр " + current.chunkBuildsPerFrame() + "\n"
+                + "Ошибок в показанном фрагменте журнала: "
+                + log.lines().filter(line -> line.contains("[ERROR]")).count()
+                + "\nФайл: " + logFile.toAbsolutePath() + "\n\nПОСЛЕДНИЕ ЗАПИСИ\n";
+        JTextArea report = new JTextArea(summary + log, 24, 88);
+        report.setEditable(false);
+        report.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        report.setCaretPosition(report.getDocument().getLength());
+        JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Диагностика", true);
+        dialog.setLayout(new BorderLayout(8, 8));
+        dialog.add(new JScrollPane(report), BorderLayout.CENTER);
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton logFolder = new JButton("ПАПКА ЖУРНАЛОВ");
+        JButton close = new JButton("ЗАКРЫТЬ");
+        logFolder.addActionListener(event -> openFolder(logFile.getParent()));
+        close.addActionListener(event -> dialog.dispose());
+        buttons.add(logFolder); buttons.add(close);
+        dialog.add(buttons, BorderLayout.SOUTH);
+        dialog.setSize(900, 620);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
     }
 
     private void launchSelectedWorld() {
@@ -320,8 +545,8 @@ public final class Launcher {
                     frame.toFront();
                     status.setText("Игра завершилась с ошибкой. Журнал: .logs\\latest-run.log");
                     JOptionPane.showMessageDialog(frame,
-                            "Не удалось запустить BlockWorld:\\n" + formatThrowable(error)
-                                    + "\\n\\nПроверь Java 17+, драйвер видеокарты и журнал .logs\\latest-run.log.",
+                            "Не удалось запустить BlockWorld:\n" + formatThrowable(error)
+                                    + "\n\nПроверь Java 17+, драйвер видеокарты и журнал .logs\\latest-run.log.",
                             "Ошибка запуска", JOptionPane.ERROR_MESSAGE);
                 });
             }
@@ -336,8 +561,8 @@ public final class Launcher {
                 frame.toFront();
                 status.setText("Поток игры аварийно завершился. См. .logs\\latest-run.log и hs_err_pid*.log.");
                 JOptionPane.showMessageDialog(frame,
-                        "Поток запуска игры завершился с ошибкой:\\n" + formatThrowable(error)
-                                + "\\n\\nПроверь .logs\\latest-run.log и .logs\\hs_err_pid*.log.",
+                        "Поток запуска игры завершился с ошибкой:\n" + formatThrowable(error)
+                                + "\n\nПроверь .logs\\latest-run.log и .logs\\hs_err_pid*.log.",
                         "Ошибка запуска", JOptionPane.ERROR_MESSAGE);
             });
         });
@@ -345,16 +570,7 @@ public final class Launcher {
     }
 
     private void backupExistingWorld(Path worldFile) throws IOException {
-        if (!Files.exists(worldFile)) {
-            return;
-        }
-        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        Path backup = worldFile.resolveSibling(worldFile.getFileName() + ".backup-" + timestamp);
-        int suffix = 1;
-        while (Files.exists(backup)) {
-            backup = worldFile.resolveSibling(worldFile.getFileName() + ".backup-" + timestamp + "-" + suffix++);
-        }
-        Files.copy(worldFile, backup, StandardCopyOption.COPY_ATTRIBUTES);
+        Path backup = WorldBackupManager.create(worldFile);
         status.setText("Резервная копия: " + backup.getFileName());
     }
 
@@ -372,11 +588,19 @@ public final class Launcher {
         }
     }
 
+    private static String fpsLabel(int fps) {
+        return fps < 0 ? "Без ограничения" : Integer.toString(fps);
+    }
+
+    private static int parseFpsLabel(String value) {
+        return "Без ограничения".equals(value) ? -1 : Integer.parseInt(value);
+    }
+
     private void showSettingsDialog() {
         GameSettings current = GameSettings.load();
         JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Настройки", true);
         dialog.setLayout(new BorderLayout(10, 10));
-        JPanel form = new JPanel(new GridLayout(7, 2, 10, 10));
+        JPanel form = new JPanel(new GridLayout(8, 2, 10, 10));
         form.setBorder(BorderFactory.createEmptyBorder(18, 18, 10, 18));
         JComboBox<String> resolution = new JComboBox<>(new String[]{"1024x640", "1280x720", "1600x900", "1920x1080"});
         resolution.setSelectedItem(current.width() + "x" + current.height());
@@ -390,6 +614,8 @@ public final class Launcher {
         JComboBox<Integer> chunkBudget = new JComboBox<>(new Integer[]{1, 2, 3, 4, 6});
         chunkBudget.setSelectedItem(current.chunkBuildsPerFrame());
         chunkBudget.setToolTipText("Больше чанков за кадр ускоряет подгрузку, но сильнее нагружает процессор.");
+        JComboBox<String> fpsLimit = new JComboBox<>(new String[]{"Без ограничения", "30", "60", "90", "120", "144"});
+        fpsLimit.setSelectedItem(fpsLabel(current.fpsLimit()));
         form.add(new JLabel("Разрешение:")); form.add(resolution);
         form.add(new JLabel("Дальность чанков:")); form.add(distance);
         form.add(new JLabel("Поле зрения (FOV):")); form.add(fov);
@@ -397,6 +623,7 @@ public final class Launcher {
         form.add(new JLabel("Синхронизация:")); form.add(vsync);
         form.add(new JLabel("Растительность:")); form.add(vegetation);
         form.add(new JLabel("Чанков за кадр:")); form.add(chunkBudget);
+        form.add(new JLabel("Ограничение FPS:")); form.add(fpsLimit);
         dialog.add(form, BorderLayout.CENTER);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton reset = new JButton("ПО УМОЛЧАНИЮ");
@@ -414,18 +641,20 @@ public final class Launcher {
             vsync.setSelected(suggested.vsync());
             vegetation.setSelectedIndex(suggested.vegetationDensity());
             chunkBudget.setSelectedItem(suggested.chunkBuildsPerFrame());
+            fpsLimit.setSelectedItem(fpsLabel(suggested.fpsLimit()));
         });
         reset.addActionListener(e -> {
             resolution.setSelectedItem("1024x640"); distance.setSelectedItem(3);
             fov.setValue(68); fullscreen.setSelected(false); vsync.setSelected(false);
-            vegetation.setSelectedIndex(2); chunkBudget.setSelectedItem(2);
+            vegetation.setSelectedIndex(2); chunkBudget.setSelectedItem(2); fpsLimit.setSelectedItem("60");
         });
         save.addActionListener(e -> {
             String[] parts = String.valueOf(resolution.getSelectedItem()).split("x");
             try {
                 GameSettings settings = new GameSettings(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]),
                         fullscreen.isSelected(), vsync.isSelected(), (Integer) distance.getSelectedItem(),
-                        (Integer) fov.getValue(), vegetation.getSelectedIndex(), (Integer) chunkBudget.getSelectedItem());
+                        (Integer) fov.getValue(), vegetation.getSelectedIndex(), (Integer) chunkBudget.getSelectedItem(),
+                        parseFpsLabel(String.valueOf(fpsLimit.getSelectedItem())));
                 GameSettings.save(settings);
                 status.setText("Настройки сохранены. Разрешение и экран применятся при следующем запуске.");
                 dialog.dispose();

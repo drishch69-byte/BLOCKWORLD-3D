@@ -9,13 +9,18 @@ import java.util.Properties;
 
 /** Persistent video/game settings. Defaults are deliberately modest for low-end PCs. */
 public record GameSettings(int width, int height, boolean fullscreen, boolean vsync,
-                           int renderDistance, int fov, int vegetationDensity, int chunkBuildsPerFrame) {
-    public static final GameSettings DEFAULT = new GameSettings(1024, 640, false, false, 3, 68, 2, 2);
+                           int renderDistance, int fov, int vegetationDensity, int chunkBuildsPerFrame, int fpsLimit) {
+    public static final GameSettings DEFAULT = new GameSettings(1024, 640, false, false, 3, 68, 2, 2, 60);
 
     /** Keeps settings files and callers from older builds source-compatible. */
     public GameSettings(int width, int height, boolean fullscreen, boolean vsync,
                         int renderDistance, int fov) {
-        this(width, height, fullscreen, vsync, renderDistance, fov, 2, 2);
+        this(width, height, fullscreen, vsync, renderDistance, fov, 2, 2, 60);
+    }
+
+    public GameSettings(int width, int height, boolean fullscreen, boolean vsync,
+                        int renderDistance, int fov, int vegetationDensity, int chunkBuildsPerFrame) {
+        this(width, height, fullscreen, vsync, renderDistance, fov, vegetationDensity, chunkBuildsPerFrame, 60);
     }
 
     public GameSettings {
@@ -24,6 +29,8 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         fov = Math.max(55, Math.min(100, fov));
         if (vegetationDensity < 0 || vegetationDensity > 3) vegetationDensity = DEFAULT.vegetationDensity;
         if (chunkBuildsPerFrame < 1 || chunkBuildsPerFrame > 6) chunkBuildsPerFrame = DEFAULT.chunkBuildsPerFrame;
+        if (fpsLimit != -1 && fpsLimit != 30 && fpsLimit != 60 && fpsLimit != 90
+                && fpsLimit != 120 && fpsLimit != 144) fpsLimit = DEFAULT.fpsLimit;
     }
 
     /**
@@ -34,12 +41,12 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         long heapMiB = Math.max(0L, maxHeapBytes) / (1024L * 1024L);
         int cores = Math.max(1, cpuCores);
         if (heapMiB < 3072L || cores <= 2) {
-            return new GameSettings(1024, 640, false, false, 3, 68, 1, 1);
+            return new GameSettings(1024, 640, false, false, 3, 68, 1, 1, 30);
         }
         if (heapMiB < 6144L || cores <= 4) {
-            return new GameSettings(1280, 720, false, false, 4, 72, 2, 2);
+            return new GameSettings(1280, 720, false, false, 4, 72, 2, 2, 60);
         }
-        return new GameSettings(1600, 900, false, true, 6, 76, 3, 4);
+        return new GameSettings(1600, 900, false, true, 6, 76, 3, 4, 90);
     }
 
     private static boolean allowedResolution(int width, int height) {
@@ -58,7 +65,8 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
                     Boolean.parseBoolean(p.getProperty("vsync", "false")),
                     integer(p, "renderDistance", DEFAULT.renderDistance), integer(p, "fov", DEFAULT.fov),
                     integer(p, "vegetationDensity", DEFAULT.vegetationDensity),
-                    integer(p, "chunkBuildsPerFrame", DEFAULT.chunkBuildsPerFrame));
+                    integer(p, "chunkBuildsPerFrame", DEFAULT.chunkBuildsPerFrame),
+                    integer(p, "fpsLimit", DEFAULT.fpsLimit));
         } catch (IOException | RuntimeException ex) {
             GameLog.error("Не удалось прочитать настройки; использованы значения по умолчанию", ex);
             return DEFAULT;
@@ -77,6 +85,7 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         p.setProperty("fov", Integer.toString(settings.fov));
         p.setProperty("vegetationDensity", Integer.toString(settings.vegetationDensity));
         p.setProperty("chunkBuildsPerFrame", Integer.toString(settings.chunkBuildsPerFrame));
+        p.setProperty("fpsLimit", Integer.toString(settings.fpsLimit));
         try (OutputStream out = Files.newOutputStream(file)) { p.store(out, "BLOCKWORLD 3D settings"); }
     }
 

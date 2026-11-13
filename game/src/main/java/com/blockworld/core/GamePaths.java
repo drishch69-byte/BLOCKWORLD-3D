@@ -1,5 +1,6 @@
 package com.blockworld.core;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
 public final class GamePaths {
@@ -18,16 +19,11 @@ public final class GamePaths {
         return serversDirectory().resolve(safeName + ".bwserver");
     }
 
-    public static Path worldsDirectory() {
-        return gameDirectory().resolve("worlds");
-    }
-
-    public static Path defaultWorld() {
-        return worldsDirectory().resolve("My_World.bwworld");
-    }
-
+    public static Path worldsDirectory() { return gameDirectory().resolve("worlds"); }
+    public static Path defaultWorld() { return worldsDirectory().resolve("My_World.bwworld"); }
     public static Path configDirectory() { return gameDirectory().resolve("config"); }
     public static Path settingsFile() { return configDirectory().resolve("settings.properties"); }
+    public static Path favoritesFile() { return configDirectory().resolve("world-favorites.txt"); }
     public static Path modsDirectory() { return gameDirectory().resolve("mods"); }
     public static Path disabledModsDirectory() { return modsDirectory().resolve("disabled"); }
     public static Path resourcePacksDirectory() { return gameDirectory().resolve("resourcepacks"); }

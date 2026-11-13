@@ -40,6 +40,38 @@ class WorldCatalogTest {
         assertEquals(2, entries.size());
         assertTrue(entries.stream().anyMatch(e -> e.name().equals("First") && e.lastVersion().equals("0.1.0")));
         assertTrue(entries.stream().anyMatch(e -> e.name().equals("Second") && e.lastVersion().equals("0.4.0")));
+        assertTrue(entries.stream().allMatch(e -> e.integrityStatus().equals("ЗАГОЛОВОК В ПОРЯДКЕ")));
+        assertTrue(entries.stream().allMatch(e -> e.sizeBytes() > 0L));
+    }
+
+    @Test
+    void marksBrokenHeadersWithoutHidingTheWorldFile() throws IOException {
+        originalHome = System.getProperty("user.home");
+        System.setProperty("user.home", tempDir.toString());
+        Path worlds = GamePaths.worldsDirectory();
+        Files.createDirectories(worlds);
+        Files.writeString(worlds.resolve("Broken.bwworld"), "not-a-blockworld-save\\n");
+
+        WorldEntry broken = WorldCatalog.list().stream()
+                .filter(entry -> entry.name().equals("Broken"))
+                .findFirst().orElseThrow();
+        assertEquals("НЕВЕРНЫЙ ЗАГОЛОВОК", broken.integrityStatus());
+    }
+
+    @Test
+    void favoritesAreSortedBeforeOtherWorlds() throws IOException {
+        originalHome = System.getProperty("user.home");
+        System.setProperty("user.home", tempDir.toString());
+        Path worlds = GamePaths.worldsDirectory();
+        Files.createDirectories(worlds);
+        Path first = worlds.resolve("First.bwworld");
+        Path second = worlds.resolve("Second.bwworld");
+        String data = "BLOCKWORLD_WORLD\\nformat=1\\ngameVersion=0.1.0\\nseed=1\\n--blocks--\\n";
+        Files.writeString(first, data);
+        Files.writeString(second, data);
+        WorldFavorites.setFavorite(second, true);
+
+        assertEquals("Second", WorldCatalog.list().get(0).name());
     }
 
     @Test

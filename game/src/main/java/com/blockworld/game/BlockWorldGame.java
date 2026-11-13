@@ -275,11 +275,13 @@ public final class BlockWorldGame extends SimpleApplication {
         settings.setFullscreen(gameSettings.fullscreen());
         settings.setResizable(true);
         settings.setVSync(gameSettings.vsync());
+        settings.setFrameRate(gameSettings.fpsLimit());
         settings.setSamples(0);
         setSettings(settings);
         setShowSettings(false);
         GameLog.info("Запуск окна игры: " + version.id() + "; resolution=" + gameSettings.width() + "x" + gameSettings.height()
-                + "; samples=0; vsync=" + gameSettings.vsync() + "; fullscreen=" + gameSettings.fullscreen() + "; resizable=true"
+                + "; samples=0; vsync=" + gameSettings.vsync() + "; fpsLimit=" + gameSettings.fpsLimit()
+                + "; fullscreen=" + gameSettings.fullscreen() + "; resizable=true"
                 + "; Java=" + System.getProperty("java.version")
                 + "; OS=" + System.getProperty("os.name") + " " + System.getProperty("os.arch")
                 + "; thread=" + Thread.currentThread().getName());
@@ -1525,7 +1527,7 @@ public final class BlockWorldGame extends SimpleApplication {
         try {
             GameSettings.save(new GameSettings(gameSettings.width(), gameSettings.height(), gameSettings.fullscreen(),
                     gameSettings.vsync(), distance, gameSettings.fov(),
-                    gameSettings.vegetationDensity(), gameSettings.chunkBuildsPerFrame()));
+                    gameSettings.vegetationDensity(), gameSettings.chunkBuildsPerFrame(), gameSettings.fpsLimit()));
         } catch (IOException ex) { GameLog.error("Не удалось сохранить дальность прорисовки", ex); }
         statusMessage = "Дальность прорисовки: " + distance + " чанков. Для слабого ПК выбери 3.";
         updateHud();

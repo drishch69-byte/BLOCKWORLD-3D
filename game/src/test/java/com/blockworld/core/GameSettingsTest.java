@@ -56,6 +56,16 @@ class GameSettingsTest {
     }
 
     @Test
+    void fpsLimitAcceptsKnownValuesAndDefaultsInvalidValues() {
+        GameSettings unlimited = new GameSettings(1024, 640, false, false, 3, 68, 2, 2, -1);
+        GameSettings capped = new GameSettings(1024, 640, false, false, 3, 68, 2, 2, 144);
+        GameSettings invalid = new GameSettings(1024, 640, false, false, 3, 68, 2, 2, 27);
+        assertEquals(-1, unlimited.fpsLimit());
+        assertEquals(144, capped.fpsLimit());
+        assertEquals(60, invalid.fpsLimit());
+    }
+
+    @Test
     void acceptsCustomPerformanceOptions() {
         GameSettings settings = new GameSettings(1280, 720, true, false, 4, 80, 3, 6);
         assertEquals(3, settings.vegetationDensity());
