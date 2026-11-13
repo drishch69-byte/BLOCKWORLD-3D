@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.1.0",
+  "defaultVersion": "1.2.0",
   "versions": [
     {
       "id": "0.1.0",
@@ -114,6 +114,11 @@
     {
       "id": "1.1.0",
       "name": "Wildlands & Crystal Caves",
+      "status": "previous"
+    },
+    {
+      "id": "1.2.0",
+      "name": "Exploration Update",
       "status": "current"
     }
   ]

@@ -18,6 +18,8 @@ import com.blockworld.core.Achievement;
 import com.blockworld.core.AchievementTracker;
 import com.blockworld.core.AchievementDataStore;
 import com.blockworld.core.BiomeType;
+import com.blockworld.core.WorldNavigation;
+import com.blockworld.core.TreasureLoot;
 import com.blockworld.core.PlayerDataStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
@@ -89,6 +91,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private final boolean equipmentEnabled;
     private final boolean agricultureEnabled;
     private final boolean release100Enabled;
+    private final boolean explorationEnabled;
     private final List<CraftingRecipe> craftingRecipes;
     private final List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
     private final AchievementTracker achievements = new AchievementTracker();
@@ -109,6 +112,9 @@ public final class BlockWorldGame extends SimpleApplication {
     private BitmapText hud;
     private BitmapText crosshair;
     private Geometry hudPanel;
+    private Geometry navigationPanel;
+    private BitmapText navigationHud;
+    private boolean mapOpen;
     private Geometry loadingPad;
     private Geometry pausePanel;
     private BitmapText pauseText;
@@ -170,6 +176,7 @@ public final class BlockWorldGame extends SimpleApplication {
         this.equipmentEnabled = supportsEquipment(version);
         this.agricultureEnabled = supportsAgriculture(version);
         this.release100Enabled = supportsRelease100(version);
+        this.explorationEnabled = WorldNavigation.supportsExploration(version.id());
         List<CraftingRecipe> allRecipes = release100Enabled ? CraftingRecipe.release100Recipes()
                 : agricultureEnabled ? CraftingRecipe.advancedRecipes() : CraftingRecipe.starterRecipes();
         this.craftingRecipes = equipmentEnabled ? allRecipes : List.copyOf(allRecipes.subList(0, 4));
@@ -412,6 +419,21 @@ public final class BlockWorldGame extends SimpleApplication {
         hud.setLocalTranslation(15f, settings.getHeight() - 14f, 0f);
         guiNode.attachChild(hud);
 
+        navigationPanel = new Geometry("WorldMapPanel", new Quad(340f, 230f));
+        navigationPanel.setMaterial(panelMaterial);
+        navigationPanel.setQueueBucket(RenderQueue.Bucket.Gui);
+        navigationPanel.setLocalTranslation(7f, 7f, 1f);
+        navigationPanel.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        guiNode.attachChild(navigationPanel);
+
+        navigationHud = new BitmapText(guiFont);
+        navigationHud.setSize(14f);
+        navigationHud.setColor(ColorRGBA.White);
+        navigationHud.setQueueBucket(RenderQueue.Bucket.Gui);
+        navigationHud.setLocalTranslation(15f, 225f, 0f);
+        navigationHud.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        guiNode.attachChild(navigationHud);
+
         crosshair = new BitmapText(guiFont);
         crosshair.setText("+");
         crosshair.setSize(24f);
@@ -458,6 +480,7 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addMapping(SAVE, new KeyTrigger(KeyInput.KEY_F6));
         inputManager.addMapping("TOGGLE_CAMERA", new KeyTrigger(KeyInput.KEY_F5));
         inputManager.addMapping("CYCLE_PLAYER_STYLE", new KeyTrigger(KeyInput.KEY_V));
+        inputManager.addMapping("TOGGLE_MAP", new KeyTrigger(KeyInput.KEY_B));
         inputManager.addMapping("SLOT_1", new KeyTrigger(KeyInput.KEY_1));
         inputManager.addMapping("SLOT_2", new KeyTrigger(KeyInput.KEY_2));
         inputManager.addMapping("SLOT_3", new KeyTrigger(KeyInput.KEY_3));
@@ -543,6 +566,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 case SAVE -> saveWorld();
                 case "TOGGLE_CAMERA" -> toggleCameraView();
                 case "CYCLE_PLAYER_STYLE" -> cyclePlayerStyle();
+                case "TOGGLE_MAP" -> toggleMap();
                 case EAT -> eatFood();
                 case TALK -> interactCreature();
                 case "RENDER_DISTANCE" -> cycleRenderDistance();
@@ -581,7 +605,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 "SLOT_1", "SLOT_2", "SLOT_3", "SLOT_4", "SLOT_5",
                 "SLOT_6", "SLOT_7", "SLOT_8", "SLOT_9", "RENDER_DISTANCE", "TOGGLE_CULLING", "WEATHER", TALK,
                 "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
-                "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA", "CYCLE_PLAYER_STYLE");
+                "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA", "CYCLE_PLAYER_STYLE", "TOGGLE_MAP");
     }
 
     @Override
@@ -842,6 +866,16 @@ public final class BlockWorldGame extends SimpleApplication {
         if (!thirdPersonView) cam.setLocation(location);
     }
 
+    private void toggleMap() {
+        if (!explorationEnabled) {
+            statusMessage = "Карта и компас доступны в профиле 1.2.0.";
+        } else {
+            mapOpen = !mapOpen;
+            statusMessage = mapOpen ? "Карта открыта. Нажми B, чтобы закрыть." : "Карта закрыта.";
+        }
+        updateHud();
+    }
+
     private void cyclePlayerStyle() {
         if (!version.survival() || playerAvatar == null) {
             statusMessage = "Настройка внешнего вида доступна в профиле выживания.";
@@ -1047,6 +1081,29 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         BlockHit hit = getTargetBlock();
+        if (explorationEnabled && hit != null
+                && world.getBlock(hit.position()) == BlockType.TREASURE_CHEST) {
+            if (!version.survival()) {
+                statusMessage = "Сундук хранит находки. Открой его в режиме выживания.";
+            } else if (world.removeBlock(hit.position())) {
+                Map<ItemType, Integer> loot = TreasureLoot.roll(world.getSeed(), hit.position());
+                loot.forEach((item, count) -> craftedItems.merge(item, count, Integer::sum));
+                String found = loot.entrySet().stream()
+                        .map(entry -> entry.getKey().displayName() + " ×" + entry.getValue())
+                        .collect(java.util.stream.Collectors.joining(", "));
+                String chestMessage = "Сундук открыт! Найдено: " + found + ".";
+                saveWorld();
+                if (statusMessage.startsWith("Ошибка сохранения:")) {
+                    statusMessage += " Сундук открыт, но сохранение не удалось.";
+                } else {
+                    statusMessage = chestMessage + " Содержимое сохранено.";
+                }
+            } else {
+                statusMessage = "Этот сундук уже пуст.";
+            }
+            updateHud();
+            return;
+        }
         if (agricultureEnabled && hit != null && world.getBlock(hit.position()) == BlockType.FURNACE) {
             furnaceOpen = !furnaceOpen;
             inventoryOpen = false;
@@ -1544,8 +1601,10 @@ public final class BlockWorldGame extends SimpleApplication {
                     + (equipmentEnabled ? "T — инструмент    " : "")
                     + "I — инвентарь    C — крафт    F — печь/общение"
                     + (agricultureEnabled ? "    G — ферма/печь" : "")
-                    + (release100Enabled ? "    P — рыбалка    M — достижения" : "") + "    ESC — пауза"
-                : "WASD — движение    Мышь — обзор    F — общение/контакт    ESC — пауза";
+                    + (release100Enabled ? "    P — рыбалка    M — достижения" : "")
+                    + (explorationEnabled ? "    B — карта/компас" : "") + "    ESC — пауза"
+                : "WASD — движение    Мышь — обзор    F — общение/контакт"
+                    + (explorationEnabled ? "    B — карта/компас" : "") + "    ESC — пауза";
         String needs = version.survival()
                 ? "Здоровье: " + (int) health + "/20    Голод: " + (int) hunger + "/20    Еда: " + foodCount
                     + (equipmentEnabled ? "    Защита: " + armorDefense() + "/8"
@@ -1555,8 +1614,10 @@ public final class BlockWorldGame extends SimpleApplication {
                 ? String.format(java.util.Locale.ROOT, "Время: %s    Погода: %s    R — сменить погоду",
                     dayClock < 0.25f ? "утро" : dayClock < 0.50f ? "день" : dayClock < 0.75f ? "вечер" : "ночь", raining ? "дождь" : "ясно")
                 : "";
+        Vector3f hudWorldPosition = version.survival() && playerEyePosition != null
+                ? playerEyePosition : cam.getLocation();
         String biomeLine = agricultureEnabled && worldReady
-                ? "Биом: " + world.getBiomeAt(Math.round(cam.getLocation().x), Math.round(cam.getLocation().z)).displayName()
+                ? "Биом: " + world.getBiomeAt(Math.round(hudWorldPosition.x), Math.round(hudWorldPosition.z)).displayName()
                     + (release100Enabled ? "    Достижения: " + achievements.unlockedCount() + "/" + achievements.totalCount() : "")
                 : "";
         String loading = worldReady ? "Мир загружен" : (worldDataReady ? loadingMessage : "Фоновая генерация/загрузка мира...");
@@ -1578,6 +1639,18 @@ public final class BlockWorldGame extends SimpleApplication {
                 + "\n" + "Грани: " + (twoSidedRendering ? "двусторонние" : "оптимизированные")
                 + "\n" + loading
                 + "\n" + statusMessage);
+        boolean showMap = explorationEnabled && mapOpen && worldReady
+                && navigationHud != null && navigationPanel != null;
+        if (navigationHud != null && navigationPanel != null) {
+            com.jme3.scene.Spatial.CullHint hint = showMap
+                    ? com.jme3.scene.Spatial.CullHint.Inherit : com.jme3.scene.Spatial.CullHint.Always;
+            navigationHud.setCullHint(hint);
+            navigationPanel.setCullHint(hint);
+            if (showMap) {
+                Vector3f mapPosition = version.survival() ? playerEyePosition : cam.getLocation();
+                navigationHud.setText(WorldNavigation.renderMap(mapPosition.x, mapPosition.z, yaw, world.getLandmarks()));
+            }
+        }
         if (inventoryOpen || craftingOpen || furnaceOpen || tradeOpen || achievementsOpen) updateInventoryUi();
     }
 

@@ -10,12 +10,12 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.1.0 — Wildlands & Crystal Caves**
+**1.2.0 — Exploration Update**
 
 - Seven surface biomes: plains, forests, deserts, snowy tundra, mountains, taiga, and swamps (the two new biomes appear in the 1.1.0 profile).
 - Chunk-based voxel world, mining, and building.
 - Nine creature types, including foxes, turtles, and a dog companion that follows the player.
-- Crystal-lined underground caves with small water pools, third-person camera wall collision, animated creatures, and four selectable player color palettes (V).
+- Crystal caves, mineshafts, watchtowers, ruins, camps, lootable treasure chests, and an on-screen compass map (B).
 - Inventory, crafting, tools, and iron armor.
 - Farming, wheat, furnaces, smelting, and cooked food.
 - Fishing, copper and emerald ores, and achievements.

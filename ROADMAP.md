@@ -1,6 +1,6 @@
 # BLOCKWORLD 3D — Roadmap
 
-This roadmap describes possible future development. Version 1.1.0 is implemented in the current source. Items in later sections are proposals and are not included unless explicitly listed in the README. Priorities may change after testing and feedback.
+This roadmap describes possible future development. Versions 1.1.0 and 1.2.0 are implemented in the current source. Items in later sections are proposals and are not included unless explicitly listed in the README. Priorities may change after testing and feedback.
 
 ## 1.1.0 — Wildlands & Crystal Caves (released)
 - Added taiga and swamp biomes, crystal-lined underground caves, and underground water pools.
@@ -9,12 +9,10 @@ This roadmap describes possible future development. Version 1.1.0 is implemented
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
 
-## 1.2.0 — Exploration Update
-- More cave layouts and underground mine structures.
-- Small puzzle dungeons with keys and treasure chests.
-- Surface structures: watchtowers, camps, ruins, and landmarks.
-- More decorative blocks and rare loot.
-- Map markers and a simple compass.
+## 1.2.0 — Exploration Update (released)
+- Added mineshaft entrances, a watchtower, ruins, and camps to each generated 1.2.0 world.
+- Added lootable treasure chests with deterministic, save-friendly inventory rewards.
+- Added a toggleable map, structure markers, nearest-site distance, and a compass.
 
 ## 1.3.0 — Animals & Companions
 - Taming and stay/follow commands for more creature types.

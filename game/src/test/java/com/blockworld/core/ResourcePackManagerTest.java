@@ -86,7 +86,7 @@ class ResourcePackManagerTest {
         ResourcePackManager manager = new ResourcePackManager(temp.resolve("size-check-packs"));
         var pack = manager.installZip(zip);
         manager.select(pack.id());
-        assertEquals(128, manager.loadTextureAtlas().getImage().getWidth());
+        assertEquals(256, manager.loadTextureAtlas().getImage().getWidth());
     }
 
     @Test
@@ -111,7 +111,7 @@ class ResourcePackManagerTest {
     void createsDefaultPngTexturesAndUsesFallbackForMissingFiles() throws IOException {
         ResourcePackManager manager = new ResourcePackManager(temp.resolve("default-packs"));
         Texture2D atlas = manager.loadTextureAtlas();
-        assertEquals(128, atlas.getImage().getWidth());
+        assertEquals(256, atlas.getImage().getWidth());
         assertTrue(Files.isRegularFile(manager.root().resolve("Default/textures/blocks/grass.png")));
         assertTrue(Files.isRegularFile(manager.root().resolve("Default/textures/blocks/water.png")));
     }
@@ -133,11 +133,14 @@ class ResourcePackManagerTest {
     }
 
     @Test
-    void newlyAddedOreTexturesFitInsideEightByEightAtlas() {
+    void allNewBlockTexturesFitInsideSixteenBySixteenAtlas() {
         assertTrue(ResourcePackManager.textureTileIndex(BlockType.EMERALD_ORE, 2)
                 < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
         assertEquals(16, BlockType.COPPER_ORE.textureSlot());
         assertEquals(17, BlockType.EMERALD_ORE.textureSlot());
+        assertEquals(21, BlockType.TREASURE_CHEST.textureSlot());
+        assertTrue(ResourcePackManager.textureTileIndex(BlockType.TREASURE_CHEST, 2)
+                < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
         assertEquals(18, BlockType.AMETHYST_ORE.textureSlot());
         assertEquals(19, BlockType.PODZOL.textureSlot());
         assertEquals(20, BlockType.MUD.textureSlot());

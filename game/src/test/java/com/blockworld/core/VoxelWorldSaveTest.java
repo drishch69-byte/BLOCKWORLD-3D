@@ -10,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VoxelWorldSaveTest {
@@ -137,6 +139,54 @@ class VoxelWorldSaveTest {
         assertEquals(source.getBiomeAt(24, 16), restored.getBiomeAt(24, 16));
         assertEquals(source.getCreatures().stream().filter(c -> c.type() == CreatureType.DOG).count(),
                 restored.getCreatures().stream().filter(c -> c.type() == CreatureType.DOG).count());
+    }
+
+    @Test
+    void failedLoadClearsBiomeFlagsAndMetadataFromTheRejectedFile() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        Path file = tempDir.resolve("broken-biome-world.bwworld");
+        Files.writeString(file,
+                "BLOCKWORLD_WORLD\nformat=2\ngameVersion=1.1.0\nseed=999\n" +
+                "biomes=true\nextendedBiomes=true\n--blocks--\n" +
+                "0,0,0,grass\nthis-is-not-a-valid-block-record\n");
+
+        VoxelWorld world = new VoxelWorld(assets);
+        assertThrows(IOException.class, () -> world.load(file));
+        assertEquals(0, world.getBlockCount());
+        assertEquals(20261112L, world.getSeed());
+        assertEquals(0, world.getWorldRadius());
+        assertFalse(world.hasExtendedBiomes());
+        assertTrue(world.getLandmarks().isEmpty());
+        assertEquals(BiomeType.PLAINS, world.getBiomeAt(0, 0));
+    }
+
+    @Test
+    void version120CreatesExplorationSitesAndLootChestsAndRestoresMapMarkers() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion version = VersionManager.find("1.2.0");
+        VoxelWorld source = new VoxelWorld(assets);
+        source.generate(version, 246813579L);
+
+        assertEquals(128, source.getWorldRadius());
+        int riverSurface = source.highestBlockY(0, 0);
+        assertEquals(BlockType.WATER, source.getBlock(new BlockPos(0, riverSurface, 0)),
+                "River generation must replace the solid surface block with water");
+        assertEquals(6, source.getLandmarks().size());
+        assertEquals(4L, source.countBlocks(BlockType.TREASURE_CHEST));
+        assertTrue(source.getBlockCount() > 200_000);
+        assertTrue(source.hasExtendedBiomes());
+
+        Path file = tempDir.resolve("version-120.bwworld");
+        source.save(file, version);
+        String saved = Files.readString(file);
+        assertTrue(saved.contains(",treasure_chest"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(version.id(), restored.load(file));
+        assertEquals(source.getBlockCount(), restored.getBlockCount());
+        assertEquals(4L, restored.countBlocks(BlockType.TREASURE_CHEST));
+        assertEquals(source.getLandmarks(), restored.getLandmarks());
+        assertTrue(restored.hasExtendedBiomes());
     }
 
     @Test

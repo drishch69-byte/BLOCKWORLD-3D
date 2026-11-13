@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 — Exploration Update
+- Added four deterministic exploration sites per world: a watchtower, ruins, a camp, and a mineshaft entrance; village markers are included in the map.
+- Added treasure chest blocks with seed-and-coordinate-based loot. Press F while targeting a chest; opening removes the chest and awards loot to the player inventory.
+- Added a toggleable 9×9 map and compass on B, showing player position, villages, nearby landmarks, direction, and distance.
+- Expanded the block texture atlas to 16×16 tiles for the treasure chest without renumbering existing texture slots.
+- Fixed a world-load cleanup bug: a malformed save no longer leaves biome flags or world metadata from the failed file.
+- Added deterministic tests for loot, compass directions, structure markers, chest persistence, and failed-load cleanup.
+
 ## 1.1.0 — Wildlands & Crystal Caves
 - Added taiga and swamp surface biomes to the new profile while keeping the legacy biome sampler unchanged for earlier profiles.
 - Added underground crystal geodes with amethyst ore veins and small water pools.

@@ -1,0 +1,39 @@
+package com.blockworld.core;
+
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Random;
+
+/** Seeded, position-specific loot for one-time exploration chests. */
+public final class TreasureLoot {
+    private TreasureLoot() { }
+
+    public static Map<ItemType, Integer> roll(long seed, BlockPos chest) {
+        if (chest == null) throw new IllegalArgumentException("Позиция сундука обязательна");
+        long mixedSeed = seed
+                ^ ((long) chest.x() * 0x9E3779B97F4A7C15L)
+                ^ ((long) chest.y() * 0xC2B2AE3D27D4EB4FL)
+                ^ ((long) chest.z() * 0x165667B19E3779F9L);
+        Random random = new Random(mixedSeed);
+        EnumMap<ItemType, Integer> loot = new EnumMap<>(ItemType.class);
+
+        int roll = random.nextInt(100);
+        if (roll < 12) {
+            loot.put(ItemType.EMERALD, 1 + random.nextInt(2));
+        } else if (roll < 42) {
+            loot.put(ItemType.IRON_INGOT, 2 + random.nextInt(3));
+        } else if (roll < 70) {
+            loot.put(ItemType.COPPER_INGOT, 2 + random.nextInt(4));
+        } else {
+            loot.put(ItemType.BREAD, 1 + random.nextInt(2));
+        }
+
+        if (random.nextBoolean()) {
+            loot.merge(ItemType.COOKED_FISH, 1, Integer::sum);
+        } else if (random.nextInt(4) == 0) {
+            loot.merge(ItemType.BREAD, 1, Integer::sum);
+        }
+        return Collections.unmodifiableMap(loot);
+    }
+}

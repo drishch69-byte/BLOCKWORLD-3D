@@ -10,4 +10,6 @@ This folder contains original pixel-art PNG resources.
 - `src/main/resources/Textures/Player/player_sprite.png`: the player portrait shown in the inventory side panel.
 - `src/main/resources/Textures/Items/items.properties`: stable item ID to atlas tile mapping. IDs match `ItemType`.
 
+`game/src/main/resources/Textures/Blocks/` is populated from the selected resource pack at startup. The block atlas is now 256×256 (16×16 tiles) with three face tiles per block, including the 1.2.0 treasure chest. Existing block slots 0–20 keep their positions; the chest is appended at slot 21.
+
 The artwork is original to BLOCKWORLD 3D. Textures use nearest-neighbour filtering for crisp pixel edges.

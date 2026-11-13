@@ -72,6 +72,8 @@ public final class VoxelWorld {
     private boolean twoSidedRendering = true;
     private boolean activeBiomes;
     private boolean extendedBiomes;
+    private int worldRadius;
+    private List<WorldNavigation.Landmark> landmarks = List.of();
     private int minBlockX;
     private int maxBlockX;
     private int minBlockZ;
@@ -123,6 +125,13 @@ public final class VoxelWorld {
     public int getPendingChunkCount() { return pendingChunks.size(); }
     public int getRenderDistanceChunks() { return renderDistanceChunks; }
     public long getSeed() { return seed; }
+    public int getWorldRadius() { return worldRadius; }
+    public boolean hasExtendedBiomes() { return extendedBiomes; }
+    public long countBlocks(BlockType type) {
+        Objects.requireNonNull(type, "type");
+        return blocks.values().stream().filter(type::equals).count();
+    }
+    public List<WorldNavigation.Landmark> getLandmarks() { return landmarks; }
     public boolean hasExtendedBiomes() { return extendedBiomes; }
 
     public BiomeType getBiomeAt(int x, int z) {
@@ -452,6 +461,7 @@ public final class VoxelWorld {
         Objects.requireNonNull(version, "version");
         clear();
         seed = worldSeed;
+        worldRadius = version.worldRadius();
         activeBiomes = supportsBiomes(version.id());
         extendedBiomes = supportsExtendedBiomes(version.id());
         bulkUpdate = true;
@@ -498,7 +508,9 @@ public final class VoxelWorld {
                     for (int dz = -1; dz <= 1; dz++) {
                         int z = centerZ + dz;
                         int surface = terrainHeightFor(x, z);
-                        addBlock(new BlockPos(x, surface, z), BlockType.WATER);
+                        BlockPos riverBed = new BlockPos(x, surface, z);
+                        removeBlock(riverBed);
+                        addBlock(riverBed, BlockType.WATER);
                         if (surface <= 1) addBlock(new BlockPos(x, surface + 1, z), BlockType.WATER);
                     }
                 }
@@ -523,12 +535,95 @@ public final class VoxelWorld {
                     addVillageMarketStall(-34, 27);
                     addVillageGarden(29, 27);
                 }
+            }
+            if (WorldNavigation.supportsExploration(version.id())) {
+                landmarks = WorldNavigation.allMarkers(seed, radius);
+                for (WorldNavigation.Landmark site : WorldNavigation.generateSites(seed, radius)) {
+                    switch (site.type()) {
+                        case WATCHTOWER -> addWatchtower(site.x(), site.z());
+                        case RUINS -> addRuins(site.x(), site.z());
+                        case CAMP -> addExplorationCamp(site.x(), site.z());
+                        case MINESHAFT -> addMineEntrance(site.x(), site.z());
+                        case VILLAGE -> { }
+                    }
+                }
+            }
+            if (version.id().compareTo("0.8.0") >= 0) {
                 spawnCreatures(random, radius);
             }
         } finally {
             bulkUpdate = false;
         }
         lastStreamCenter = null;
+    }
+
+    private void addWatchtower(int x, int z) {
+        int groundY = terrainHeightFor(x, z);
+        for (int level = 1; level <= 7; level++) {
+            for (int dx : new int[]{-2, 2}) {
+                for (int dz : new int[]{-2, 2}) {
+                    addBlock(new BlockPos(x + dx, groundY + level, z + dz), BlockType.WOOD);
+                }
+            }
+            if (level == 3 || level == 7) {
+                for (int dx = -2; dx <= 2; dx++) {
+                    for (int dz = -2; dz <= 2; dz++) {
+                        addBlock(new BlockPos(x + dx, groundY + level, z + dz), BlockType.WOOD);
+                    }
+                }
+            }
+        }
+        addBlock(new BlockPos(x, groundY + 4, z), BlockType.TREASURE_CHEST);
+    }
+
+    private void addRuins(int x, int z) {
+        int groundY = terrainHeightFor(x, z);
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dz = -3; dz <= 3; dz++) {
+                boolean edge = Math.abs(dx) == 3 || Math.abs(dz) == 3;
+                if (!edge || (dx + dz) % 3 == 0) continue;
+                int height = 1 + Math.floorMod(dx * 7 + dz * 11, 3);
+                for (int dy = 1; dy <= height; dy++) {
+                    addBlock(new BlockPos(x + dx, groundY + dy, z + dz), BlockType.STONE);
+                }
+            }
+        }
+        addBlock(new BlockPos(x, groundY + 1, z), BlockType.TREASURE_CHEST);
+    }
+
+    private void addExplorationCamp(int x, int z) {
+        int groundY = terrainHeightFor(x, z);
+        for (int dx : new int[]{-2, 2}) {
+            for (int dz : new int[]{-2, 2}) {
+                addBlock(new BlockPos(x + dx, groundY + 1, z + dz), BlockType.WOOD);
+                addBlock(new BlockPos(x + dx, groundY + 2, z + dz), BlockType.WOOD);
+            }
+        }
+        for (int dx = -2; dx <= 2; dx++) {
+            addBlock(new BlockPos(x + dx, groundY + 3, z), BlockType.WOOD);
+        }
+        addBlock(new BlockPos(x, groundY + 1, z), BlockType.FURNACE);
+        addBlock(new BlockPos(x + 1, groundY + 1, z), BlockType.TREASURE_CHEST);
+    }
+
+    private void addMineEntrance(int x, int z) {
+        int groundY = terrainHeightFor(x, z);
+        for (int step = 0; step <= 8; step++) {
+            int tunnelX = x + step;
+            int floorY = groundY - step;
+            removeBlock(new BlockPos(tunnelX, floorY + 1, z));
+            removeBlock(new BlockPos(tunnelX, floorY + 2, z));
+            removeBlock(new BlockPos(tunnelX, floorY + 3, z));
+            if (!blocks.containsKey(new BlockPos(tunnelX, floorY, z))) {
+                addBlock(new BlockPos(tunnelX, floorY, z), BlockType.STONE);
+            }
+            if (step % 2 == 0) {
+                addBlock(new BlockPos(tunnelX, floorY + 2, z - 1), BlockType.WOOD);
+                addBlock(new BlockPos(tunnelX, floorY + 2, z + 1), BlockType.WOOD);
+                addBlock(new BlockPos(tunnelX, floorY + 3, z), BlockType.WOOD);
+            }
+        }
+        addBlock(new BlockPos(x + 8, groundY - 7, z), BlockType.TREASURE_CHEST);
     }
 
     private void addCrystalCaves(Random random, int radius) {
@@ -808,6 +903,11 @@ public final class VoxelWorld {
         lastStreamCenter = null;
         lastMeshError = "";
         hasBounds = false;
+        activeBiomes = false;
+        extendedBiomes = false;
+        worldRadius = 0;
+        landmarks = List.of();
+        seed = 20261112L;
         minBlockX = maxBlockX = minBlockZ = maxBlockZ = 0;
     }
 
@@ -855,10 +955,10 @@ public final class VoxelWorld {
         if (format < 1) throw new IOException("Формат мира повреждён или не поддерживается.");
         String savedVersion = readStringProperty(lines, "gameVersion", "неизвестно");
         String biomeProperty = readStringProperty(lines, "biomes", "");
-        activeBiomes = "true".equalsIgnoreCase(biomeProperty) ? true
+        boolean loadedActiveBiomes = "true".equalsIgnoreCase(biomeProperty) ? true
                 : "false".equalsIgnoreCase(biomeProperty) ? false : supportsBiomes(savedVersion);
         String extendedBiomeProperty = readStringProperty(lines, "extendedBiomes", "");
-        extendedBiomes = "true".equalsIgnoreCase(extendedBiomeProperty) ? true
+        boolean loadedExtendedBiomes = "true".equalsIgnoreCase(extendedBiomeProperty) ? true
                 : "false".equalsIgnoreCase(extendedBiomeProperty) ? false : supportsExtendedBiomes(savedVersion);
         long loadedSeed;
         try { loadedSeed = Long.parseLong(readStringProperty(lines, "seed", "20261112")); }
@@ -869,6 +969,10 @@ public final class VoxelWorld {
         int blocksEnd = creatureMarker >= 0 ? creatureMarker : lines.size();
 
         clear();
+        activeBiomes = loadedActiveBiomes;
+        extendedBiomes = loadedExtendedBiomes;
+        seed = loadedSeed;
+        worldRadius = VersionManager.find(savedVersion).worldRadius();
         bulkUpdate = true;
         try {
             int loaded = 0;
@@ -916,7 +1020,9 @@ public final class VoxelWorld {
         } finally {
             bulkUpdate = false;
         }
-        seed = loadedSeed;
+        if (WorldNavigation.supportsExploration(savedVersion)) {
+            landmarks = WorldNavigation.allMarkers(loadedSeed, worldRadius);
+        }
         return savedVersion;
     }
 

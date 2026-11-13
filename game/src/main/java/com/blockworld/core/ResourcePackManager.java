@@ -38,7 +38,7 @@ public final class ResourcePackManager {
     private static final long MAX_UNPACKED_BYTES = 64L * 1024 * 1024;
     private static final int MAX_ENTRIES = 5000;
     public static final int BLOCK_TEXTURE_SIZE = 16;
-    public static final int ATLAS_COLUMNS = 8;
+    public static final int ATLAS_COLUMNS = 16;
     public static final int ATLAS_SIZE = BLOCK_TEXTURE_SIZE * ATLAS_COLUMNS;
     public static final int FACE_VARIANTS_PER_BLOCK = 3;
 
@@ -187,7 +187,7 @@ public final class ResourcePackManager {
 
 
     /**
-     * Builds a nearest-filtered 8x8 atlas. Each block reserves top/side/bottom tiles.
+     * Builds a nearest-filtered 16x16 atlas. Each block reserves top/side/bottom tiles.
      * Packs may provide textures/blocks/<id>.png and optional <id>_top|side|bottom.png.
      * Textures are normalized to 16x16; invalid/missing files fall back safely.
      */
