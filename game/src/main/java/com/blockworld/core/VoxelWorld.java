@@ -503,8 +503,15 @@ public final class VoxelWorld {
 
     private void updateColumnHeightAfterRemoval(int x, int z) {
         int highest = -13;
-        for (BlockPos pos : blocks.keySet()) {
-            if (pos.x() == x && pos.z() == z && pos.y() > highest) highest = pos.y();
+        // Only this 16x16 chunk can contain blocks from the requested column.
+        // Scanning the entire world here made river/structure generation quadratic.
+        Set<BlockPos> members = chunkBlocks.get(ChunkPos.fromBlock(x, z));
+        if (members != null) {
+            for (BlockPos pos : members) {
+                if (pos.x() == x && pos.z() == z && pos.y() > highest) {
+                    highest = pos.y();
+                }
+            }
         }
         long key = columnKey(x, z);
         if (highest == -13) columnHeights.remove(key);
@@ -526,10 +533,11 @@ public final class VoxelWorld {
             for (int x = -radius; x <= radius; x++) {
                 for (int z = -radius; z <= radius; z++) {
                     int surface = terrainHeightFor(x, z);
+                    // Biome is constant for a vertical column; calculate it once, not per block.
+                    BiomeType biome = getBiomeAt(x, z);
                     for (int y = minY; y <= surface; y++) {
                         if (version.caves() && y < surface - 2 && y > minY + 1 && isCave(x, y, z)) continue;
                         BlockType type;
-                        BiomeType biome = getBiomeAt(x, z);
                         if (y == surface) type = biome.surfaceBlock();
                         else if (y >= surface - 2) type = biome == BiomeType.DESERT ? BlockType.SANDSTONE : BlockType.DIRT;
                         else {

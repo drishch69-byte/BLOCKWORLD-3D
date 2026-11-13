@@ -47,6 +47,26 @@ class VoxelWorldChunkTest {
     }
 
     @Test
+    void removingHighestBlockRecalculatesOnlyItsColumnHeight() {
+        AssetManager assets = new DesktopAssetManager(true);
+        VoxelWorld world = new VoxelWorld(assets);
+        BlockPos lower = new BlockPos(-17, -4, -1);
+        BlockPos upper = new BlockPos(-17, 6, -1);
+
+        assertTrue(world.addBlock(lower, BlockType.STONE));
+        assertTrue(world.addBlock(upper, BlockType.GRASS));
+        for (int x = 0; x < 48; x++) {
+            assertTrue(world.addBlock(new BlockPos(x, 0, 32), BlockType.DIRT));
+        }
+        assertEquals(6, world.highestBlockY(-17, -1));
+
+        assertTrue(world.removeBlock(upper));
+        assertEquals(-4, world.highestBlockY(-17, -1));
+        assertTrue(world.removeBlock(lower));
+        assertEquals(-13, world.highestBlockY(-17, -1));
+    }
+
+    @Test
     void findsSpawnNearExistingTerrainInsteadOfAssumingWorldOrigin() {
         AssetManager assets = new DesktopAssetManager(true);
         VoxelWorld world = new VoxelWorld(assets);
