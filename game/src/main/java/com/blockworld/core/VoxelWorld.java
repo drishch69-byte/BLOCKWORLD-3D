@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 /** Block data plus streamed, face-culled 16x16 chunk meshes with optional atlas UVs. */
 public final class VoxelWorld {
@@ -142,6 +143,12 @@ public final class VoxelWorld {
     public boolean hasActiveBiomes() { return activeBiomes; }
     public boolean hasExtendedBiomes() { return extendedBiomes; }
     public Map<BlockPos, BlockType> snapshotBlocks() { return Map.copyOf(blocks); }
+
+    /** Visits stored blocks without allocating a full snapshot copy. */
+    public void forEachBlock(BiConsumer<BlockPos, BlockType> visitor) {
+        Objects.requireNonNull(visitor, "visitor");
+        blocks.forEach(visitor);
+    }
 
     /** Replace block data with an authoritative multiplayer snapshot. Call on the render thread. */
     public void replaceBlockSnapshot(long worldSeed, boolean hasBiomes, boolean hasExtendedBiomes,
@@ -1180,5 +1187,7 @@ public final class VoxelWorld {
         }
         return true;
     }
+
+    private record Face(int nx, int ny, int nz, float shade, float[] vertices) { }
 
 }
