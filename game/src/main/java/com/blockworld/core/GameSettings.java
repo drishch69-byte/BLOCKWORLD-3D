@@ -26,6 +26,22 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         if (chunkBuildsPerFrame < 1 || chunkBuildsPerFrame > 6) chunkBuildsPerFrame = DEFAULT.chunkBuildsPerFrame;
     }
 
+    /**
+     * Conservative graphics recommendation based on Java's configured heap and CPU cores.
+     * GPU capability is unknown, so this never selects the most demanding preset by default.
+     */
+    public static GameSettings recommended(long maxHeapBytes, int cpuCores) {
+        long heapMiB = Math.max(0L, maxHeapBytes) / (1024L * 1024L);
+        int cores = Math.max(1, cpuCores);
+        if (heapMiB < 3072L || cores <= 2) {
+            return new GameSettings(1024, 640, false, false, 3, 68, 1, 1);
+        }
+        if (heapMiB < 6144L || cores <= 4) {
+            return new GameSettings(1280, 720, false, false, 4, 72, 2, 2);
+        }
+        return new GameSettings(1600, 900, false, true, 6, 76, 3, 4);
+    }
+
     private static boolean allowedResolution(int width, int height) {
         return (width == 1024 && height == 640) || (width == 1280 && height == 720)
                 || (width == 1600 && height == 900) || (width == 1920 && height == 1080);

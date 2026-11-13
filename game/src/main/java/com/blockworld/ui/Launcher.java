@@ -400,8 +400,21 @@ public final class Launcher {
         dialog.add(form, BorderLayout.CENTER);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton reset = new JButton("ПО УМОЛЧАНИЮ");
+        JButton recommend = new JButton("АВТОПОДБОР");
         JButton save = new JButton("СОХРАНИТЬ");
         JButton cancel = new JButton("ОТМЕНА");
+        recommend.setToolTipText("Подбирает умеренные настройки по памяти JVM и числу процессоров.");
+        recommend.addActionListener(e -> {
+            GameSettings suggested = GameSettings.recommended(Runtime.getRuntime().maxMemory(),
+                    Runtime.getRuntime().availableProcessors());
+            resolution.setSelectedItem(suggested.width() + "x" + suggested.height());
+            distance.setSelectedItem(suggested.renderDistance());
+            fov.setValue(suggested.fov());
+            fullscreen.setSelected(suggested.fullscreen());
+            vsync.setSelected(suggested.vsync());
+            vegetation.setSelectedIndex(suggested.vegetationDensity());
+            chunkBudget.setSelectedItem(suggested.chunkBuildsPerFrame());
+        });
         reset.addActionListener(e -> {
             resolution.setSelectedItem("1024x640"); distance.setSelectedItem(3);
             fov.setValue(68); fullscreen.setSelected(false); vsync.setSelected(false);
@@ -421,7 +434,7 @@ public final class Launcher {
             }
         });
         cancel.addActionListener(e -> dialog.dispose());
-        actions.add(reset); actions.add(save); actions.add(cancel);
+        actions.add(reset); actions.add(recommend); actions.add(save); actions.add(cancel);
         dialog.add(actions, BorderLayout.SOUTH);
         dialog.pack(); dialog.setMinimumSize(new Dimension(560, 360)); dialog.setLocationRelativeTo(frame); dialog.setVisible(true);
     }

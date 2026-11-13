@@ -31,6 +31,31 @@ class GameSettingsTest {
     }
 
     @Test
+    void recommendsConservativePresetForLowMemoryComputers() {
+        GameSettings settings = GameSettings.recommended(2L * 1024L * 1024L * 1024L, 2);
+        assertEquals(1024, settings.width());
+        assertEquals(3, settings.renderDistance());
+        assertEquals(1, settings.vegetationDensity());
+        assertEquals(1, settings.chunkBuildsPerFrame());
+    }
+
+    @Test
+    void recommendsBalancedPresetForMidRangeComputers() {
+        GameSettings settings = GameSettings.recommended(4L * 1024L * 1024L * 1024L, 6);
+        assertEquals(1280, settings.width());
+        assertEquals(4, settings.renderDistance());
+        assertEquals(2, settings.vegetationDensity());
+        assertEquals(2, settings.chunkBuildsPerFrame());
+    }
+
+    @Test
+    void recommendationsDoNotOverstateWeakCpuCapabilities() {
+        GameSettings settings = GameSettings.recommended(16L * 1024L * 1024L * 1024L, 4);
+        assertEquals(1280, settings.width());
+        assertEquals(2, settings.chunkBuildsPerFrame());
+    }
+
+    @Test
     void acceptsCustomPerformanceOptions() {
         GameSettings settings = new GameSettings(1280, 720, true, false, 4, 80, 3, 6);
         assertEquals(3, settings.vegetationDensity());
