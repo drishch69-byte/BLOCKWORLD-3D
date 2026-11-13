@@ -12,6 +12,10 @@ class MiningRulesTest {
                 > MiningRules.durationSeconds(BlockType.DIRT, null));
         assertTrue(MiningRules.durationSeconds(BlockType.GOLD_ORE, null)
                 > MiningRules.durationSeconds(BlockType.STONE, null));
+        assertTrue(MiningRules.durationSeconds(BlockType.RUBY_ORE, null)
+                > MiningRules.durationSeconds(BlockType.DIRT, null));
+        assertTrue(MiningRules.durationSeconds(BlockType.SAPPHIRE_ORE, null)
+                > MiningRules.durationSeconds(BlockType.STONE, null));
     }
 
     @Test

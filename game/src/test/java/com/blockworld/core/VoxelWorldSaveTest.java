@@ -263,4 +263,37 @@ class VoxelWorldSaveTest {
 
         assertTrue(Files.readString(resaved).contains("1,0,0,crystal_block"));
     }
+    @Test
+    void version195AddsGemVeinsAndCrystalCavernsAndRoundTripsThem() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion previous = VersionManager.find("1.9.4");
+        GameVersion updated = VersionManager.find("1.9.5");
+
+        VoxelWorld oldWorld = new VoxelWorld(assets);
+        oldWorld.generate(previous, 8675309L);
+        assertEquals(0L, oldWorld.countBlocks(BlockType.RUBY_ORE));
+        assertEquals(0L, oldWorld.countBlocks(BlockType.SAPPHIRE_ORE));
+
+        VoxelWorld world = new VoxelWorld(assets);
+        world.generate(updated, 8675309L);
+        assertTrue(world.countBlocks(BlockType.RUBY_ORE) > 0, "Expected ruby deposits");
+        assertTrue(world.countBlocks(BlockType.SAPPHIRE_ORE) > 0, "Expected sapphire deposits");
+        assertTrue(world.countBlocks(BlockType.AMETHYST_ORE) > 0, "Expected amethyst crystal walls");
+        assertTrue(world.getBlockCount() < oldWorld.getBlockCount(),
+                "Expanded cave rooms should carve additional underground space");
+
+        Path file = tempDir.resolve("version-195-crystal-caverns.bwworld");
+        world.save(file, updated);
+        String saved = Files.readString(file);
+        assertTrue(saved.contains(",ruby_ore"));
+        assertTrue(saved.contains(",sapphire_ore"));
+        assertTrue(saved.contains("format=2"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(updated.id(), restored.load(file));
+        assertEquals(world.getBlockCount(), restored.getBlockCount());
+        assertEquals(world.countBlocks(BlockType.RUBY_ORE), restored.countBlocks(BlockType.RUBY_ORE));
+        assertEquals(world.countBlocks(BlockType.SAPPHIRE_ORE), restored.countBlocks(BlockType.SAPPHIRE_ORE));
+    }
+
 }

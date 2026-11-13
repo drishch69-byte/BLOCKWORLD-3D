@@ -114,6 +114,12 @@ class ResourcePackManagerTest {
         assertEquals(256, atlas.getImage().getWidth());
         assertTrue(Files.isRegularFile(manager.root().resolve("Default/textures/blocks/grass.png")));
         assertTrue(Files.isRegularFile(manager.root().resolve("Default/textures/blocks/water.png")));
+        Path ruby = manager.root().resolve("Default/textures/blocks/ruby_ore.png");
+        Path sapphire = manager.root().resolve("Default/textures/blocks/sapphire_ore.png");
+        assertTrue(Files.isRegularFile(ruby));
+        assertTrue(Files.isRegularFile(sapphire));
+        assertEquals(16, ImageIO.read(ruby.toFile()).getWidth());
+        assertEquals(16, ImageIO.read(sapphire.toFile()).getHeight());
     }
 
     @Test
@@ -144,6 +150,10 @@ class ResourcePackManagerTest {
         assertEquals(18, BlockType.AMETHYST_ORE.textureSlot());
         assertEquals(19, BlockType.PODZOL.textureSlot());
         assertEquals(20, BlockType.MUD.textureSlot());
+        assertEquals(22, BlockType.RUBY_ORE.textureSlot());
+        assertEquals(23, BlockType.SAPPHIRE_ORE.textureSlot());
+        assertTrue(ResourcePackManager.textureTileIndex(BlockType.SAPPHIRE_ORE, 2)
+                < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
         assertTrue(ResourcePackManager.textureTileIndex(BlockType.MUD, 2)
                 < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
     }
