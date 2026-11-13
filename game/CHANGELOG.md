@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.2.0 — Exploration Update
+- Fixed the gameplay mouse pointer: it is now hidden in both survival and creative modes, while pause, launcher, and settings screens keep the normal visible pointer.
 - Added four deterministic exploration sites per world: a watchtower, ruins, a camp, and a mineshaft entrance; village markers are included in the map.
 - Added treasure chest blocks with seed-and-coordinate-based loot. Press F while targeting a chest; opening removes the chest and awards loot to the player inventory.
 - Added a toggleable 9×9 map and compass on B, showing player position, villages, nearby landmarks, direction, and distance.

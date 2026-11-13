@@ -301,7 +301,6 @@ public final class BlockWorldGame extends SimpleApplication {
             for (ItemType item : ItemType.values()) craftedItems.put(item, 0);
             if (agricultureEnabled) craftedItems.put(ItemType.WHEAT_SEEDS, 2);
             flyCam.setEnabled(false);
-            inputManager.setCursorVisible(false);
             cam.setLocation(new Vector3f(0f, 12f, 8f));
             playerEyePosition = cam.getLocation().clone();
             cam.setRotation(new Quaternion().fromAngles(pitch, yaw, 0f));
@@ -309,6 +308,9 @@ public final class BlockWorldGame extends SimpleApplication {
             cam.setLocation(new Vector3f(0f, 16f, 26f));
             cam.lookAt(new Vector3f(0f, 1f, 0f), Vector3f.UNIT_Y);
         }
+
+        // Hide the pointer in every active play mode; pause/launcher screens show it again.
+        inputManager.setCursorVisible(false);
 
         setupHud();
         setupInputs();
