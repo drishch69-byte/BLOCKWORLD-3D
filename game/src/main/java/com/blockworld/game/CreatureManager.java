@@ -107,12 +107,15 @@ public final class CreatureManager {
         Visual target = null;
         float closest = reach;
         for (Visual visual : visuals.values()) {
-            Vector3f center = new Vector3f(visual.state.x(), visual.state.y() + .72f, visual.state.z());
+            float targetHeight = visual.state.type() == CreatureType.CRYSTAL_SENTINEL ? 1.25f : .72f;
+            float targetRadius = visual.state.type() == CreatureType.CRYSTAL_SENTINEL
+                    ? Math.max(hitRadius, 1.05f) : hitRadius;
+            Vector3f center = new Vector3f(visual.state.x(), visual.state.y() + targetHeight, visual.state.z());
             Vector3f offset = center.subtract(origin);
             float along = offset.dot(ray);
             if (along < 0f || along > closest) continue;
             float missSquared = offset.lengthSquared() - along * along;
-            if (missSquared <= hitRadius * hitRadius) {
+            if (missSquared <= targetRadius * targetRadius) {
                 closest = along;
                 target = visual;
             }
@@ -302,14 +305,22 @@ public final class CreatureManager {
 
             int blockX = (int) Math.floor(nextX);
             int blockZ = (int) Math.floor(nextZ);
-            int surfaceY = world.highestBlockY(blockX, blockZ);
+            boolean caveSentinel = state.type() == CreatureType.CRYSTAL_SENTINEL;
+            int surfaceY = caveSentinel
+                    ? world.highestBlockYAtOrBelow(blockX, blockZ, (int) Math.floor(state.y() - 0.2f))
+                    : world.highestBlockY(blockX, blockZ);
             if (surfaceY >= -12 && Math.abs((surfaceY + 1f) - state.y()) <= 1.25f) {
                 BlockType surface = world.getBlock(new BlockPos(blockX, surfaceY, blockZ));
-                boolean safeSurface = surface == BlockType.GRASS || surface == BlockType.DIRT
-                        || surface == BlockType.SAND || surface == BlockType.PODZOL
-                        || surface == BlockType.MUD || surface == BlockType.SNOW;
+                boolean safeSurface = caveSentinel
+                        ? surface == BlockType.STONE || surface == BlockType.AMETHYST_ORE
+                            || surface == BlockType.GLOWING_CRYSTAL || surface == BlockType.RUBY_ORE
+                            || surface == BlockType.SAPPHIRE_ORE
+                        : surface == BlockType.GRASS || surface == BlockType.DIRT
+                            || surface == BlockType.SAND || surface == BlockType.PODZOL
+                            || surface == BlockType.MUD || surface == BlockType.SNOW;
                 boolean clearAbove = !world.contains(new BlockPos(blockX, surfaceY + 1, blockZ))
-                        && !world.contains(new BlockPos(blockX, surfaceY + 2, blockZ));
+                        && !world.contains(new BlockPos(blockX, surfaceY + 2, blockZ))
+                        && (!caveSentinel || !world.contains(new BlockPos(blockX, surfaceY + 3, blockZ)));
                 if (safeSurface && clearAbove) {
                     state = new WorldCreature(state.id(), state.type(), nextX, surfaceY + 1f, nextZ, visual.yaw);
                     visual.state = state;
@@ -441,6 +452,7 @@ public final class CreatureManager {
             case ZOMBIE -> buildZombie(root);
             case SKELETON -> buildSkeleton(root);
             case SPIDER -> buildSpider(root);
+            case CRYSTAL_SENTINEL -> buildCrystalSentinel(root);
         }
         Map<String, Geometry> animationParts = new HashMap<>();
         for (com.jme3.scene.Spatial child : root.getChildren()) {
@@ -553,6 +565,24 @@ public final class CreatureManager {
         addBox(root, "skeleton-arm-right", .065f, .34f, .07f, .36f, 1.08f, 0f, bone);
         addBox(root, "skeleton-leg-left", .07f, .34f, .08f, -.13f, .35f, 0f, bone);
         addBox(root, "skeleton-leg-right", .07f, .34f, .08f, .13f, .35f, 0f, bone);
+    }
+
+    private void buildCrystalSentinel(Node root) {
+        ColorRGBA stone = color(.23f, .27f, .35f);
+        ColorRGBA crystal = color(.12f, .88f, .90f);
+        ColorRGBA amethyst = color(.55f, .27f, .82f);
+        addBox(root, "crystal-sentinel-body", .56f, .66f, .42f, 0f, 1.02f, 0f, stone);
+        addBox(root, "crystal-sentinel-head", .40f, .38f, .38f, 0f, 1.98f, -.02f, color(.31f, .34f, .43f));
+        addBox(root, "crystal-sentinel-core", .22f, .25f, .08f, 0f, 1.18f, -.47f, crystal);
+        addBox(root, "crystal-sentinel-eye-left", .055f, .06f, .03f, -.15f, 2.02f, -.41f, amethyst);
+        addBox(root, "crystal-sentinel-eye-right", .055f, .06f, .03f, .15f, 2.02f, -.41f, amethyst);
+        addBox(root, "crystal-sentinel-spike-left", .13f, .38f, .13f, -.51f, 1.88f, .02f, crystal);
+        addBox(root, "crystal-sentinel-spike-right", .13f, .38f, .13f, .51f, 1.88f, .02f, crystal);
+        addBox(root, "crystal-sentinel-arm-left", .18f, .52f, .18f, -.72f, 1.02f, 0f, stone);
+        addBox(root, "crystal-sentinel-arm-right", .18f, .52f, .18f, .72f, 1.02f, 0f, stone);
+        addBox(root, "crystal-sentinel-leg-left", .21f, .36f, .21f, -.30f, .34f, .02f, stone);
+        addBox(root, "crystal-sentinel-leg-right", .21f, .36f, .21f, .30f, .34f, .02f, stone);
+        addBox(root, "crystal-sentinel-back-crystal", .12f, .30f, .12f, 0f, 1.68f, .37f, amethyst);
     }
 
     private void buildSpider(Node root) {

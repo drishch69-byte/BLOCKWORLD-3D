@@ -18,6 +18,17 @@ class TreasureLootTest {
     }
 
     @Test
+    void undergroundCrystalCachesGuaranteeEmeraldsAndExtraSupplies() {
+        BlockPos caveCache = new BlockPos(74, -9, -31);
+        Map<ItemType, Integer> first = TreasureLoot.roll(551122L, caveCache);
+        Map<ItemType, Integer> second = TreasureLoot.roll(551122L, caveCache);
+        assertEquals(first, second);
+        assertTrue(first.getOrDefault(ItemType.EMERALD, 0) >= 1);
+        assertTrue(first.getOrDefault(ItemType.IRON_INGOT, 0) >= 3
+                || first.getOrDefault(ItemType.COPPER_INGOT, 0) >= 3);
+    }
+
+    @Test
     void chestLootChangesWithWorldSeedOrChestPosition() {
         BlockPos firstChest = new BlockPos(18, -6, 42);
         Map<ItemType, Integer> first = TreasureLoot.roll(778899L, firstChest);

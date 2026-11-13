@@ -256,6 +256,19 @@ public final class VoxelWorld {
         return columnHeights.getOrDefault(columnKey(x, z), -13);
     }
 
+    /** Finds the highest block below a ceiling; used by creatures that walk inside cave rooms. */
+    public int highestBlockYAtOrBelow(int x, int z, int ceilingY) {
+        int highest = -13;
+        Set<BlockPos> members = chunkBlocks.get(ChunkPos.fromBlock(x, z));
+        if (members == null) return highest;
+        for (BlockPos pos : members) {
+            if (pos.x() == x && pos.z() == z && pos.y() <= ceilingY && pos.y() > highest) {
+                highest = pos.y();
+            }
+        }
+        return highest;
+    }
+
     public boolean isChunkRenderedAt(float worldX, float worldZ) {
         return chunkGeometries.containsKey(ChunkPos.fromBlock(Math.round(worldX), Math.round(worldZ)));
     }
@@ -810,6 +823,7 @@ public final class VoxelWorld {
         int cellSize = CaveBiomeGenerator.cellSize();
         int minCell = Math.floorDiv(-radius, cellSize);
         int maxCell = Math.floorDiv(radius, cellSize);
+        boolean bossSpawned = false;
         for (int cellX = minCell; cellX <= maxCell; cellX++) {
             int centerX = cellX * cellSize + cellSize / 2;
             if (Math.abs(centerX) > radius - 9) continue;
@@ -819,13 +833,19 @@ public final class VoxelWorld {
                 int centerY = -6 - random.nextInt(6);
                 CaveBiomeType biome = CaveBiomeGenerator.biomeAt(seed, centerX, centerY, centerZ);
                 if (biome == CaveBiomeType.NONE) continue;
-                createSubterraneanRoom(centerX, centerY, centerZ, biome, random);
+                int floorY = createSubterraneanRoom(centerX, centerY, centerZ, biome, random);
+                if (biome == CaveBiomeType.CRYSTAL_GROTTO && !bossSpawned) {
+                    long bossId = 1_000_000L + Math.floorMod((long) centerX * 31L + centerZ, 1_000_000L);
+                    addCreature(new WorldCreature(bossId, CreatureType.CRYSTAL_SENTINEL,
+                            centerX + 0.5f, floorY + 1f, centerZ + 0.5f, 0f));
+                    bossSpawned = true;
+                }
             }
         }
     }
 
-    private void createSubterraneanRoom(int centerX, int centerY, int centerZ,
-                                        CaveBiomeType biome, Random random) {
+    private int createSubterraneanRoom(int centerX, int centerY, int centerZ,
+                                       CaveBiomeType biome, Random random) {
         int radiusX = biome == CaveBiomeType.UNDERGROUND_LAKE ? 5 + random.nextInt(3) : 4 + random.nextInt(2);
         int radiusY = 2 + random.nextInt(2);
         int radiusZ = biome == CaveBiomeType.UNDERGROUND_LAKE ? 5 + random.nextInt(3) : 4 + random.nextInt(2);
@@ -880,6 +900,43 @@ public final class VoxelWorld {
         // Place sprouts after carving so later carve cells cannot erase them.
         for (BlockPos fern : fernCandidates) {
             if (!blocks.containsKey(fern)) addBlock(fern, BlockType.CAVE_FERN);
+        }
+        int floorY = Math.max(-12, centerY - radiusY);
+        if (biome == CaveBiomeType.CRYSTAL_GROTTO) {
+            for (int dx = -3; dx <= 3; dx++) {
+                for (int dz = -3; dz <= 3; dz++) {
+                    BlockPos floor = new BlockPos(centerX + dx, floorY, centerZ + dz);
+                    removeBlock(floor);
+                    addBlock(floor, BlockType.STONE);
+                }
+            }
+            addCrystalTree(centerX + 2, floorY + 1, centerZ + 1);
+            BlockPos cache = new BlockPos(centerX - 2, floorY + 1, centerZ - 1);
+            removeBlock(cache);
+            addBlock(cache, BlockType.TREASURE_CHEST);
+        }
+        return floorY;
+    }
+
+    /** A small bioluminescent tree made from the existing stable block IDs. */
+    private void addCrystalTree(int x, int baseY, int z) {
+        for (int dy = 0; dy < 2; dy++) {
+            BlockPos trunk = new BlockPos(x, baseY + dy, z);
+            removeBlock(trunk);
+            addBlock(trunk, BlockType.GLOWING_CRYSTAL);
+        }
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (Math.abs(dx) + Math.abs(dz) > 3) continue;
+                BlockPos crown = new BlockPos(x + dx, baseY + 2, z + dz);
+                removeBlock(crown);
+                addBlock(crown, dx == 0 && dz == 0 ? BlockType.AMETHYST_ORE : BlockType.CAVE_FERN);
+            }
+        }
+        for (int dx : new int[]{-1, 1}) {
+            BlockPos branch = new BlockPos(x + dx, baseY + 1, z);
+            removeBlock(branch);
+            addBlock(branch, BlockType.GLOWING_CRYSTAL);
         }
     }
 
