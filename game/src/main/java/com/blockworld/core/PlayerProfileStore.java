@@ -80,7 +80,7 @@ public final class PlayerProfileStore {
 
         Path temporary = absolute.resolveSibling(absolute.getFileName() + ".tmp");
         try (OutputStream output = Files.newOutputStream(temporary)) {
-            properties.store(output, "BLOCKWORLD 3D player profile");
+            properties.store(output, "CUBEVERSE 3D player profile");
         }
         try {
             Files.move(temporary, absolute, StandardCopyOption.REPLACE_EXISTING,

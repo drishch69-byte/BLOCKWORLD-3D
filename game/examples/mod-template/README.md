@@ -1,6 +1,6 @@
 # Hello mod template
 
-This template demonstrates the BlockWorld 0.7.5 ServiceLoader API. It adds one decorative gold-ore block after the world is loaded.
+This template demonstrates the CUBEVERSE 3D 0.7.5 ServiceLoader API. It adds one decorative gold-ore block after the world is loaded.
 
 1. Build the main game first with `mvn package` from the project root.
 2. Compile `src/main/java/example/HelloBlockWorldMod.java` against `target/blockworld-3d-0.7.5.jar` using Java 17.

@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for BLOCKWORLD 3D
+about: Suggest an idea for CUBEVERSE 3D
 title: "[Feature]: "
 labels: enhancement
 assignees: ""

@@ -1,7 +1,7 @@
-BLOCKWORLD 3D — РЕСУРС-ПАКИ 0.7.5
+CUBEVERSE 3D — РЕСУРС-ПАКИ 0.7.5
 
 Импорт ZIP через меню «РЕСУРС-ПАКИ». В корне ZIP должен находиться pack.properties.
-Установленные паки: %USERPROFILE%\.blockworld3d\resourcepacks (Windows) или ~/.blockworld3d/resourcepacks (Linux/macOS).
+Совместимая папка данных (оставлена со старым именем): %USERPROFILE%\.blockworld3d\resourcepacks (Windows) или ~/.blockworld3d/resourcepacks (Linux/macOS).
 
 PNG-ТЕКСТУРЫ
 Положи файлы в textures/blocks/ внутри ZIP:

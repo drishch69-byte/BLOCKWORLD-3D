@@ -133,7 +133,7 @@ public final class MultiplayerServer implements AutoCloseable {
             worldStore.save(worldSeed, activeBiomes, extendedBiomes, worldRadius,
                     worldBlocks, List.copyOf(worldCreatures.values()));
         } catch (IOException error) {
-            System.err.println("BLOCKWORLD 3D: failed to save hosted multiplayer world: " + error.getMessage());
+            System.err.println("CUBEVERSE 3D: failed to save hosted multiplayer world: " + error.getMessage());
             for (ClientHandler client : clients) client.send("WORLD_SAVE_ERROR");
         }
     }
@@ -617,7 +617,7 @@ public final class MultiplayerServer implements AutoCloseable {
                 if (removed == BlockType.TREASURE_CHEST && sharedChests.remove(pos) != null && chestStore != null) {
                     try { chestStore.save(sharedChests); }
                     catch (IOException error) {
-                        System.err.println("BLOCKWORLD 3D: failed to clean a removed shared chest: " + error.getMessage());
+                        System.err.println("CUBEVERSE 3D: failed to clean a removed shared chest: " + error.getMessage());
                     }
                 }
                 persistWorldLocked();

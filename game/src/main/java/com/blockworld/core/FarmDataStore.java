@@ -54,7 +54,7 @@ public final class FarmDataStore {
             }
         });
         Path temp = file.resolveSibling(file.getFileName() + ".tmp");
-        try (OutputStream output = Files.newOutputStream(temp)) { properties.store(output, "BLOCKWORLD 3D crop growth"); }
+        try (OutputStream output = Files.newOutputStream(temp)) { properties.store(output, "CUBEVERSE 3D crop growth"); }
         try { Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); }
         catch (java.nio.file.AtomicMoveNotSupportedException ex) {
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);

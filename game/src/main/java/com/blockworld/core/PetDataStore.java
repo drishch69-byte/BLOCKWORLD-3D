@@ -52,7 +52,7 @@ public final class PetDataStore {
                 .forEach(entry -> properties.setProperty(PREFIX + entry.getKey(), entry.getValue().id()));
         Path temp = file.resolveSibling(file.getFileName() + ".tmp");
         try (OutputStream output = Files.newOutputStream(temp)) {
-            properties.store(output, "BLOCKWORLD 3D pet commands");
+            properties.store(output, "CUBEVERSE 3D pet commands");
         }
         try {
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

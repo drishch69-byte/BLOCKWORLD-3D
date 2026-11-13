@@ -60,7 +60,7 @@ public final class PlayerDataStore {
         for (ArmorSlot slot : ArmorSlot.values()) properties.setProperty("armor." + slot.id(),
                 Boolean.toString(equippedArmor.contains(slot)));
         Path temp = file.resolveSibling(file.getFileName() + ".tmp");
-        try (OutputStream output = Files.newOutputStream(temp)) { properties.store(output, "BLOCKWORLD 3D player inventory"); }
+        try (OutputStream output = Files.newOutputStream(temp)) { properties.store(output, "CUBEVERSE 3D player inventory"); }
         try { Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE); }
         catch (java.nio.file.AtomicMoveNotSupportedException ex) {
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);

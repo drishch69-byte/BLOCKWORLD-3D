@@ -89,7 +89,7 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
         try {
             try (OutputStream out = Files.newOutputStream(temporary)) {
-                p.store(out, "BLOCKWORLD 3D settings");
+                p.store(out, "CUBEVERSE 3D settings");
             }
             try {
                 Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING,

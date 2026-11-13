@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem in BLOCKWORLD 3D
+about: Report a problem in CUBEVERSE 3D
 title: "[Bug]: "
 labels: bug
 assignees: ""
@@ -21,7 +21,7 @@ What did you expect to happen?
 What happened instead?
 
 ## Version and environment
-- BLOCKWORLD 3D version:
+- CUBEVERSE 3D version:
 - Operating system:
 - Java version:
 - Graphics card (if known):

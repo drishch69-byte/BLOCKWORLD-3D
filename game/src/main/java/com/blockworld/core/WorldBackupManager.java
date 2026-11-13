@@ -83,7 +83,7 @@ public final class WorldBackupManager {
             }
 
             try (OutputStream output = Files.newOutputStream(manifestTemp)) {
-                metadata.store(output, "BLOCKWORLD 3D backup sidecars");
+                metadata.store(output, "CUBEVERSE 3D backup sidecars");
             }
             moveReplace(manifestTemp, manifest);
             created.add(manifest);
