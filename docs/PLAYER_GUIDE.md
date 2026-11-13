@@ -1,6 +1,6 @@
 # Minecraft 3D — Player Guide
 
-This is a quick reference for the gameplay systems available in version 1.1.0. Some actions depend on having the required item and selecting a compatible version profile.
+This is a quick reference for the current gameplay systems. Some actions depend on having the required item and selecting a compatible version profile.
 
 ## Survival loop
 
@@ -17,6 +17,7 @@ This is a quick reference for the gameplay systems available in version 1.1.0. S
 
 | Key | Action |
 | --- | --- |
+| Hold left mouse button | Mine the targeted block in survival mode; releasing cancels progress |
 | I | Inventory |
 | C | Crafting |
 | M | Achievements |

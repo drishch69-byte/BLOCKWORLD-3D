@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.3",
+  "defaultVersion": "1.9.4",
   "versions": [
     {
       "id": "0.1.0",
@@ -149,6 +149,11 @@
     {
       "id": "1.9.3",
       "name": "Inventory Tabs Update",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.4",
+      "name": "Mining Feedback Update",
       "status": "current"
     }
   ]

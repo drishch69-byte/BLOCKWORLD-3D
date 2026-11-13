@@ -5,6 +5,7 @@ import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
 import com.blockworld.core.ItemType;
 import com.blockworld.core.ToolType;
+import com.blockworld.core.MiningRules;
 import com.blockworld.core.ArmorSlot;
 import com.blockworld.core.ArmorProtection;
 import com.blockworld.core.CraftingRecipe;
@@ -165,6 +166,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private int loadedModCount;
     private BitmapText hud;
     private BitmapText crosshair;
+    private BitmapText miningHud;
     private Geometry hudPanel;
     private Geometry navigationPanel;
     private BitmapText navigationHud;
@@ -190,6 +192,11 @@ public final class BlockWorldGame extends SimpleApplication {
     private boolean achievementsOpen;
     private float farmSaveClock;
     private boolean paused;
+    private boolean miningPressed;
+    private BlockPos miningTarget;
+    private BlockType miningBlock;
+    private float miningElapsed;
+    private float miningDuration;
     private List<BlockType> hotbar;
     private BlockType selectedBlock = BlockType.GRASS;
     private volatile String statusMessage = "Добро пожаловать в Minecraft 3D!";
@@ -579,6 +586,15 @@ public final class BlockWorldGame extends SimpleApplication {
         crosshair.setLocalTranslation(settings.getWidth() / 2f - 5f, settings.getHeight() / 2f + 7f, 0f);
         guiNode.attachChild(crosshair);
 
+        miningHud = new BitmapText(guiFont);
+        miningHud.setSize(15f);
+        miningHud.setColor(new ColorRGBA(1f, 0.88f, 0.56f, 1f));
+        miningHud.setQueueBucket(RenderQueue.Bucket.Gui);
+        miningHud.setLocalTranslation(settings.getWidth() / 2f - 150f,
+                settings.getHeight() / 2f - 24f, 2f);
+        miningHud.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        guiNode.attachChild(miningHud);
+
         Material pauseMaterial = new Material(assetManager, "Common/MatDefs/Misc/Unshaded.j3md");
         pauseMaterial.setColor("Color", new ColorRGBA(0.015f, 0.025f, 0.045f, 0.94f));
         pauseMaterial.getAdditionalRenderState().setBlendMode(RenderState.BlendMode.Alpha);
@@ -700,12 +716,16 @@ public final class BlockWorldGame extends SimpleApplication {
         }
 
         ActionListener actions = (name, isPressed, tpf) -> {
+            if (name.equals(BREAK)) {
+                if (isPressed) beginMining();
+                else cancelMining();
+                return;
+            }
             if (!isPressed) {
                 return;
             }
             if (paused && !name.equals("TOGGLE_PAUSE") && !name.equals("SAVE") && !name.equals("EXIT_GAME")) return;
             switch (name) {
-                case BREAK -> breakTargetBlock();
                 case PLACE -> placeTargetBlock();
                 case SAVE -> saveWorld();
                 case "TOGGLE_CAMERA" -> toggleCameraView();
@@ -777,6 +797,7 @@ public final class BlockWorldGame extends SimpleApplication {
         }
         try {
             updateFrame(tpf);
+            updateMining(tpf);
             updateMultiplayer(tpf);
             captureWorldPreviewIfReady();
             checkpointPlayerProfile(false);
@@ -1550,7 +1571,10 @@ public final class BlockWorldGame extends SimpleApplication {
     private void setPaused(boolean value) {
         if (paused == value || guiNode == null) return;
         // Persist the active interval before pausing; paused wall-clock time is not play time.
-        if (value) checkpointPlayerProfile(true);
+        if (value) {
+            checkpointPlayerProfile(true);
+            cancelMining();
+        }
         if (value && chestOpen) { chestOpen = false; chestOperationPending = false; }
         paused = value;
         if (profileSessionStarted) profileCheckpointNanos = System.nanoTime();
@@ -1798,6 +1822,117 @@ public final class BlockWorldGame extends SimpleApplication {
         if (results.size() == 0) return null;
         CollisionResult closest = results.getClosestCollision();
         return world.getHitFace(closest.getGeometry(), closest.getTriangleIndex());
+    }
+
+    private void beginMining() {
+        if (paused || !worldReady || inventoryOpen || craftingOpen || furnaceOpen
+                || tradeOpen || chestOpen || achievementsOpen) return;
+        if (!version.survival()) {
+            breakTargetBlock();
+            return;
+        }
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
+            statusMessage = "Подожди завершения синхронизации общего мира.";
+            updateHud();
+            return;
+        }
+
+        BlockHit hit = getTargetBlock();
+        Vector3f attackOrigin = cam.getLocation();
+        boolean blockBlocksAttack = hit != null && attackOrigin.distance(new Vector3f(
+                hit.position().x() + .5f, hit.position().y() + .5f, hit.position().z() + .5f)) <= 3.4f;
+        if (!blockBlocksAttack && creatureManager != null) {
+            String combatMessage = creatureManager.attackAlongRay(attackOrigin, cam.getDirection(),
+                    3.4f, .82f, CombatRules.unarmedContactDamage(), world);
+            if (combatMessage != null) {
+                cancelMining();
+                statusMessage = combatMessage;
+                updateHud();
+                return;
+            }
+        }
+        if (hit == null) {
+            cancelMining();
+            statusMessage = "Наведи прицел на блок и удерживай ЛКМ для добычи.";
+            updateHud();
+            return;
+        }
+
+        BlockType block = world.getBlock(hit.position());
+        if (block == null) {
+            cancelMining();
+            return;
+        }
+        if (equipmentEnabled && !ToolType.canMine(block, selectedTool)) {
+            cancelMining();
+            int required = ToolType.requiredTier(block);
+            statusMessage = "Для блока «" + block.displayName() + "» нужна кирка уровня " + required
+                    + ". Нажми T, чтобы выбрать инструмент.";
+            updateHud();
+            return;
+        }
+
+        miningPressed = true;
+        miningTarget = hit.position();
+        miningBlock = block;
+        miningElapsed = 0f;
+        miningDuration = MiningRules.durationSeconds(block, selectedTool);
+        updateMiningHud(0f, block);
+    }
+
+    private void updateMining(float tpf) {
+        if (!miningPressed) return;
+        if (paused || !worldReady || inventoryOpen || craftingOpen || furnaceOpen
+                || tradeOpen || chestOpen || achievementsOpen
+                || (multiplayerClient != null && multiplayerClient.isConnected()
+                    && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending))) {
+            cancelMining();
+            return;
+        }
+
+        BlockHit hit = getTargetBlock();
+        if (hit == null || !hit.position().equals(miningTarget)
+                || world.getBlock(miningTarget) != miningBlock
+                || (equipmentEnabled && !ToolType.canMine(miningBlock, selectedTool))) {
+            cancelMining();
+            return;
+        }
+
+        if (Float.isFinite(tpf) && tpf > 0f) miningElapsed += tpf;
+        float progress = Math.min(1f, miningElapsed / Math.max(0.01f, miningDuration));
+        updateMiningHud(progress, miningBlock);
+        if (progress >= 1f) {
+            BlockPos completedTarget = miningTarget;
+            BlockType completedBlock = miningBlock;
+            cancelMining();
+            BlockHit currentHit = getTargetBlock();
+            if (currentHit != null && currentHit.position().equals(completedTarget)
+                    && world.getBlock(completedTarget) == completedBlock) {
+                breakTargetBlock();
+            }
+        }
+    }
+
+    private void updateMiningHud(float progress, BlockType block) {
+        if (miningHud == null || block == null) return;
+        int percent = Math.max(0, Math.min(100, Math.round(progress * 100f)));
+        int filled = Math.max(0, Math.min(10, Math.round(percent / 10f)));
+        miningHud.setText("Добыча: " + block.displayName() + "  " + percent + "%  ["
+                + "#".repeat(filled) + "-".repeat(10 - filled) + "]");
+        miningHud.setCullHint(com.jme3.scene.Spatial.CullHint.Inherit);
+    }
+
+    private void cancelMining() {
+        miningPressed = false;
+        miningTarget = null;
+        miningBlock = null;
+        miningElapsed = 0f;
+        miningDuration = 0f;
+        if (miningHud != null) {
+            miningHud.setText("");
+            miningHud.setCullHint(com.jme3.scene.Spatial.CullHint.Always);
+        }
     }
 
     private void breakTargetBlock() {
@@ -2319,6 +2454,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private void toggleInventory() {
         if (chestOpen) return;
         if (!version.survival() || !worldReady) return;
+        cancelMining();
         inventoryOpen = !inventoryOpen;
         if (inventoryOpen) inventoryPage = 0;
         craftingOpen = false;
@@ -2335,6 +2471,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private void toggleCrafting() {
         if (chestOpen) return;
         if (!version.survival() || !worldReady) return;
+        cancelMining();
         craftingOpen = !craftingOpen;
         inventoryOpen = false;
         furnaceOpen = false;
@@ -2636,7 +2773,7 @@ public final class BlockWorldGame extends SimpleApplication {
         String controls = version.survival()
                 ? "WASD — ходьба    Мышь — обзор    F5 — камера    V — образ игрока    ПРОБЕЛ — прыжок    E — еда    "
                     + (equipmentEnabled ? "T — инструмент    " : "")
-                    + "Колесо мыши — выбор слота    I — инвентарь    C — крафт    F — печь/общение"
+                    + "ЛКМ удерживать — добыча    Колесо мыши — выбор слота    I — инвентарь    C — крафт    F — печь/общение"
                     + (agricultureEnabled ? "    G — ферма/печь" : "")
                     + (release100Enabled ? "    P — рыбалка    M — достижения" : "")
                     + (explorationEnabled ? "    B — карта/компас" : "")
@@ -2700,6 +2837,7 @@ public final class BlockWorldGame extends SimpleApplication {
             hud.setLocalTranslation(15f, height - 14f, 0f);
             if (hudPanel != null) hudPanel.setLocalTranslation(7f, height - 181f, 1f);
             if (crosshair != null) crosshair.setLocalTranslation(width / 2f - 5f, height / 2f + 7f, 0f);
+            if (miningHud != null) miningHud.setLocalTranslation(width / 2f - 150f, height / 2f - 24f, 2f);
             if (pausePanel != null) pausePanel.setLocalTranslation(width / 2f - 260f, height / 2f - 125f, 4f);
             if (pauseText != null) pauseText.setLocalTranslation(width / 2f - 205f, height / 2f + 82f, 5f);
             if (inventoryPanel != null) inventoryPanel.setLocalTranslation(width / 2f - 350f, height / 2f - 250f, 8f);

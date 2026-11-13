@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionManagerTest {
     @Test
-    void includesAllProfilesAndDefaultsToInventoryTabs() {
-        assertEquals(30, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.3", VersionManager.getDefaultVersion().id());
+    void includesAllProfilesAndDefaultsToMiningFeedback() {
+        assertEquals(31, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.4", VersionManager.getDefaultVersion().id());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());
@@ -24,6 +24,9 @@ class VersionManagerTest {
         assertEquals("Inventory Tabs Update", VersionManager.find("1.9.3").displayName());
         assertEquals(144, VersionManager.find("1.9.3").worldRadius());
         assertTrue(VersionManager.find("1.9.3").survival());
+        assertEquals("Mining Feedback Update", VersionManager.find("1.9.4").displayName());
+        assertEquals(144, VersionManager.find("1.9.4").worldRadius());
+        assertTrue(VersionManager.find("1.9.4").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());

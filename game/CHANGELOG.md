@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.4 — Mining Feedback Update
+- Survival mining now requires holding the left mouse button; releasing it or changing the targeted block cancels progress.
+- Added a live mining progress indicator below the crosshair.
+- Block hardness changes mining duration, and a suitable tool speeds up matching blocks.
+- Creative mode keeps instant block removal; creature interaction on left-click remains available.
+- Kept world format, block IDs, inventory files, and existing worlds unchanged.
+- Added JUnit coverage for block hardness and tool speed rules.
+
 ## 1.9.3 — Inventory Tabs Update
 - Split the survival inventory into dedicated **Resources** and **Equipment** tabs.
 - Press **1** for resources and **2** for equipment; left/right arrows cycle between tabs.

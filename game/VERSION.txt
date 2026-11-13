@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.3
-Codename: Inventory Tabs Update
+Version: 1.9.4
+Codename: Mining Feedback Update
 Status: Feature Release
