@@ -634,7 +634,7 @@ public final class VoxelWorld {
                 addCrystalCaverns(random, radius);
             }
             if (caveBiomesEnabled) {
-                addSubterraneanBiomes(random, radius);
+                addSubterraneanBiomes(random, radius, supportsCrystalBosses(version.id()));
             }
             if (version.id().compareTo("0.8.0") >= 0) {
                 addVillageHouse(-34, 27);
@@ -819,7 +819,7 @@ public final class VoxelWorld {
     }
 
     /** Places seed-selected underground biome rooms without changing older world profiles. */
-    private void addSubterraneanBiomes(Random random, int radius) {
+    private void addSubterraneanBiomes(Random random, int radius, boolean includeCrystalStructures) {
         int cellSize = CaveBiomeGenerator.cellSize();
         int minCell = Math.floorDiv(-radius, cellSize);
         int maxCell = Math.floorDiv(radius, cellSize);
@@ -833,8 +833,8 @@ public final class VoxelWorld {
                 int centerY = -6 - random.nextInt(6);
                 CaveBiomeType biome = CaveBiomeGenerator.biomeAt(seed, centerX, centerY, centerZ);
                 if (biome == CaveBiomeType.NONE) continue;
-                int floorY = createSubterraneanRoom(centerX, centerY, centerZ, biome, random);
-                if (biome == CaveBiomeType.CRYSTAL_GROTTO && !bossSpawned) {
+                int floorY = createSubterraneanRoom(centerX, centerY, centerZ, biome, random, includeCrystalStructures);
+                if (includeCrystalStructures && biome == CaveBiomeType.CRYSTAL_GROTTO && !bossSpawned) {
                     long bossId = 1_000_000L + Math.floorMod((long) centerX * 31L + centerZ, 1_000_000L);
                     addCreature(new WorldCreature(bossId, CreatureType.CRYSTAL_SENTINEL,
                             centerX + 0.5f, floorY + 1f, centerZ + 0.5f, 0f));
@@ -845,7 +845,7 @@ public final class VoxelWorld {
     }
 
     private int createSubterraneanRoom(int centerX, int centerY, int centerZ,
-                                       CaveBiomeType biome, Random random) {
+                                       CaveBiomeType biome, Random random, boolean includeCrystalStructures) {
         int radiusX = biome == CaveBiomeType.UNDERGROUND_LAKE ? 5 + random.nextInt(3) : 4 + random.nextInt(2);
         int radiusY = 2 + random.nextInt(2);
         int radiusZ = biome == CaveBiomeType.UNDERGROUND_LAKE ? 5 + random.nextInt(3) : 4 + random.nextInt(2);
@@ -902,7 +902,7 @@ public final class VoxelWorld {
             if (!blocks.containsKey(fern)) addBlock(fern, BlockType.CAVE_FERN);
         }
         int floorY = Math.max(-12, centerY - radiusY);
-        if (biome == CaveBiomeType.CRYSTAL_GROTTO) {
+        if (includeCrystalStructures && biome == CaveBiomeType.CRYSTAL_GROTTO) {
             for (int dx = -3; dx <= 3; dx++) {
                 for (int dz = -3; dz <= 3; dz++) {
                     BlockPos floor = new BlockPos(centerX + dx, floorY, centerZ + dz);
@@ -913,7 +913,7 @@ public final class VoxelWorld {
             addCrystalTree(centerX + 2, floorY + 1, centerZ + 1);
             BlockPos cache = new BlockPos(centerX - 2, floorY + 1, centerZ - 1);
             removeBlock(cache);
-            addBlock(cache, BlockType.TREASURE_CHEST);
+            addBlock(cache, BlockType.CRYSTAL_CACHE);
         }
         return floorY;
     }
@@ -1189,6 +1189,19 @@ public final class VoxelWorld {
             int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
             return major > 1 || (major == 1 && (minor > 9 || (minor == 9 && patch >= 5)));
         } catch (RuntimeException ex) { return false; }
+    }
+
+    private static boolean supportsCrystalBosses(String versionId) {
+        if (versionId == null) return false;
+        try {
+            String[] parts = versionId.split("\\.");
+            int major = Integer.parseInt(parts[0]);
+            int minor = Integer.parseInt(parts[1]);
+            int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
+            return major > 1 || (major == 1 && (minor > 9 || (minor == 9 && patch >= 7)));
+        } catch (RuntimeException ex) {
+            return false;
+        }
     }
 
     private static boolean supportsRelease100(String id) {

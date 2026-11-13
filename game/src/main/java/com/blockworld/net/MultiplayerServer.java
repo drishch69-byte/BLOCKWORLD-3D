@@ -205,12 +205,14 @@ public final class MultiplayerServer implements AutoCloseable {
             return;
         }
         synchronized (worldLock) {
-            if (!worldReady || worldBlocks.get(pos) != BlockType.TREASURE_CHEST) {
+            BlockType chestType = worldBlocks.get(pos);
+            if (!worldReady || (chestType != BlockType.TREASURE_CHEST && chestType != BlockType.CRYSTAL_CACHE)) {
                 target.send("CHEST_ERROR Сундук не найден в общем мире");
                 return;
             }
             if (!sharedChests.containsKey(pos)) {
-                Map<ItemType, Integer> loot = TreasureLoot.roll(worldSeed, pos);
+                Map<ItemType, Integer> loot = chestType == BlockType.CRYSTAL_CACHE
+                        ? TreasureLoot.rollCrystalCache(worldSeed, pos) : TreasureLoot.roll(worldSeed, pos);
                 EnumMap<ItemType, Integer> initialLoot = new EnumMap<>(ItemType.class);
                 initialLoot.putAll(loot);
                 sharedChests.put(pos, initialLoot);
@@ -235,7 +237,8 @@ public final class MultiplayerServer implements AutoCloseable {
             ItemType item = ItemType.valueOf(p[4]);
             int count = boundedTradeCount(p[5]);
             synchronized (worldLock) {
-                if (!worldReady || worldBlocks.get(pos) != BlockType.TREASURE_CHEST
+                BlockType chestType = worldBlocks.get(pos);
+                if (!worldReady || (chestType != BlockType.TREASURE_CHEST && chestType != BlockType.CRYSTAL_CACHE)
                         || !sharedChests.containsKey(pos)) {
                     target.send("CHEST_ERROR Сундук закрыт или не существует");
                     return;
@@ -614,7 +617,8 @@ public final class MultiplayerServer implements AutoCloseable {
                 if (!worldReady) return;
                 BlockType removed = worldBlocks.remove(pos);
                 if (removed == null) return;
-                if (removed == BlockType.TREASURE_CHEST && sharedChests.remove(pos) != null && chestStore != null) {
+                if ((removed == BlockType.TREASURE_CHEST || removed == BlockType.CRYSTAL_CACHE)
+                        && sharedChests.remove(pos) != null && chestStore != null) {
                     try { chestStore.save(sharedChests); }
                     catch (IOException error) {
                         System.err.println("CUBEVERSE 3D: failed to clean a removed shared chest: " + error.getMessage());

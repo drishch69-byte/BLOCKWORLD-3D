@@ -341,6 +341,19 @@ public final class ResourcePackManager {
             for (int x = 0; x < BLOCK_TEXTURE_SIZE; x++) {
                 int noise = random.nextInt(31) - 15;
                 int detail = 0;
+                if (type == BlockType.CRYSTAL_CACHE) {
+                    boolean trim = x == 2 || x == 13 || y == 3 || y == 12;
+                    boolean gem = (x >= 6 && x <= 9 && y >= 6 && y <= 9)
+                            || (x == 7 && y >= 4 && y <= 11) || (y == 7 && x >= 4 && x <= 11);
+                    int r = gem ? 95 + random.nextInt(45) : trim ? 205 + random.nextInt(40)
+                            : 70 + random.nextInt(35) + noise / 2;
+                    int g = gem ? 205 + random.nextInt(45) : trim ? 150 + random.nextInt(55)
+                            : 43 + random.nextInt(30) + noise / 2;
+                    int b = gem ? 225 + random.nextInt(30) : trim ? 48 + random.nextInt(30)
+                            : 105 + random.nextInt(45) + noise / 2;
+                    image.setRGB(x, y, 0xFF000000 | (clamp255(r) << 16) | (clamp255(g) << 8) | clamp255(b));
+                    continue;
+                }
                 if (type == BlockType.GLOWING_CRYSTAL || type == BlockType.CAVE_MOSS || type == BlockType.CAVE_FERN) {
                     int pattern = Math.floorMod(x * 11 + y * 7 + seed, 19);
                     int r;

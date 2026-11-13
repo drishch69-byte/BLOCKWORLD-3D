@@ -9,6 +9,23 @@ import java.util.Random;
 public final class TreasureLoot {
     private TreasureLoot() { }
 
+    /** Richer one-time reward table used only by 1.9.7 crystal caches. */
+    public static Map<ItemType, Integer> rollCrystalCache(long seed, BlockPos chest) {
+        if (chest == null) throw new IllegalArgumentException("Позиция тайника обязательна");
+        long mixedSeed = seed
+                ^ ((long) chest.x() * 0x9E3779B97F4A7C15L)
+                ^ ((long) chest.y() * 0xC2B2AE3D27D4EB4FL)
+                ^ ((long) chest.z() * 0x165667B19E3779F9L)
+                ^ 0x6A09E667F3BCC909L;
+        Random random = new Random(mixedSeed);
+        EnumMap<ItemType, Integer> loot = new EnumMap<>(ItemType.class);
+        loot.put(ItemType.EMERALD, 2 + random.nextInt(3));
+        if (random.nextBoolean()) loot.put(ItemType.IRON_INGOT, 4 + random.nextInt(3));
+        else loot.put(ItemType.COPPER_INGOT, 4 + random.nextInt(4));
+        loot.put(ItemType.COOKED_FISH, 1 + random.nextInt(2));
+        return Collections.unmodifiableMap(loot);
+    }
+
     public static Map<ItemType, Integer> roll(long seed, BlockPos chest) {
         if (chest == null) throw new IllegalArgumentException("Позиция сундука обязательна");
         long mixedSeed = seed
