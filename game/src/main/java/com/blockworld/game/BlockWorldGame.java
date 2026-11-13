@@ -33,6 +33,7 @@ import com.blockworld.core.GameLog;
 import com.blockworld.net.MultiplayerClient;
 import com.blockworld.core.VoxelWorld;
 import com.jme3.app.SimpleApplication;
+import com.jme3.app.state.ScreenshotAppState;
 import com.jme3.collision.CollisionResult;
 import com.jme3.collision.CollisionResults;
 import com.jme3.font.BitmapText;
@@ -143,6 +144,8 @@ public final class BlockWorldGame extends SimpleApplication {
     private NatureDecorationManager natureDecorations;
     private PlayerAvatar playerAvatar;
     private PlayerProfileStore.Profile playerProfile = PlayerProfileStore.Profile.defaults();
+    private ScreenshotAppState worldScreenshotState;
+    private boolean worldPreviewCaptureRequested;
     private boolean profileSessionStarted;
     private long profileCheckpointNanos;
     private boolean thirdPersonView;
@@ -303,6 +306,7 @@ public final class BlockWorldGame extends SimpleApplication {
             GameLog.error("Не удалось загрузить профиль игрока; применён стандартный профиль", error);
             playerProfile = PlayerProfileStore.Profile.defaults();
         }
+        setupWorldPreviewCapture();
         setDisplayFps(false);
         setDisplayStatView(false);
         // A wider FOV and a short near plane keep nearby terrain visible in first-person view.
@@ -698,6 +702,7 @@ public final class BlockWorldGame extends SimpleApplication {
         try {
             updateFrame(tpf);
             updateMultiplayer(tpf);
+            captureWorldPreviewIfReady();
             checkpointPlayerProfile(false);
         } catch (RuntimeException error) {
             runtimeFault = true;
@@ -2556,6 +2561,33 @@ public final class BlockWorldGame extends SimpleApplication {
                 "BLOCKWORLD 3D — ошибка графического движка", JOptionPane.ERROR_MESSAGE));
     }
 
+
+
+    private void setupWorldPreviewCapture() {
+        if (saveFile == null || saveFile.getFileName() == null) return;
+        try {
+            Path preview = GamePaths.worldPreviewFile(saveFile);
+            Path directory = preview.toAbsolutePath().getParent();
+            Files.createDirectories(directory);
+            String outputDirectory = directory.toString() + java.io.File.separator;
+            String outputName = preview.getFileName().toString().replaceFirst("(?i)\\.png$", "");
+            worldScreenshotState = new ScreenshotAppState(outputDirectory, outputName);
+            worldScreenshotState.setIsNumbered(false);
+            stateManager.attach(worldScreenshotState);
+            GameLog.info("Подготовлено настоящее скриншот-превью мира: " + preview.toAbsolutePath());
+        } catch (IOException | RuntimeException error) {
+            worldScreenshotState = null;
+            GameLog.error("Не удалось подготовить скриншот-превью мира", error);
+        }
+    }
+
+    private void captureWorldPreviewIfReady() {
+        if (!worldReady || worldPreviewCaptureRequested || worldScreenshotState == null
+                || !worldScreenshotState.isInitialized()) return;
+        worldScreenshotState.takeScreenshot();
+        worldPreviewCaptureRequested = true;
+        GameLog.info("Запрошен скриншот загруженного мира: " + GamePaths.worldPreviewFile(saveFile));
+    }
 
     private void beginPlayerProfileSession() {
         if (profileSessionStarted) return;

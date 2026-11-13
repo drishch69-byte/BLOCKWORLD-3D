@@ -37,12 +37,16 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
+import javax.swing.ImageIcon;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.FlowLayout;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -51,6 +55,8 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Set;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 /** Desktop launcher: every saved world is visible regardless of selected game profile. */
 public final class Launcher {
@@ -63,6 +69,7 @@ public final class Launcher {
     private JCheckBox favoritesOnly;
     private JButton favoriteButton;
     private Set<String> favoriteNames = Set.of();
+    private final Map<Path, ImageIcon> worldPreviewIconCache = new HashMap<>();
 
     private Launcher() {
         activeLauncher = this;
@@ -155,8 +162,12 @@ public final class Launcher {
                         list, value, index, isSelected, cellHasFocus);
                 if (value instanceof WorldEntry entry) {
                     String marker = favoriteNames.contains(entry.file().getFileName().toString()) ? "★ " : "";
+                    ImageIcon preview = worldPreviewIcon(entry.file());
+                    label.setIcon(preview);
+                    label.setIconTextGap(10);
                     label.setText(marker + entry.name() + "  |  " + entry.lastVersion()
-                            + "  |  " + entry.integrityStatus());
+                            + "  |  " + entry.integrityStatus()
+                            + (preview == null ? "  |  превью появится после загрузки" : ""));
                 }
                 return label;
             }
@@ -265,6 +276,7 @@ public final class Launcher {
             return;
         }
         try {
+            worldPreviewIconCache.clear();
             favoriteNames = WorldFavorites.list();
             List<WorldEntry> allWorlds = WorldCatalog.list();
             List<WorldEntry> worlds = allWorlds.stream()
@@ -305,6 +317,7 @@ public final class Launcher {
         if (worldInfo == null) return;
         WorldEntry selected = (WorldEntry) worldSelector.getSelectedItem();
         if (selected == null) {
+            worldInfo.setIcon(null);
             worldInfo.setText("Нет выбранного мира.");
             return;
         }
@@ -314,8 +327,31 @@ public final class Launcher {
                 : String.format(java.util.Locale.ROOT, "%.1f KiB", kib);
         String changed = java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
                 .withZone(java.time.ZoneId.systemDefault()).format(selected.modified());
+        ImageIcon preview = worldPreviewIcon(selected.file());
+        worldInfo.setIcon(preview);
+        worldInfo.setIconTextGap(12);
         worldInfo.setText(selected.name() + "  |  " + size + "  |  " + selected.integrityStatus()
-                + "  |  изменён: " + changed);
+                + "  |  изменён: " + changed
+                + (preview == null ? "  |  скриншот появится после входа в мир" : "  |  есть скриншот"));
+    }
+
+    private ImageIcon worldPreviewIcon(Path worldFile) {
+        if (worldFile == null) return null;
+        Path previewFile = GamePaths.worldPreviewFile(worldFile);
+        if (!Files.isRegularFile(previewFile)) return null;
+        ImageIcon cached = worldPreviewIconCache.get(previewFile);
+        if (cached != null) return cached;
+        try {
+            BufferedImage source = ImageIO.read(previewFile.toFile());
+            if (source == null) return null;
+            Image scaled = source.getScaledInstance(96, 54, Image.SCALE_SMOOTH);
+            ImageIcon icon = new ImageIcon(scaled);
+            worldPreviewIconCache.put(previewFile, icon);
+            return icon;
+        } catch (IOException | RuntimeException error) {
+            GameLog.error("Не удалось загрузить превью мира " + previewFile, error);
+            return null;
+        }
     }
 
     private void updateFavoriteButtonText() {

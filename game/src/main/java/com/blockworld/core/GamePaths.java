@@ -25,6 +25,13 @@ public final class GamePaths {
     public static Path settingsFile() { return configDirectory().resolve("settings.properties"); }
     public static Path favoritesFile() { return configDirectory().resolve("world-favorites.txt"); }
     public static Path playerProfileFile() { return configDirectory().resolve("player-profile.properties"); }
+    public static Path worldPreviewsDirectory() { return gameDirectory().resolve("previews"); }
+    public static Path worldPreviewFile(Path worldFile) {
+        if (worldFile == null || worldFile.getFileName() == null) {
+            throw new IllegalArgumentException("World file path is required");
+        }
+        return worldPreviewsDirectory().resolve(worldFile.getFileName().toString() + ".png");
+    }
     public static Path modsDirectory() { return gameDirectory().resolve("mods"); }
     public static Path disabledModsDirectory() { return modsDirectory().resolve("disabled"); }
     public static Path resourcePacksDirectory() { return gameDirectory().resolve("resourcepacks"); }
