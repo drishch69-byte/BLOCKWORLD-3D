@@ -1,13 +1,13 @@
 # BLOCKWORLD 3D — Roadmap
 
-This roadmap describes possible future development. Items below are proposals and are **not part of version 1.0.0 unless explicitly listed in the README**. Priorities may change after testing and feedback.
+This roadmap describes possible future development. Version 1.1.0 is implemented in the current source. Items in later sections are proposals and are not included unless explicitly listed in the README. Priorities may change after testing and feedback.
 
-## 1.1.0 — Living World
-- Day/night cycle with configurable time speed.
-- Weather: rain, snow, fog, and clear skies.
-- Biome ambience and optional music controls.
-- Improved creature schedules and simple animal interactions.
-- Persist time-of-day and weather state in world saves.
+## 1.1.0 — Wildlands & Crystal Caves (released)
+- Added taiga and swamp biomes, crystal-lined underground caves, and underground water pools.
+- Added foxes, turtles, and a dog companion that follows the player.
+- Expanded villages with a market stall and garden.
+- Added four player color palettes, selectable with V.
+- Kept world save format 2 with an optional extended-biome property.
 
 ## 1.2.0 — Exploration Update
 - More cave layouts and underground mine structures.
@@ -17,7 +17,7 @@ This roadmap describes possible future development. Items below are proposals an
 - Map markers and a simple compass.
 
 ## 1.3.0 — Animals & Companions
-- Tameable companions with follow/stay behavior.
+- Taming and stay/follow commands for more creature types.
 - Optional animal breeding and baby growth.
 - More wildlife with biome-aware spawning.
 - Additional farm products and recipes.

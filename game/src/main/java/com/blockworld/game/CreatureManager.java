@@ -81,21 +81,30 @@ public final class CreatureManager {
             WorldCreature state = visual.state;
             float previousX = state.x();
             float previousZ = state.z();
-            visual.turnTimer -= tpf;
-            if (visual.turnTimer <= 0f) {
-                visual.turnTimer = 2.5f + visual.random.nextFloat() * 5.5f;
-                visual.yaw = visual.random.nextFloat() * (float) (Math.PI * 2.0);
-                visual.pauseTimer = 0.5f + visual.random.nextFloat() * 2.4f;
-            }
-
             float nextX = state.x();
             float nextZ = state.z();
-            if (visual.pauseTimer > 0f) {
-                visual.pauseTimer -= tpf;
-            } else {
-                float step = state.type().moveSpeed() * Math.min(tpf, 0.05f);
+            if (state.type() == CreatureType.DOG && playerPosition != null) {
+                float dx = playerPosition.x - state.x();
+                float dz = playerPosition.z - state.z();
+                float distance = (float) Math.sqrt(dx * dx + dz * dz);
+                if (distance > 0.001f) visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+                float step = companionStep(distance, state.type().moveSpeed(), tpf);
                 nextX += (float) Math.sin(visual.yaw) * step;
                 nextZ += (float) Math.cos(visual.yaw) * step;
+            } else {
+                visual.turnTimer -= tpf;
+                if (visual.turnTimer <= 0f) {
+                    visual.turnTimer = 2.5f + visual.random.nextFloat() * 5.5f;
+                    visual.yaw = visual.random.nextFloat() * (float) (Math.PI * 2.0);
+                    visual.pauseTimer = 0.5f + visual.random.nextFloat() * 2.4f;
+                }
+                if (visual.pauseTimer > 0f) {
+                    visual.pauseTimer -= tpf;
+                } else {
+                    float step = state.type().moveSpeed() * Math.min(tpf, 0.05f);
+                    nextX += (float) Math.sin(visual.yaw) * step;
+                    nextZ += (float) Math.cos(visual.yaw) * step;
+                }
             }
 
             if (playerPosition != null) {
@@ -108,7 +117,8 @@ public final class CreatureManager {
             int surfaceY = world.highestBlockY(blockX, blockZ);
             if (surfaceY >= -12 && Math.abs((surfaceY + 1f) - state.y()) <= 1.25f) {
                 BlockType surface = world.getBlock(new BlockPos(blockX, surfaceY, blockZ));
-                boolean safeSurface = surface == BlockType.GRASS || surface == BlockType.DIRT || surface == BlockType.SAND;
+                boolean safeSurface = surface == BlockType.GRASS || surface == BlockType.DIRT
+                        || surface == BlockType.SAND || surface == BlockType.PODZOL || surface == BlockType.MUD;
                 boolean clearAbove = !world.contains(new BlockPos(blockX, surfaceY + 1, blockZ))
                         && !world.contains(new BlockPos(blockX, surfaceY + 2, blockZ));
                 if (safeSurface && clearAbove) {
@@ -144,6 +154,15 @@ public final class CreatureManager {
         return Math.abs(com.jme3.math.FastMath.sin(animationClock * 2f)) * 0.13f;
     }
 
+    static float companionStep(float distance, float speed, float tpf) {
+        if (!Float.isFinite(distance) || !Float.isFinite(speed) || !Float.isFinite(tpf)
+                || distance < 0f || speed < 0f || tpf < 0f) {
+            throw new IllegalArgumentException("Companion movement values must be finite and non-negative");
+        }
+        if (distance <= 2.25f) return 0f;
+        return Math.min(distance - 2.25f, speed * Math.min(tpf, 0.05f));
+    }
+
     private void animateLimbs(Visual visual) {
         float swing = gaitSwing(visual.animationClock, visual.walking);
         for (Map.Entry<String, Geometry> part : visual.animationParts.entrySet()) {
@@ -168,6 +187,9 @@ public final class CreatureManager {
             case CHICKEN -> buildChicken(root);
             case VILLAGER -> buildVillager(root);
             case SLIME -> buildSlime(root);
+            case FOX -> buildFox(root);
+            case TURTLE -> buildTurtle(root);
+            case DOG -> buildDog(root);
         }
         Map<String, Geometry> animationParts = new HashMap<>();
         for (com.jme3.scene.Spatial child : root.getChildren()) {
@@ -235,6 +257,45 @@ public final class CreatureManager {
         addBox(root, "villager-arm-right", .10f, .28f, .11f, .40f, .68f, 0f, color(.55f, .40f, .27f));
         addBox(root, "villager-leg-left", .12f, .18f, .13f, -.16f, .18f, .02f, color(.30f, .25f, .20f));
         addBox(root, "villager-leg-right", .12f, .18f, .13f, .16f, .18f, .02f, color(.30f, .25f, .20f));
+    }
+
+    private void buildFox(Node root) {
+        ColorRGBA orange = color(.87f, .39f, .12f);
+        addBox(root, "fox-body", .30f, .27f, .55f, 0f, .48f, 0f, orange);
+        addBox(root, "fox-chest", .17f, .18f, .28f, 0f, .43f, -.36f, color(.92f, .82f, .67f));
+        addBox(root, "fox-head", .22f, .22f, .25f, 0f, .75f, -.57f, orange);
+        addBox(root, "fox-muzzle", .12f, .09f, .20f, 0f, .62f, -.82f, color(.93f, .84f, .72f));
+        addBox(root, "fox-ear-left", .07f, .14f, .07f, -.15f, 1.02f, -.55f, orange);
+        addBox(root, "fox-ear-right", .07f, .14f, .07f, .15f, 1.02f, -.55f, orange);
+        addBox(root, "fox-tail", .13f, .15f, .42f, 0f, .50f, .78f, color(.91f, .80f, .65f));
+        legs(root, color(.35f, .25f, .19f), .08f, .21f, .09f);
+    }
+
+    private void buildTurtle(Node root) {
+        ColorRGBA green = color(.31f, .58f, .31f);
+        addBox(root, "turtle-body", .39f, .12f, .47f, 0f, .34f, 0f, green);
+        addBox(root, "turtle-shell", .43f, .22f, .47f, 0f, .55f, .02f, color(.27f, .38f, .22f));
+        addBox(root, "turtle-shell-top", .30f, .10f, .33f, 0f, .78f, .02f, color(.43f, .49f, .24f));
+        addBox(root, "turtle-head", .17f, .16f, .20f, 0f, .48f, -.60f, green);
+        addBox(root, "turtle-eye-left", .025f, .03f, .02f, -.10f, .53f, -.77f, ColorRGBA.Black);
+        addBox(root, "turtle-eye-right", .025f, .03f, .02f, .10f, .53f, -.77f, ColorRGBA.Black);
+        addBox(root, "turtle-leg-front-left", .12f, .10f, .14f, -.32f, .15f, -.30f, green);
+        addBox(root, "turtle-leg-front-right", .12f, .10f, .14f, .32f, .15f, -.30f, green);
+        addBox(root, "turtle-leg-back-left", .12f, .10f, .14f, -.32f, .15f, .30f, green);
+        addBox(root, "turtle-leg-back-right", .12f, .10f, .14f, .32f, .15f, .30f, green);
+    }
+
+    private void buildDog(Node root) {
+        ColorRGBA coat = color(.72f, .55f, .36f);
+        addBox(root, "dog-body", .31f, .30f, .55f, 0f, .52f, 0f, coat);
+        addBox(root, "dog-chest", .18f, .18f, .22f, 0f, .48f, -.35f, color(.86f, .78f, .63f));
+        addBox(root, "dog-head", .22f, .22f, .25f, 0f, .80f, -.58f, coat);
+        addBox(root, "dog-muzzle", .14f, .10f, .17f, 0f, .66f, -.84f, color(.88f, .79f, .67f));
+        addBox(root, "dog-nose", .045f, .04f, .04f, 0f, .69f, -.99f, ColorRGBA.Black);
+        addBox(root, "dog-ear-left", .08f, .16f, .08f, -.17f, 1.04f, -.59f, color(.43f, .28f, .19f));
+        addBox(root, "dog-ear-right", .08f, .16f, .08f, .17f, 1.04f, -.59f, color(.43f, .28f, .19f));
+        addBox(root, "dog-tail", .08f, .20f, .08f, 0f, .83f, .59f, coat);
+        legs(root, color(.43f, .31f, .22f), .09f, .23f, .10f);
     }
 
     private void buildSlime(Node root) {

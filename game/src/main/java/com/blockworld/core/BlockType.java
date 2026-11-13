@@ -21,7 +21,10 @@ public enum BlockType {
     WHEAT_CROP("wheat_crop", "Пшеница", 0.58f, 0.72f, 0.19f),
     FURNACE("furnace", "Печь", 0.31f, 0.32f, 0.34f),
     COPPER_ORE("copper_ore", "Медная руда", 0.72f, 0.39f, 0.22f),
-    EMERALD_ORE("emerald_ore", "Изумрудная руда", 0.12f, 0.64f, 0.34f);
+    EMERALD_ORE("emerald_ore", "Изумрудная руда", 0.12f, 0.64f, 0.34f),
+    AMETHYST_ORE("amethyst_ore", "Аметистовая жила", 0.58f, 0.34f, 0.82f),
+    PODZOL("podzol", "Подзол", 0.39f, 0.27f, 0.17f),
+    MUD("mud", "Болотная почва", 0.30f, 0.34f, 0.25f);
 
     private final String id;
     private final String displayName;
@@ -66,6 +69,9 @@ public enum BlockType {
             case FURNACE -> 15;
             case COPPER_ORE -> 16;
             case EMERALD_ORE -> 17;
+            case AMETHYST_ORE -> 18;
+            case PODZOL -> 19;
+            case MUD -> 20;
         };
     }
 

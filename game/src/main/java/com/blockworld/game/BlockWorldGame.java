@@ -359,6 +359,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 catch (IOException ex) { GameLog.error("Не удалось загрузить состояние грядок", ex); }
                 farmGrowth.keySet().removeIf(position -> world.getBlock(position) != BlockType.WHEAT_CROP);
             }
+            if (release100Enabled) achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
             if (loaded && release100Enabled) {
                 try { AchievementDataStore.load(saveFile, achievements); }
                 catch (IOException ex) { GameLog.error("Не удалось загрузить достижения", ex); }
@@ -366,6 +367,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (!loaded) {
                 long newSeed = ThreadLocalRandom.current().nextLong();
                 world.generate(version, newSeed);
+                if (release100Enabled) achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
                 farmGrowth.clear();
                 try {
                     world.save(saveFile, version);
@@ -455,6 +457,7 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addMapping(PLACE, new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
         inputManager.addMapping(SAVE, new KeyTrigger(KeyInput.KEY_F6));
         inputManager.addMapping("TOGGLE_CAMERA", new KeyTrigger(KeyInput.KEY_F5));
+        inputManager.addMapping("CYCLE_PLAYER_STYLE", new KeyTrigger(KeyInput.KEY_V));
         inputManager.addMapping("SLOT_1", new KeyTrigger(KeyInput.KEY_1));
         inputManager.addMapping("SLOT_2", new KeyTrigger(KeyInput.KEY_2));
         inputManager.addMapping("SLOT_3", new KeyTrigger(KeyInput.KEY_3));
@@ -539,6 +542,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 case PLACE -> placeTargetBlock();
                 case SAVE -> saveWorld();
                 case "TOGGLE_CAMERA" -> toggleCameraView();
+                case "CYCLE_PLAYER_STYLE" -> cyclePlayerStyle();
                 case EAT -> eatFood();
                 case TALK -> interactCreature();
                 case "RENDER_DISTANCE" -> cycleRenderDistance();
@@ -577,7 +581,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 "SLOT_1", "SLOT_2", "SLOT_3", "SLOT_4", "SLOT_5",
                 "SLOT_6", "SLOT_7", "SLOT_8", "SLOT_9", "RENDER_DISTANCE", "TOGGLE_CULLING", "WEATHER", TALK,
                 "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
-                "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA");
+                "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA", "CYCLE_PLAYER_STYLE");
     }
 
     @Override
@@ -836,6 +840,17 @@ public final class BlockWorldGame extends SimpleApplication {
         }
         playerEyePosition.set(location);
         if (!thirdPersonView) cam.setLocation(location);
+    }
+
+    private void cyclePlayerStyle() {
+        if (!version.survival() || playerAvatar == null) {
+            statusMessage = "Настройка внешнего вида доступна в профиле выживания.";
+            updateHud();
+            return;
+        }
+        int style = playerAvatar.cycleStyle();
+        statusMessage = "Образ игрока: " + playerAvatar.styleName() + " (" + (style + 1) + "/4).";
+        updateHud();
     }
 
     private void toggleCameraView() {
@@ -1525,7 +1540,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (i < hotbar.size() - 1) bar.append("    ");
         }
         String controls = version.survival()
-                ? "WASD — ходьба    Мышь — обзор    F5 — камера    ПРОБЕЛ — прыжок    E — еда    "
+                ? "WASD — ходьба    Мышь — обзор    F5 — камера    V — образ игрока    ПРОБЕЛ — прыжок    E — еда    "
                     + (equipmentEnabled ? "T — инструмент    " : "")
                     + "I — инвентарь    C — крафт    F — печь/общение"
                     + (agricultureEnabled ? "    G — ферма/печь" : "")

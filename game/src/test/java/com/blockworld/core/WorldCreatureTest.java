@@ -11,6 +11,9 @@ class WorldCreatureTest {
         assertEquals("cow", CreatureType.COW.id());
         assertEquals("villager", CreatureType.fromId("villager").id());
         assertEquals("slime", CreatureType.SLIME.id());
+        assertEquals("fox", CreatureType.fromId("fox").id());
+        assertEquals("turtle", CreatureType.fromId("turtle").id());
+        assertEquals("dog", CreatureType.fromId("dog").id());
         WorldCreature creature = new WorldCreature(17L, CreatureType.SHEEP, 1.5f, 4f, -2.5f, 0.75f);
         assertEquals(17L, creature.id());
         assertEquals(CreatureType.SHEEP, creature.type());

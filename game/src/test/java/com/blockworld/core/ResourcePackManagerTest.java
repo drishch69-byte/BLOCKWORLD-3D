@@ -138,5 +138,10 @@ class ResourcePackManagerTest {
                 < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
         assertEquals(16, BlockType.COPPER_ORE.textureSlot());
         assertEquals(17, BlockType.EMERALD_ORE.textureSlot());
+        assertEquals(18, BlockType.AMETHYST_ORE.textureSlot());
+        assertEquals(19, BlockType.PODZOL.textureSlot());
+        assertEquals(20, BlockType.MUD.textureSlot());
+        assertTrue(ResourcePackManager.textureTileIndex(BlockType.MUD, 2)
+                < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
     }
 }

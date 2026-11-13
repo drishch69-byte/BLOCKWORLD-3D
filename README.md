@@ -10,12 +10,12 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.0.3 — Creature & Camera Polish**
+**1.1.0 — Wildlands & Crystal Caves**
 
-- Five biomes: plains, forests, deserts, snowy tundra, and mountains.
+- Seven surface biomes: plains, forests, deserts, snowy tundra, mountains, taiga, and swamps (the two new biomes appear in the 1.1.0 profile).
 - Chunk-based voxel world, mining, and building.
-- Creatures, villagers, and trading, now with six original PNG creature textures.
-- Third-person camera wall collision, animated creatures, a hopping slime, and the visual inventory introduced in 1.0.1.
+- Nine creature types, including foxes, turtles, and a dog companion that follows the player.
+- Crystal-lined underground caves with small water pools, third-person camera wall collision, animated creatures, and four selectable player color palettes (V).
 - Inventory, crafting, tools, and iron armor.
 - Farming, wheat, furnaces, smelting, and cooked food.
 - Fishing, copper and emerald ores, and achievements.
@@ -42,7 +42,7 @@ cd game
 mvn clean verify
 ```
 
-The GitHub Actions Java CI workflow runs the same Maven verification on pushes and pull requests that change the game source. The 1.0.1 source build is verified by the Java 17 CI workflow; the job compiles the project, runs JUnit tests, and packages the application.
+The GitHub Actions Java CI workflow runs the same Maven verification on pushes and pull requests that change the game source. The current source build is verified by the Java 17 CI workflow; the job compiles the project, runs JUnit tests, and packages the application.
 
 Launch scripts are provided for Windows (run.bat) and Linux/macOS (run.sh).
 

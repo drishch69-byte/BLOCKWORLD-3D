@@ -15,6 +15,20 @@ public final class BiomeGenerator {
         return BiomeType.PLAINS;
     }
 
+    /** Expanded biome table used by the 1.1.0 profile; the legacy sampler stays unchanged. */
+    public static BiomeType biomeAtV110(long seed, int x, int z) {
+        double temperature = valueNoise(seed, x, z, 72, 0x51A7L) + 0.13 * Math.sin(z * 0.012);
+        double moisture = valueNoise(seed, x, z, 61, 0xC0FFEE12L);
+        double elevation = valueNoise(seed, x, z, 43, 0xBADC0DEL);
+        if (elevation > 0.73) return BiomeType.MOUNTAINS;
+        if (temperature < 0.30) return BiomeType.SNOWY_TUNDRA;
+        if (temperature < 0.45 && moisture > 0.43) return BiomeType.TAIGA;
+        if (temperature > 0.68 && moisture < 0.48) return BiomeType.DESERT;
+        if (moisture > 0.72) return BiomeType.SWAMP;
+        if (moisture > 0.59) return BiomeType.FOREST;
+        return BiomeType.PLAINS;
+    }
+
     public static int mountainHeightBonus(long seed, int x, int z) {
         if (biomeAt(seed, x, z) != BiomeType.MOUNTAINS) return 0;
         double elevation = valueNoise(seed, x, z, 43, 0xBADC0DEL);

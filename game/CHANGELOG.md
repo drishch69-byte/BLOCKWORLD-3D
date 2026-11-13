@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0 — Wildlands & Crystal Caves
+- Added taiga and swamp surface biomes to the new profile while keeping the legacy biome sampler unchanged for earlier profiles.
+- Added underground crystal geodes with amethyst ore veins and small water pools.
+- Added fox and turtle wildlife plus a dog companion that follows the player while keeping a short distance.
+- Expanded villages with a market stall and a small crop garden.
+- Added four switchable player outfit palettes on the V key.
+- Added an optional extendedBiomes world property without changing world format 2; appended block and creature IDs remain stable.
+- Added tests for the new biomes, underground deposits, new creatures, companion movement, atlas tile allocation, and save/load compatibility.
+
 ## 1.0.3 — Creature & Camera Polish
 - Added a world-geometry ray check between the player and desired third-person camera position; the camera moves closer before block walls instead of clipping through them.
 - Added procedural leg/arm gait animation for walking cows, sheep, pigs, chickens, and villagers.

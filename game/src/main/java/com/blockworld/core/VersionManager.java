@@ -28,7 +28,8 @@ public final class VersionManager {
             new GameVersion("1.0.0", "Trading, Fishing & Achievements", "Торговля с жителями, рыбалка, новые руды, достижения и звуковые эффекты", 96, true, true, true, true, true),
             new GameVersion("1.0.1", "Visual Inventory Update", "PNG-иконки предметов в инвентаре и мастерской, портрет игрока и обновлённый интерфейс", 96, true, true, true, true, true),
             new GameVersion("1.0.2", "Third-Person Camera Update", "Переключаемая камера от третьего лица, 3D-модель игрока и анимация ходьбы", 96, true, true, true, true, true),
-            new GameVersion("1.0.3", "Creature & Camera Polish", "Камера с коллизией стен, анимация ходьбы мобов, прыжки слайма и улучшенная модель жителя", 96, true, true, true, true, true)
+            new GameVersion("1.0.3", "Creature & Camera Polish", "Камера с коллизией стен, анимация ходьбы мобов, прыжки слайма и улучшенная модель жителя", 96, true, true, true, true, true),
+            new GameVersion("1.1.0", "Wildlands & Crystal Caves", "Тайга, болота, кристальные озёра, лисы, черепахи, пёс-компаньон и образы игрока", 112, true, true, true, true, true)
     );
 
     private VersionManager() {

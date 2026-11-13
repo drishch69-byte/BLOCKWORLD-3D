@@ -12,10 +12,16 @@ import com.jme3.scene.shape.Box;
 /** Simple animated block-style explorer shown by the third-person camera. */
 final class PlayerAvatar {
     private final Node root = new Node("BlockWorldPlayerAvatar");
+    private final Geometry shirt;
+    private final Geometry head;
+    private final Geometry hair;
     private final Geometry leftArm;
     private final Geometry rightArm;
     private final Geometry leftLeg;
     private final Geometry rightLeg;
+    private final Geometry leftShoe;
+    private final Geometry rightShoe;
+    private int styleIndex;
     private float clock;
 
     PlayerAvatar(AssetManager assets) {
@@ -24,9 +30,9 @@ final class PlayerAvatar {
         ColorRGBA trousers = new ColorRGBA(0.20f, 0.25f, 0.37f, 1f);
         ColorRGBA shoes = new ColorRGBA(0.22f, 0.16f, 0.12f, 1f);
         ColorRGBA hair = new ColorRGBA(0.24f, 0.15f, 0.09f, 1f);
-        box(assets, "shirt", .28f, .37f, .16f, 0f, 1.02f, 0f, shirt);
-        box(assets, "head", .22f, .23f, .22f, 0f, 1.64f, 0f, skin);
-        box(assets, "hair", .23f, .08f, .23f, 0f, 1.92f, .015f, hair);
+        this.shirt = box(assets, "shirt", .28f, .37f, .16f, 0f, 1.02f, 0f, shirt);
+        this.head = box(assets, "head", .22f, .23f, .22f, 0f, 1.64f, 0f, skin);
+        this.hair = box(assets, "hair", .23f, .08f, .23f, 0f, 1.92f, .015f, hair);
         box(assets, "eye-left", .035f, .035f, .025f, -.09f, 1.68f, -.225f, ColorRGBA.White);
         box(assets, "eye-right", .035f, .035f, .025f, .09f, 1.68f, -.225f, ColorRGBA.White);
         box(assets, "pupil-left", .015f, .024f, .012f, -.09f, 1.68f, -.25f, ColorRGBA.Black);
@@ -35,8 +41,66 @@ final class PlayerAvatar {
         rightArm = box(assets, "arm-right", .10f, .34f, .11f, .39f, 1.03f, 0f, skin);
         leftLeg = box(assets, "leg-left", .13f, .34f, .14f, -.15f, .36f, 0f, trousers);
         rightLeg = box(assets, "leg-right", .13f, .34f, .14f, .15f, .36f, 0f, trousers);
-        box(assets, "shoe-left", .13f, .09f, .18f, -.15f, .09f, -.035f, shoes);
-        box(assets, "shoe-right", .13f, .09f, .18f, .15f, .09f, -.035f, shoes);
+        leftShoe = box(assets, "shoe-left", .13f, .09f, .18f, -.15f, .09f, -.035f, shoes);
+        rightShoe = box(assets, "shoe-right", .13f, .09f, .18f, .15f, .09f, -.035f, shoes);
+        applyStyle();
+    }
+
+    private static final String[] STYLE_NAMES = {"Исследователь", "Лесной", "Песчаный", "Кристальный"};
+
+    int cycleStyle() {
+        styleIndex = (styleIndex + 1) % STYLE_NAMES.length;
+        applyStyle();
+        return styleIndex;
+    }
+
+    String styleName() { return STYLE_NAMES[styleIndex]; }
+
+    private void applyStyle() {
+        ColorRGBA skinColor = new ColorRGBA(0.87f, 0.65f, 0.48f, 1f);
+        ColorRGBA shirtColor;
+        ColorRGBA trouserColor;
+        ColorRGBA shoeColor;
+        ColorRGBA hairColor;
+        switch (styleIndex) {
+            case 1 -> {
+                shirtColor = new ColorRGBA(0.20f, 0.49f, 0.28f, 1f);
+                trouserColor = new ColorRGBA(0.24f, 0.31f, 0.21f, 1f);
+                shoeColor = new ColorRGBA(0.27f, 0.20f, 0.13f, 1f);
+                hairColor = new ColorRGBA(0.20f, 0.13f, 0.08f, 1f);
+            }
+            case 2 -> {
+                shirtColor = new ColorRGBA(0.76f, 0.56f, 0.24f, 1f);
+                trouserColor = new ColorRGBA(0.43f, 0.31f, 0.19f, 1f);
+                shoeColor = new ColorRGBA(0.34f, 0.23f, 0.13f, 1f);
+                hairColor = new ColorRGBA(0.34f, 0.20f, 0.10f, 1f);
+            }
+            case 3 -> {
+                shirtColor = new ColorRGBA(0.49f, 0.29f, 0.72f, 1f);
+                trouserColor = new ColorRGBA(0.22f, 0.20f, 0.40f, 1f);
+                shoeColor = new ColorRGBA(0.18f, 0.16f, 0.25f, 1f);
+                hairColor = new ColorRGBA(0.16f, 0.12f, 0.24f, 1f);
+            }
+            default -> {
+                shirtColor = new ColorRGBA(0.17f, 0.47f, 0.72f, 1f);
+                trouserColor = new ColorRGBA(0.20f, 0.25f, 0.37f, 1f);
+                shoeColor = new ColorRGBA(0.22f, 0.16f, 0.12f, 1f);
+                hairColor = new ColorRGBA(0.24f, 0.15f, 0.09f, 1f);
+            }
+        }
+        setColor(head, skinColor);
+        setColor(leftArm, skinColor);
+        setColor(rightArm, skinColor);
+        setColor(shirt, shirtColor);
+        setColor(leftLeg, trouserColor);
+        setColor(rightLeg, trouserColor);
+        setColor(leftShoe, shoeColor);
+        setColor(rightShoe, shoeColor);
+        setColor(hair, hairColor);
+    }
+
+    private void setColor(Geometry geometry, ColorRGBA color) {
+        geometry.getMaterial().setColor("Color", color);
     }
 
     private Geometry box(AssetManager assets, String name, float x, float y, float z,

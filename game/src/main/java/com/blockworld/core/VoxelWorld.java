@@ -71,6 +71,7 @@ public final class VoxelWorld {
     private String lastMeshError = "";
     private boolean twoSidedRendering = true;
     private boolean activeBiomes;
+    private boolean extendedBiomes;
     private int minBlockX;
     private int maxBlockX;
     private int minBlockZ;
@@ -122,8 +123,11 @@ public final class VoxelWorld {
     public int getPendingChunkCount() { return pendingChunks.size(); }
     public int getRenderDistanceChunks() { return renderDistanceChunks; }
     public long getSeed() { return seed; }
+    public boolean hasExtendedBiomes() { return extendedBiomes; }
+
     public BiomeType getBiomeAt(int x, int z) {
-        return activeBiomes ? BiomeGenerator.biomeAt(seed, x, z) : BiomeType.PLAINS;
+        if (!activeBiomes) return BiomeType.PLAINS;
+        return extendedBiomes ? BiomeGenerator.biomeAtV110(seed, x, z) : BiomeGenerator.biomeAt(seed, x, z);
     }
     public int getMinBlockX() { return hasBounds ? minBlockX : 0; }
     public int getMaxBlockX() { return hasBounds ? maxBlockX : 0; }
@@ -449,6 +453,7 @@ public final class VoxelWorld {
         clear();
         seed = worldSeed;
         activeBiomes = supportsBiomes(version.id());
+        extendedBiomes = supportsExtendedBiomes(version.id());
         bulkUpdate = true;
         try {
             Random random = new Random(seed);
@@ -475,7 +480,13 @@ public final class VoxelWorld {
                 for (int x = -radius + 3; x <= radius - 3; x += 4) {
                     for (int z = -radius + 3; z <= radius - 3; z += 4) {
                         BiomeType biome = getBiomeAt(x, z);
-                        float density = biome == BiomeType.FOREST ? 0.62f : biome == BiomeType.PLAINS ? 0.22f : 0f;
+                        float density = switch (biome) {
+                            case FOREST -> 0.62f;
+                            case TAIGA -> 0.48f;
+                            case SWAMP -> 0.34f;
+                            case PLAINS -> 0.22f;
+                            default -> 0f;
+                        };
                         if (random.nextFloat() < density && (Math.abs(x) > 3 || Math.abs(z) > 3)) addTree(x, z);
                     }
                 }
@@ -502,15 +513,89 @@ public final class VoxelWorld {
                     }
                 }
             }
+            if (supportsExtendedBiomes(version.id())) {
+                addCrystalCaves(random, radius);
+            }
             if (version.id().compareTo("0.8.0") >= 0) {
                 addVillageHouse(-34, 27);
                 addVillageHouse(29, 27);
+                if (supportsExtendedBiomes(version.id())) {
+                    addVillageMarketStall(-34, 27);
+                    addVillageGarden(29, 27);
+                }
                 spawnCreatures(random, radius);
             }
         } finally {
             bulkUpdate = false;
         }
         lastStreamCenter = null;
+    }
+
+    private void addCrystalCaves(Random random, int radius) {
+        int created = 0;
+        for (int centerX = -radius + 14; centerX <= radius - 14 && created < 8; centerX += 23) {
+            for (int centerZ = -radius + 14; centerZ <= radius - 14 && created < 8; centerZ += 23) {
+                if (Math.abs(centerX) + Math.abs(centerZ) < 48 || random.nextFloat() > 0.24f) continue;
+                createCrystalLake(centerX, -8 - random.nextInt(2), centerZ);
+                created++;
+            }
+        }
+        if (created == 0) createCrystalLake(radius - 22, -8, -radius + 22);
+    }
+
+    private void createCrystalLake(int centerX, int centerY, int centerZ) {
+        for (int dx = -3; dx <= 3; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                for (int dz = -3; dz <= 3; dz++) {
+                    double shape = (dx * dx + dz * dz) / 9.0 + (dy * dy) / 4.0;
+                    if (shape > 1.35) continue;
+                    BlockPos position = new BlockPos(centerX + dx, centerY + dy, centerZ + dz);
+                    if (shape < 0.76) {
+                        removeBlock(position);
+                        if (dy <= -1 && shape < 0.42) addBlock(position, BlockType.WATER);
+                    } else if (shape <= 1.35 && blocks.containsKey(position)
+                            && coordinateRandom(position.x(), position.y(), position.z()) < 0.42f) {
+                        removeBlock(position);
+                        addBlock(position, BlockType.AMETHYST_ORE);
+                    }
+                }
+            }
+        }
+    }
+
+    private void addVillageMarketStall(int baseX, int baseZ) {
+        int startX = baseX + 7;
+        int startZ = baseZ + 1;
+        int groundY = terrainHeightFor(startX + 2, startZ + 1);
+        for (int dx = 0; dx < 5; dx++) {
+            for (int dz = 0; dz < 3; dz++) {
+                for (int dy = 1; dy <= 4; dy++) removeBlock(new BlockPos(startX + dx, groundY + dy, startZ + dz));
+            }
+        }
+        for (int dx = 0; dx < 5; dx++) {
+            for (int dz = 0; dz < 3; dz++) {
+                for (int dy = 1; dy <= 3; dy++) {
+                    boolean post = (dx == 0 || dx == 4) && (dz == 0 || dz == 2);
+                    boolean roof = dy == 3;
+                    if (post || roof) addBlock(new BlockPos(startX + dx, groundY + dy, startZ + dz), BlockType.WOOD);
+                }
+                if (dz == 0 || dz == 2) addBlock(new BlockPos(startX + dx, groundY + 1, startZ + dz), BlockType.WOOD);
+            }
+        }
+    }
+
+    private void addVillageGarden(int baseX, int baseZ) {
+        int startX = baseX + 6;
+        int startZ = baseZ;
+        for (int x = startX; x < startX + 5; x++) {
+            for (int z = startZ; z < startZ + 5; z++) {
+                int groundY = terrainHeightFor(x, z);
+                for (int y = groundY + 1; y <= groundY + 4; y++) removeBlock(new BlockPos(x, y, z));
+                removeBlock(new BlockPos(x, groundY, z));
+                addBlock(new BlockPos(x, groundY, z), BlockType.FARMLAND);
+                if ((x + z) % 2 == 0) addBlock(new BlockPos(x, groundY + 1, z), BlockType.WHEAT_CROP);
+            }
+        }
     }
 
     private void addVillageHouse(int baseX, int baseZ) {
@@ -561,6 +646,26 @@ public final class VoxelWorld {
             WorldCreature creature = findCreatureSpawn(random, radius, id++, CreatureType.SLIME);
             if (creature != null) addCreature(creature);
         }
+        for (int i = 0; i < 4; i++) {
+            WorldCreature creature = findCreatureSpawn(random, radius, id++, CreatureType.FOX);
+            if (creature != null) addCreature(creature);
+        }
+        for (int i = 0; i < 3; i++) {
+            WorldCreature creature = findCreatureSpawn(random, radius, id++, CreatureType.TURTLE);
+            if (creature != null) addCreature(creature);
+        }
+        int dogX = 4;
+        int dogZ = 8;
+        int dogY = highestBlockY(dogX, dogZ);
+        BlockType dogSurface = blocks.get(new BlockPos(dogX, dogY, dogZ));
+        if (dogY >= -12 && (dogSurface == BlockType.GRASS || dogSurface == BlockType.PODZOL)
+                && !blocks.containsKey(new BlockPos(dogX, dogY + 1, dogZ))
+                && !blocks.containsKey(new BlockPos(dogX, dogY + 2, dogZ))) {
+            addCreature(new WorldCreature(id, CreatureType.DOG, dogX + 0.5f, dogY + 1f, dogZ + 0.5f, 0f));
+        } else {
+            WorldCreature companion = findCreatureSpawn(random, radius, id, CreatureType.DOG);
+            if (companion != null) addCreature(companion);
+        }
     }
 
     private WorldCreature findCreatureSpawn(Random random, int radius, long id, CreatureType type) {
@@ -570,7 +675,14 @@ public final class VoxelWorld {
             if (x * x + z * z < 13 * 13) continue;
             int surfaceY = highestBlockY(x, z);
             if (surfaceY < -12) continue;
-            if (blocks.get(new BlockPos(x, surfaceY, z)) != BlockType.GRASS) continue;
+            BlockType surface = blocks.get(new BlockPos(x, surfaceY, z));
+            BiomeType biome = getBiomeAt(x, z);
+            if (type == CreatureType.TURTLE) {
+                if (surface != BlockType.SAND) continue;
+            } else if (type == CreatureType.FOX) {
+                boolean forestFloor = surface == BlockType.GRASS || surface == BlockType.PODZOL;
+                if (!forestFloor || (biome != BiomeType.FOREST && biome != BiomeType.TAIGA)) continue;
+            } else if (surface != BlockType.GRASS && surface != BlockType.PODZOL) continue;
             if (blocks.containsKey(new BlockPos(x, surfaceY + 1, z))
                     || blocks.containsKey(new BlockPos(x, surfaceY + 2, z))) continue;
             boolean crowded = creatures.stream().anyMatch(existing -> {
@@ -583,6 +695,20 @@ public final class VoxelWorld {
                     random.nextFloat() * (float) (Math.PI * 2.0));
         }
         return null;
+    }
+
+    private static boolean supportsExtendedBiomes(String versionId) {
+        if (versionId == null) return false;
+        String[] parts = versionId.split("\\.");
+        if (parts.length < 2) return false;
+        try {
+            int major = Integer.parseInt(parts[0]);
+            int minor = Integer.parseInt(parts[1]);
+            int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
+            return major > 1 || (major == 1 && (minor > 1 || (minor == 1 && patch >= 0)));
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 
     private static boolean supportsBiomes(String versionId) {
@@ -698,6 +824,7 @@ public final class VoxelWorld {
         data.append("seed=").append(seed).append('\n');
         // Preserve the actual terrain feature set when an older world is saved from a newer profile.
         data.append("biomes=").append(activeBiomes).append('\n');
+        data.append("extendedBiomes=").append(extendedBiomes).append('\n');
         data.append("--blocks--\n");
         for (Map.Entry<BlockPos, BlockType> entry : entries) {
             BlockPos p = entry.getKey();
@@ -730,6 +857,9 @@ public final class VoxelWorld {
         String biomeProperty = readStringProperty(lines, "biomes", "");
         activeBiomes = "true".equalsIgnoreCase(biomeProperty) ? true
                 : "false".equalsIgnoreCase(biomeProperty) ? false : supportsBiomes(savedVersion);
+        String extendedBiomeProperty = readStringProperty(lines, "extendedBiomes", "");
+        extendedBiomes = "true".equalsIgnoreCase(extendedBiomeProperty) ? true
+                : "false".equalsIgnoreCase(extendedBiomeProperty) ? false : supportsExtendedBiomes(savedVersion);
         long loadedSeed;
         try { loadedSeed = Long.parseLong(readStringProperty(lines, "seed", "20261112")); }
         catch (NumberFormatException ex) { loadedSeed = 20261112L; }

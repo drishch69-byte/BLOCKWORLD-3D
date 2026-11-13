@@ -7,7 +7,10 @@ public enum CreatureType {
     PIG("pig", "Свинья", 0.62f),
     CHICKEN("chicken", "Курица", 0.78f),
     VILLAGER("villager", "Житель", 0.30f),
-    SLIME("slime", "Слайм", 0.45f);
+    SLIME("slime", "Слайм", 0.45f),
+    FOX("fox", "Лиса", 0.58f),
+    TURTLE("turtle", "Черепаха", 0.20f),
+    DOG("dog", "Пёс-компаньон", 0.85f);
 
     private final String id;
     private final String displayName;

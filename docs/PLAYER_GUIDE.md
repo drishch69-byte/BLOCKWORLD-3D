@@ -1,6 +1,6 @@
 # BLOCKWORLD 3D — Player Guide
 
-This is a quick reference for the gameplay systems described for version 1.0.0. Some actions depend on having the required item and selecting a compatible version profile.
+This is a quick reference for the gameplay systems available in version 1.1.0. Some actions depend on having the required item and selecting a compatible version profile.
 
 ## Survival loop
 
@@ -11,6 +11,7 @@ This is a quick reference for the gameplay systems described for version 1.0.0. 
 5. Visit villagers to trade selected supplies for emeralds and useful items.
 6. Fish near water with a rod, then cook the catch.
 7. Open achievements (**M**) to review exploration and gameplay progress.
+8. In the 1.1.0 profile, explore taiga and swamp regions, search caves for amethyst veins and underground pools, and meet foxes and turtles. A dog companion follows you around the world.
 
 ## Controls
 
@@ -24,6 +25,8 @@ This is a quick reference for the gameplay systems described for version 1.0.0. 
 | F | Interact with villagers or a furnace |
 | G | Farming actions / place furnace where applicable |
 | E | Eat available food |
+| F5 | Switch first-person / third-person camera |
+| V | Cycle the four player color palettes |
 | F6 | Save world |
 | ESC | Pause menu |
 | F10 | Exit |

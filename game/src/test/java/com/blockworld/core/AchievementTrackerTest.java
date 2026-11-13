@@ -14,6 +14,18 @@ class AchievementTrackerTest {
     }
 
     @Test
+    void legacyProfilesDoNotRequireTheNewBiomesForTheBiomeAchievement() {
+        AchievementTracker tracker = new AchievementTracker();
+        tracker.setExtendedBiomeSet(false);
+        for (BiomeType biome : BiomeType.legacySet()) tracker.discover(biome);
+        assertTrue(tracker.hasDiscoveredAllBiomes());
+        assertTrue(tracker.isUnlocked(Achievement.ALL_BIOMES));
+
+        tracker.setExtendedBiomeSet(true);
+        assertFalse(tracker.hasDiscoveredAllBiomes());
+    }
+
+    @Test
     void allBiomesCanBeTrackedAndRestored() {
         AchievementTracker tracker = new AchievementTracker();
         for (BiomeType biome : BiomeType.values()) assertTrue(tracker.discover(biome));

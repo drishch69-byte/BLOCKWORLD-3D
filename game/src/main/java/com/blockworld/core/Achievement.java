@@ -7,7 +7,7 @@ public enum Achievement {
     FIRST_TRADE("first_trade", "Хорошая сделка", "Заверши первую сделку с жителем."),
     FIRST_FISH("first_fish", "Рыбак", "Поймай первую рыбу."),
     FIRST_HARVEST("first_harvest", "Первый урожай", "Собери созревшую пшеницу."),
-    ALL_BIOMES("all_biomes", "Исследователь", "Посети все пять биомов."),
+    ALL_BIOMES("all_biomes", "Исследователь", "Посети все биомы текущего профиля."),
     FIND_COPPER("find_copper", "Медный век", "Добудь медную руду."),
     FIND_EMERALD("find_emerald", "Редкая находка", "Найди изумрудную руду.");
 

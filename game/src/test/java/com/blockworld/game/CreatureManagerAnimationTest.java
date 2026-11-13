@@ -17,6 +17,13 @@ class CreatureManagerAnimationTest {
     }
 
     @Test
+    void companionDogStopsNearThePlayerAndMovesAtABoundedSpeed() {
+        assertEquals(0f, CreatureManager.companionStep(2f, 0.85f, 1f), 0.0001f);
+        assertEquals(0.0425f, CreatureManager.companionStep(10f, 0.85f, 1f), 0.0001f);
+        assertEquals(0.5f, CreatureManager.companionStep(3.25f, 10f, 0.05f), 0.0001f);
+    }
+
+    @Test
     void slimeBounceStaysInsideSmallAnimationRange() {
         for (int i = 0; i < 100; i++) {
             float bounce = CreatureManager.slimeBounce(i * 0.1f);

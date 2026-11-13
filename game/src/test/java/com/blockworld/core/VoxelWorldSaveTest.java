@@ -86,6 +86,60 @@ class VoxelWorldSaveTest {
     }
 
     @Test
+    void version110GeneratesCrystalLakesNewBiomesWildlifeAndCompanionAndSavesThem() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion version = VersionManager.find("1.1.0");
+        VoxelWorld source = new VoxelWorld(assets);
+        source.generate(version, 8675309L);
+
+        boolean taiga = false;
+        boolean swamp = false;
+        for (int x = -112; x <= 112; x += 4) {
+            for (int z = -112; z <= 112; z += 4) {
+                taiga |= source.getBiomeAt(x, z) == BiomeType.TAIGA;
+                swamp |= source.getBiomeAt(x, z) == BiomeType.SWAMP;
+            }
+        }
+        assertTrue(taiga, "New profile should generate taiga");
+        assertTrue(swamp, "New profile should generate swamps");
+
+        int crystals = 0;
+        int undergroundWater = 0;
+        for (int x = -112; x <= 112; x++) {
+            for (int z = -112; z <= 112; z++) {
+                for (int y = -12; y < 0; y++) {
+                    BlockType block = source.getBlock(new BlockPos(x, y, z));
+                    if (block == BlockType.AMETHYST_ORE) crystals++;
+                    if (block == BlockType.WATER) undergroundWater++;
+                }
+            }
+        }
+        assertTrue(crystals > 0, "Expected crystal veins in underground geodes");
+        assertTrue(undergroundWater > 0, "Expected underground lake water");
+
+        assertTrue(source.getCreatures().stream().anyMatch(c -> c.type() == CreatureType.FOX));
+        assertTrue(source.getCreatures().stream().anyMatch(c -> c.type() == CreatureType.TURTLE));
+        assertTrue(source.getCreatures().stream().anyMatch(c -> c.type() == CreatureType.DOG));
+
+        Path file = tempDir.resolve("version-110.bwworld");
+        source.save(file, version);
+        String saved = Files.readString(file);
+        assertTrue(saved.contains("extendedBiomes=true"));
+        assertTrue(saved.contains(",amethyst_ore"));
+        assertTrue(saved.contains(",fox,"));
+        assertTrue(saved.contains(",turtle,"));
+        assertTrue(saved.contains(",dog,"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        restored.load(file);
+        assertEquals(source.getCreatureCount(), restored.getCreatureCount());
+        assertEquals(source.getBlockCount(), restored.getBlockCount());
+        assertEquals(source.getBiomeAt(24, 16), restored.getBiomeAt(24, 16));
+        assertEquals(source.getCreatures().stream().filter(c -> c.type() == CreatureType.DOG).count(),
+                restored.getCreatures().stream().filter(c -> c.type() == CreatureType.DOG).count());
+    }
+
+    @Test
     void preservesUnknownBlockIdsForNewerBuilds() throws IOException {
         AssetManager assets = new DesktopAssetManager(true);
         GameVersion version = VersionManager.find("0.3.0");
