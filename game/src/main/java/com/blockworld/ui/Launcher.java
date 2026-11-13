@@ -493,10 +493,14 @@ public final class Launcher {
         JTextField port = new JTextField("25575");
         JTextField limit = new JTextField("8");
         JPasswordField password = new JPasswordField();
-        JPanel form = new JPanel(new GridLayout(3, 2, 8, 8));
+        JPasswordField accountPassword = new JPasswordField();
+        JComboBox<String> accountMode = new JComboBox<>(new String[]{"Создать аккаунт", "Войти в аккаунт"});
+        JPanel form = new JPanel(new GridLayout(5, 2, 8, 8));
         form.add(new JLabel("Порт:")); form.add(port);
         form.add(new JLabel("Игроков (1–32):")); form.add(limit);
-        form.add(new JLabel("Пароль (необязательно):")); form.add(password);
+        form.add(new JLabel("Пароль комнаты (необязательно):")); form.add(password);
+        form.add(new JLabel("Аккаунт ведущего (8+ символов):")); form.add(accountPassword);
+        form.add(new JLabel("Действие с аккаунтом:")); form.add(accountMode);
         if (JOptionPane.showConfirmDialog(frame, form, "Создать LAN-сервер", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
 
         WorldEntry selectedWorld = (WorldEntry) worldSelector.getSelectedItem();
@@ -509,14 +513,17 @@ public final class Launcher {
         MultiplayerClient client = null;
         try {
             String secret = new String(password.getPassword());
+            String accountSecret = new String(accountPassword.getPassword());
+            if (accountSecret.length() < 8) throw new IllegalArgumentException("Пароль аккаунта должен содержать минимум 8 символов.");
+            boolean createAccount = accountMode.getSelectedIndex() == 0;
             server = new MultiplayerServer(secret, Integer.parseInt(limit.getText().trim()),
-                    GamePaths.multiplayerServerWorld(selectedWorld.file()));
+                    GamePaths.multiplayerServerWorld(selectedWorld.file()), true);
             int actualPort = server.start(Integer.parseInt(port.getText().trim()));
             client = new MultiplayerClient();
             showMultiplayerLobby("LAN-сервер запущен. Порт: " + actualPort
                     + ". Сохранение сервера: " + GamePaths.multiplayerServerWorld(selectedWorld.file()).getFileName()
                     + ". Игроки должны использовать адрес этого компьютера в своей сети.",
-                    client, server, "Host", secret, "127.0.0.1", actualPort, selectedWorld);
+                    client, server, "Host", secret, accountSecret, createAccount, "127.0.0.1", actualPort, selectedWorld);
         } catch (Exception error) {
             if (client != null) client.close();
             if (server != null) server.close();
@@ -530,11 +537,15 @@ public final class Launcher {
         JTextField port = new JTextField("25575");
         JTextField nickname = new JTextField("Player");
         JPasswordField password = new JPasswordField();
-        JPanel form = new JPanel(new GridLayout(4, 2, 8, 8));
+        JPasswordField accountPassword = new JPasswordField();
+        JComboBox<String> accountMode = new JComboBox<>(new String[]{"Войти в аккаунт", "Создать аккаунт"});
+        JPanel form = new JPanel(new GridLayout(6, 2, 8, 8));
         form.add(new JLabel("Адрес:")); form.add(host);
         form.add(new JLabel("Порт:")); form.add(port);
-        form.add(new JLabel("Никнейм:")); form.add(nickname);
-        form.add(new JLabel("Пароль:")); form.add(password);
+        form.add(new JLabel("Никнейм / аккаунт:")); form.add(nickname);
+        form.add(new JLabel("Пароль комнаты:")); form.add(password);
+        form.add(new JLabel("Пароль аккаунта (8+ символов):")); form.add(accountPassword);
+        form.add(new JLabel("Действие с аккаунтом:")); form.add(accountMode);
         if (JOptionPane.showConfirmDialog(frame, form, "Подключиться к серверу", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
 
         try {
@@ -544,8 +555,11 @@ public final class Launcher {
             if (portNumber < 1 || portNumber > 65535) throw new IllegalArgumentException("Порт должен быть от 1 до 65535");
             String playerName = nickname.getText().trim();
             if (playerName.isBlank()) playerName = "Player";
+            String accountSecret = new String(accountPassword.getPassword());
+            if (accountSecret.length() < 8) throw new IllegalArgumentException("Пароль аккаунта должен содержать минимум 8 символов.");
+            boolean createAccount = accountMode.getSelectedIndex() == 1;
             showMultiplayerLobby("Подключение к " + address + ":" + portNumber,
-                    new MultiplayerClient(), null, playerName, new String(password.getPassword()), address, portNumber, null);
+                    new MultiplayerClient(), null, playerName, new String(password.getPassword()), accountSecret, createAccount, address, portNumber, null);
         } catch (IllegalArgumentException error) {
             JOptionPane.showMessageDialog(frame, "Проверь адрес и порт: " + error.getMessage(),
                     "Неверные данные сервера", JOptionPane.WARNING_MESSAGE);
@@ -553,7 +567,8 @@ public final class Launcher {
     }
 
     private void showMultiplayerLobby(String infoText, MultiplayerClient client, MultiplayerServer server,
-                                      String nickname, String password, String host, int port, WorldEntry hostWorld) {
+                                      String nickname, String password, String accountPassword,
+                                      boolean createAccount, String host, int port, WorldEntry hostWorld) {
         JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Сетевая комната", false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout(8, 8));
@@ -618,7 +633,7 @@ public final class Launcher {
         dialog.setVisible(true);
         Thread connector = new Thread(() -> {
             try {
-                client.connect(host, port, password, nickname, text -> SwingUtilities.invokeLater(() -> {
+                client.connect(host, port, password, nickname, accountPassword, createAccount, text -> SwingUtilities.invokeLater(() -> {
                     if (dialog.isDisplayable()) {
                         chat.append(text + System.lineSeparator());
                         chat.setCaretPosition(chat.getDocument().getLength());

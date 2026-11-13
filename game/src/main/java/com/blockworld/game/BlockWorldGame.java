@@ -101,6 +101,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private boolean multiplayerSnapshotStarted;
     private boolean multiplayerSyncReady;
     private float multiplayerPositionClock;
+    private float multiplayerStatsClock;
     private boolean multiplayerWorldReady;
     private boolean multiplayerProfileReady;
     private boolean multiplayerProfileInitialized;
@@ -112,6 +113,9 @@ public final class BlockWorldGame extends SimpleApplication {
     private int expectedProfileArmor;
     private int receivedProfileBlocks;
     private int receivedProfileItems;
+    private float pendingProfileHealth = 20f;
+    private float pendingProfileHunger = 20f;
+    private int pendingProfileFoodCount;
     private boolean multiplayerCraftPending;
     private boolean multiplayerTradePending;
     private final Map<BlockType, Integer> inventory = new EnumMap<>(BlockType.class);
@@ -155,6 +159,14 @@ public final class BlockWorldGame extends SimpleApplication {
     private boolean craftingOpen;
     private boolean furnaceOpen;
     private boolean tradeOpen;
+    private boolean chestOpen;
+    private boolean chestOperationPending;
+    private BlockPos openChestPosition;
+    private final Map<ItemType, Integer> sharedChestContents = new EnumMap<>(ItemType.class);
+    private int pendingChestItems;
+    private int receivedChestItems;
+    private int chestPage;
+    private ItemType selectedChestItem;
     private boolean achievementsOpen;
     private float farmSaveClock;
     private boolean paused;
@@ -548,6 +560,9 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addMapping("EQUIP_CHEST", new KeyTrigger(KeyInput.KEY_J));
         inputManager.addMapping("EQUIP_LEGS", new KeyTrigger(KeyInput.KEY_K));
         inputManager.addMapping("EQUIP_BOOTS", new KeyTrigger(KeyInput.KEY_L));
+        inputManager.addMapping("OPEN_CHAT", new KeyTrigger(KeyInput.KEY_RETURN));
+        inputManager.addMapping("CHEST_TAKE", new KeyTrigger(KeyInput.KEY_Z));
+        inputManager.addMapping("CHEST_PUT", new KeyTrigger(KeyInput.KEY_X));
 
         if (version.survival()) {
             inputManager.addMapping("MOVE_FORWARD", new KeyTrigger(KeyInput.KEY_W));
@@ -617,26 +632,29 @@ public final class BlockWorldGame extends SimpleApplication {
                 case "USE_UTILITY" -> useSelectedUtility();
                 case "FISHING_CAST" -> castFishingRod();
                 case "TOGGLE_ACHIEVEMENTS" -> toggleAchievements();
-                case "CRAFT_PAGE_PREV" -> changeCraftPage(-1);
-                case "CRAFT_PAGE_NEXT" -> changeCraftPage(1);
+                case "CRAFT_PAGE_PREV" -> { if (chestOpen) changeChestPage(-1); else changeCraftPage(-1); }
+                case "CRAFT_PAGE_NEXT" -> { if (chestOpen) changeChestPage(1); else changeCraftPage(1); }
                 case "EQUIP_HELMET" -> toggleArmor(ArmorSlot.HELMET);
                 case "EQUIP_CHEST" -> toggleArmor(ArmorSlot.CHESTPLATE);
                 case "EQUIP_LEGS" -> toggleArmor(ArmorSlot.LEGGINGS);
                 case "EQUIP_BOOTS" -> toggleArmor(ArmorSlot.BOOTS);
+                case "OPEN_CHAT" -> openMultiplayerChat();
+                case "CHEST_TAKE" -> transferSelectedChestItem(true);
+                case "CHEST_PUT" -> transferSelectedChestItem(false);
                 case "TOGGLE_PAUSE" -> setPaused(!paused);
                 case "EXIT_GAME" -> {
                     if (paused) stop();
                     else { statusMessage = "Нажми ESC, чтобы открыть меню паузы, затем F10 для выхода."; updateHud(); }
                 }
-                case "SLOT_1" -> { if (furnaceOpen) smeltInFurnace(0); else if (tradeOpen) tradeWithVillager(0); else if (craftingOpen && 1 <= craftingRecipes.size()) craftRecipe(0); else if (!craftingOpen && !achievementsOpen) selectSlot(0); }
-                case "SLOT_2" -> { if (furnaceOpen) smeltInFurnace(1); else if (tradeOpen) tradeWithVillager(1); else if (craftingOpen && 2 <= craftingRecipes.size()) craftRecipe(1); else if (!craftingOpen) selectSlot(1); }
-                case "SLOT_3" -> { if (furnaceOpen) smeltInFurnace(2); else if (tradeOpen) tradeWithVillager(2); else if (craftingOpen && 3 <= craftingRecipes.size()) craftRecipe(2); else if (!craftingOpen) selectSlot(2); }
-                case "SLOT_4" -> { if (furnaceOpen) smeltInFurnace(3); else if (tradeOpen) tradeWithVillager(3); else if (craftingOpen && 4 <= craftingRecipes.size()) craftRecipe(3); else if (!craftingOpen) selectSlot(3); }
-                case "SLOT_5" -> { if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 5 <= craftingRecipes.size()) craftRecipe(4); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(4); }
-                case "SLOT_6" -> { if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 6 <= craftingRecipes.size()) craftRecipe(5); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(5); }
-                case "SLOT_7" -> { if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 7 <= craftingRecipes.size()) craftRecipe(6); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(6); }
-                case "SLOT_8" -> { if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 8 <= craftingRecipes.size()) craftRecipe(7); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(7); }
-                case "SLOT_9" -> { if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 9 <= craftingRecipes.size()) craftRecipe(8); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(8); }
+                case "SLOT_1" -> { if (chestOpen) selectChestSlot(0); else  if (furnaceOpen) smeltInFurnace(0); else if (tradeOpen) tradeWithVillager(0); else if (craftingOpen && 1 <= craftingRecipes.size()) craftRecipe(0); else if (!craftingOpen && !achievementsOpen) selectSlot(0); }
+                case "SLOT_2" -> { if (chestOpen) selectChestSlot(1); else  if (furnaceOpen) smeltInFurnace(1); else if (tradeOpen) tradeWithVillager(1); else if (craftingOpen && 2 <= craftingRecipes.size()) craftRecipe(1); else if (!craftingOpen) selectSlot(1); }
+                case "SLOT_3" -> { if (chestOpen) selectChestSlot(2); else  if (furnaceOpen) smeltInFurnace(2); else if (tradeOpen) tradeWithVillager(2); else if (craftingOpen && 3 <= craftingRecipes.size()) craftRecipe(2); else if (!craftingOpen) selectSlot(2); }
+                case "SLOT_4" -> { if (chestOpen) selectChestSlot(3); else  if (furnaceOpen) smeltInFurnace(3); else if (tradeOpen) tradeWithVillager(3); else if (craftingOpen && 4 <= craftingRecipes.size()) craftRecipe(3); else if (!craftingOpen) selectSlot(3); }
+                case "SLOT_5" -> { if (chestOpen) selectChestSlot(4); else  if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 5 <= craftingRecipes.size()) craftRecipe(4); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(4); }
+                case "SLOT_6" -> { if (chestOpen) selectChestSlot(5); else  if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 6 <= craftingRecipes.size()) craftRecipe(5); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(5); }
+                case "SLOT_7" -> { if (chestOpen) selectChestSlot(6); else  if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 7 <= craftingRecipes.size()) craftRecipe(6); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(6); }
+                case "SLOT_8" -> { if (chestOpen) selectChestSlot(7); else  if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 8 <= craftingRecipes.size()) craftRecipe(7); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(7); }
+                case "SLOT_9" -> { if (chestOpen) selectChestSlot(8); else  if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 9 <= craftingRecipes.size()) craftRecipe(8); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(8); }
                 default -> { }
             }
         };
@@ -644,7 +662,8 @@ public final class BlockWorldGame extends SimpleApplication {
                 "SLOT_1", "SLOT_2", "SLOT_3", "SLOT_4", "SLOT_5",
                 "SLOT_6", "SLOT_7", "SLOT_8", "SLOT_9", "RENDER_DISTANCE", "TOGGLE_CULLING", "WEATHER", TALK,
                 "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
-                "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA", "CYCLE_PLAYER_STYLE", "TOGGLE_MAP");
+                "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA", "CYCLE_PLAYER_STYLE", "TOGGLE_MAP",
+                "OPEN_CHAT", "CHEST_TAKE", "CHEST_PUT");
     }
 
     @Override
@@ -814,6 +833,15 @@ public final class BlockWorldGame extends SimpleApplication {
                     GameLog.error("Не удалось отправить координаты игрока", error);
                 }
             }
+            multiplayerStatsClock += Math.max(0f, tpf);
+            if (multiplayerStatsClock >= 1f) {
+                multiplayerStatsClock = 0f;
+                try { multiplayerClient.sendPlayerStats(health, hunger, foodCount); }
+                catch (IOException error) {
+                    statusMessage = "Не удалось синхронизировать здоровье и голод: " + error.getMessage();
+                    GameLog.error("Не удалось отправить показатели игрока", error);
+                }
+            }
             if (multiplayerClient.isHost()) {
                 creatureSyncClock += Math.max(0f, tpf);
                 if (creatureSyncClock >= 0.25f) {
@@ -864,6 +892,72 @@ public final class BlockWorldGame extends SimpleApplication {
         sender.start();
     }
 
+    private List<ItemType> chestItemSlots() {
+        List<ItemType> result = new ArrayList<>();
+        for (ItemType item : ItemType.values()) {
+            if (sharedChestContents.getOrDefault(item, 0) > 0
+                    || craftedItems.getOrDefault(item, 0) > 0) result.add(item);
+        }
+        return result;
+    }
+
+    private void rebuildChestSlots() {
+        List<ItemType> slots = chestItemSlots();
+        if (selectedChestItem != null && !slots.contains(selectedChestItem)) selectedChestItem = null;
+        if (selectedChestItem == null && !slots.isEmpty()) selectedChestItem = slots.get(0);
+        int pages = Math.max(1, (slots.size() + 8) / 9);
+        chestPage = Math.max(0, Math.min(pages - 1, chestPage));
+    }
+
+    private void selectChestSlot(int slot) {
+        if (!chestOpen || slot < 0 || slot >= 9) return;
+        List<ItemType> slots = chestItemSlots();
+        int index = chestPage * 9 + slot;
+        if (index >= slots.size()) return;
+        selectedChestItem = slots.get(index);
+        statusMessage = "Выбран предмет: " + selectedChestItem.displayName()
+                + ". Z — забрать, X — положить.";
+        updateInventoryUi();
+        updateHud();
+    }
+
+    private void changeChestPage(int delta) {
+        if (!chestOpen) return;
+        int pages = Math.max(1, (chestItemSlots().size() + 8) / 9);
+        chestPage = Math.max(0, Math.min(pages - 1, chestPage + delta));
+        rebuildChestSlots();
+        updateInventoryUi();
+    }
+
+    private void transferSelectedChestItem(boolean take) {
+        if (!chestOpen || openChestPosition == null || selectedChestItem == null
+                || chestOperationPending || !multiplayerSyncReady) return;
+        try {
+            if (take) multiplayerClient.takeFromChest(openChestPosition, selectedChestItem, 1);
+            else multiplayerClient.putIntoChest(openChestPosition, selectedChestItem, 1);
+            chestOperationPending = true;
+            statusMessage = take ? "Забираю предмет из общего сундука..." : "Кладу предмет в общий сундук...";
+            updateHud();
+        } catch (IOException | IllegalArgumentException error) {
+            statusMessage = "Не удалось изменить сундук: " + error.getMessage();
+            updateHud();
+        }
+    }
+
+    private void openMultiplayerChat() {
+        if (multiplayerClient == null || !multiplayerClient.isConnected()) return;
+        SwingUtilities.invokeLater(() -> {
+            String message = JOptionPane.showInputDialog(null,
+                    "Сообщение или обмен предметами:\n/trade Ник ПРЕДМЕТ_ОТДАЮ Количество ПРЕДМЕТ_ПОЛУЧАЮ Количество",
+                    "BLOCKWORLD 3D — Чат", JOptionPane.PLAIN_MESSAGE);
+            if (message == null || message.isBlank()) return;
+            try { multiplayerClient.sendChat(message); }
+            catch (IOException error) {
+                multiplayerInbox.add("NETWORK_ERROR " + error.getMessage());
+            }
+        });
+    }
+
     private void refreshMultiplayerReadiness() {
         multiplayerSyncReady = multiplayerClient != null && multiplayerClient.isConnected()
                 && multiplayerWorldReady && multiplayerProfileReady;
@@ -876,7 +970,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private void sendMultiplayerProfileSnapshot() {
         if (multiplayerClient == null || !multiplayerClient.isConnected()) return;
         try {
-            multiplayerClient.sendPlayerProfile(inventory, craftedItems, equippedArmor);
+            multiplayerClient.sendPlayerProfile(inventory, craftedItems, equippedArmor, health, hunger, foodCount);
         } catch (IOException | IllegalArgumentException error) {
             statusMessage = "Не удалось передать инвентарь серверу: " + error.getMessage();
             GameLog.error("Не удалось отправить серверный профиль игрока", error);
@@ -899,6 +993,9 @@ public final class BlockWorldGame extends SimpleApplication {
         craftedItems.putAll(pendingProfileItems);
         equippedArmor.clear();
         equippedArmor.addAll(pendingProfileArmor);
+        health = pendingProfileHealth;
+        hunger = pendingProfileHunger;
+        foodCount = pendingProfileFoodCount;
         pendingProfileBlocks = null;
         pendingProfileItems = null;
         pendingProfileArmor = null;
@@ -1024,11 +1121,17 @@ public final class BlockWorldGame extends SimpleApplication {
                     }
                 }
                 case "PROFILE_BEGIN" -> {
-                    if (parts.length == 4) {
+                    if (parts.length == 7) {
                         expectedProfileBlocks = Integer.parseInt(parts[1]);
                         expectedProfileItems = Integer.parseInt(parts[2]);
                         expectedProfileArmor = Integer.parseInt(parts[3]);
-                        if (expectedProfileBlocks != BlockType.values().length
+                        pendingProfileHealth = Float.parseFloat(parts[4]);
+                        pendingProfileHunger = Float.parseFloat(parts[5]);
+                        pendingProfileFoodCount = Integer.parseInt(parts[6]);
+                        if (!Float.isFinite(pendingProfileHealth) || pendingProfileHealth < 0f || pendingProfileHealth > 20f
+                                || !Float.isFinite(pendingProfileHunger) || pendingProfileHunger < 0f || pendingProfileHunger > 20f
+                                || pendingProfileFoodCount < 0 || pendingProfileFoodCount > 1_000_000
+                                || expectedProfileBlocks != BlockType.values().length
                                 || expectedProfileItems != ItemType.values().length
                                 || expectedProfileArmor < 0 || expectedProfileArmor > ArmorSlot.values().length)
                             throw new IllegalArgumentException("Неверный размер профиля игрока");
@@ -1064,6 +1167,77 @@ public final class BlockWorldGame extends SimpleApplication {
                         throw new IllegalArgumentException("Повтор слота брони в профиле");
                 }
                 case "PROFILE_END" -> applyMultiplayerProfile();
+                case "CHEST_BEGIN" -> {
+                    if (parts.length == 5) {
+                        openChestPosition = new BlockPos(Integer.parseInt(parts[1]),
+                                Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+                        pendingChestItems = Integer.parseInt(parts[4]);
+                        if (pendingChestItems < 0 || pendingChestItems > ItemType.values().length)
+                            throw new IllegalArgumentException("Слишком много предметов в сундуке");
+                        receivedChestItems = 0;
+                        sharedChestContents.clear();
+                    }
+                }
+                case "CHEST_ITEM" -> {
+                    if (parts.length == 3 && openChestPosition != null
+                            && receivedChestItems < pendingChestItems) {
+                        ItemType item = ItemType.valueOf(parts[1]);
+                        int count = Integer.parseInt(parts[2]);
+                        if (count < 1 || count > 1_000_000 || sharedChestContents.put(item, count) != null)
+                            throw new IllegalArgumentException("Неверное содержимое сундука");
+                        receivedChestItems++;
+                    }
+                }
+                case "CHEST_END" -> {
+                    if (receivedChestItems != pendingChestItems || openChestPosition == null)
+                        throw new IllegalArgumentException("Неполный список общего сундука");
+                    chestOpen = true;
+                    chestOperationPending = false;
+                    inventoryOpen = craftingOpen = furnaceOpen = tradeOpen = achievementsOpen = false;
+                    chestPage = 0;
+                    rebuildChestSlots();
+                    showInventoryOverlay(true);
+                    statusMessage = "Общий сундук открыт. 1–9 — выбрать предмет, Z — забрать, X — положить, F — закрыть.";
+                    updateInventoryUi();
+                    updateHud();
+                }
+                case "CHEST_ACTION_RESULT" -> {
+                    chestOperationPending = false;
+                    if (parts.length == 2 && Boolean.parseBoolean(parts[1]))
+                        statusMessage = "Общий сундук обновлён.";
+                    updateInventoryUi();
+                    updateHud();
+                }
+                case "CHEST_ERROR" -> {
+                    chestOperationPending = false;
+                    statusMessage = event.substring("CHEST_ERROR ".length());
+                    updateInventoryUi();
+                    updateHud();
+                }
+                case "CHAT_TEXT" -> {
+                    String message = new String(java.util.Base64.getDecoder().decode(parts[1]),
+                            java.nio.charset.StandardCharsets.UTF_8);
+                    statusMessage = "Чат: " + message;
+                    updateHud();
+                }
+                case "PLAYER_STATS" -> {
+                    if (parts.length == 5) {
+                        int id = Integer.parseInt(parts[1]);
+                        float remoteHealth = Float.parseFloat(parts[2]);
+                        float remoteHunger = Float.parseFloat(parts[3]);
+                        int remoteFood = Integer.parseInt(parts[4]);
+                        if (Float.isFinite(remoteHealth) && remoteHealth >= 0f && remoteHealth <= 20f
+                                && Float.isFinite(remoteHunger) && remoteHunger >= 0f && remoteHunger <= 20f
+                                && remoteFood >= 0 && remoteFood <= 1_000_000) {
+                            RemotePlayerState remote = remotePlayers.get(id);
+                            if (remote != null) {
+                                remote.health = remoteHealth;
+                                remote.hunger = remoteHunger;
+                                remote.foodCount = remoteFood;
+                            }
+                        }
+                    }
+                }
                 case "PROFILE_SAVED" -> {
                     multiplayerProfileReady = true;
                     refreshMultiplayerReadiness();
@@ -1188,6 +1362,8 @@ public final class BlockWorldGame extends SimpleApplication {
                     multiplayerSyncReady = false;
                     multiplayerWorldReady = false;
                     multiplayerProfileReady = false;
+                    chestOpen = false;
+                    chestOperationPending = false;
                     multiplayerCraftPending = false;
                     multiplayerTradePending = false;
                     for (RemotePlayerState remote : remotePlayers.values()) {
@@ -1243,6 +1419,9 @@ public final class BlockWorldGame extends SimpleApplication {
         float yaw;
         boolean moving;
         boolean hasPosition;
+        float health = 20f;
+        float hunger = 20f;
+        int foodCount;
 
         RemotePlayerState(String name, PlayerAvatar avatar) {
             this.name = name;
@@ -1252,6 +1431,7 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void setPaused(boolean value) {
         if (paused == value || guiNode == null) return;
+        if (value && chestOpen) { chestOpen = false; chestOperationPending = false; }
         paused = value;
         if (paused) {
             inventoryOpen = false;
@@ -1606,6 +1786,14 @@ public final class BlockWorldGame extends SimpleApplication {
         }
 
         if (!worldReady) return;
+        if (chestOpen) {
+            chestOpen = false;
+            chestOperationPending = false;
+            showInventoryOverlay(false);
+            statusMessage = "Общий сундук закрыт.";
+            updateHud();
+            return;
+        }
         if (tradeOpen) {
             tradeOpen = false;
             showInventoryOverlay(false);
@@ -1618,6 +1806,13 @@ public final class BlockWorldGame extends SimpleApplication {
                 && world.getBlock(hit.position()) == BlockType.TREASURE_CHEST) {
             if (!version.survival()) {
                 statusMessage = "Сундук хранит находки. Открой его в режиме выживания.";
+            } else if (multiplayerClient != null && multiplayerClient.isConnected()) {
+                try {
+                    multiplayerClient.openSharedChest(hit.position());
+                    statusMessage = "Запрашиваю общий сундук у сервера...";
+                } catch (IOException error) {
+                    statusMessage = "Не удалось открыть общий сундук: " + error.getMessage();
+                }
             } else if (world.removeBlock(hit.position())) {
                 sendMultiplayerBlockRemove(hit.position());
                 Map<ItemType, Integer> loot = TreasureLoot.roll(world.getSeed(), hit.position());
@@ -1964,6 +2159,7 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void toggleInventory() {
+        if (chestOpen) return;
         if (!version.survival() || !worldReady) return;
         inventoryOpen = !inventoryOpen;
         craftingOpen = false;
@@ -1981,6 +2177,7 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void toggleCrafting() {
+        if (chestOpen) return;
         if (!version.survival() || !worldReady) return;
         craftingOpen = !craftingOpen;
         inventoryOpen = false;
@@ -2015,7 +2212,23 @@ public final class BlockWorldGame extends SimpleApplication {
     private void updateInventoryUi() {
         if (inventoryText == null) return;
         StringBuilder text = new StringBuilder();
-        if (furnaceOpen) {
+        if (chestOpen) {
+            text.append("BLOCKWORLD 3D — ОБЩИЙ СУНДУК\n\n");
+            text.append("Предметы сундука доступны всем игрокам сервера.\n");
+            List<ItemType> slots = chestItemSlots();
+            int start = chestPage * 9;
+            int end = Math.min(slots.size(), start + 9);
+            if (slots.isEmpty()) text.append("Сундук пуст. Выбери предмет в своём инвентаре, чтобы положить его.\n");
+            for (int i = start; i < end; i++) {
+                ItemType item = slots.get(i);
+                text.append(i - start + 1).append(". ").append(item.displayName())
+                        .append(" | сундук: ").append(sharedChestContents.getOrDefault(item, 0))
+                        .append(" | у тебя: ").append(craftedItems.getOrDefault(item, 0))
+                        .append(selectedChestItem == item ? "  < ВЫБРАНО >" : "").append("\n");
+            }
+            text.append("\nСтраница ").append(chestPage + 1).append(" | ←/→ — страницы\n");
+            text.append("Z — забрать 1 предмет, X — положить 1 предмет, F — закрыть");
+        } else if (furnaceOpen) {
             text.append("BLOCKWORLD 3D — ПЕЧЬ\n\n");
             for (int i = 0; i < FurnaceRecipe.values().length; i++) {
                 FurnaceRecipe recipe = FurnaceRecipe.values()[i];
@@ -2233,7 +2446,7 @@ public final class BlockWorldGame extends SimpleApplication {
         String spawn = String.format(java.util.Locale.ROOT, "Spawn: X %.0f / Y %.0f / Z %.0f",
                 spawnPosition.x, spawnPosition.y, spawnPosition.z);
         hud.setText("BLOCKWORLD 3D  |  " + version.id() + " " + version.displayName()
-                + "\n" + controls + "    F6 — сохранить    F7 — дальность    F8 — режим граней    F10 — выход из паузы"
+                + "\n" + controls + (multiplayerClient != null && multiplayerClient.isConnected() ? "    Enter — чат/обмен" : "") + "    F6 — сохранить    F7 — дальность    F8 — режим граней    F10 — выход из паузы"
                 + "\n" + needs
                 + (nature.isEmpty() ? "" : "\n" + nature)
                 + (biomeLine.isEmpty() ? "" : "\n" + biomeLine)

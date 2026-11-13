@@ -296,6 +296,142 @@ class MultiplayerNetworkTest {
         }
     }
 
+    @Test void serverAccountsRegisterAuthenticateAndRejectWrongPasswords(@TempDir Path directory) throws Exception {
+        Path worldFile = directory.resolve("accounts-world.bwserver");
+        try (MultiplayerServer server = new MultiplayerServer("room-secret", 2, worldFile, true);
+             MultiplayerClient firstLogin = new MultiplayerClient()) {
+            int port = server.start(0);
+            firstLogin.connect("127.0.0.1", port, "room-secret", "AccountUser",
+                    "A-unique-account-pass", true, ignored -> { });
+            assertTrue(firstLogin.isConnected());
+        }
+
+        try (MultiplayerServer server = new MultiplayerServer("room-secret", 2, worldFile, true);
+             MultiplayerClient wrong = new MultiplayerClient();
+             MultiplayerClient returning = new MultiplayerClient()) {
+            int port = server.start(0);
+            IOException rejected = assertThrows(IOException.class,
+                    () -> wrong.connect("127.0.0.1", port, "room-secret", "AccountUser",
+                            "wrong-account-pass", false, ignored -> { }));
+            assertTrue(rejected.getMessage().contains("Неверный пароль аккаунта"));
+
+            returning.connect("127.0.0.1", port, "room-secret", "AccountUser",
+                    "A-unique-account-pass", false, ignored -> { });
+            assertTrue(returning.isConnected());
+        }
+    }
+
+    @Test void directPlayerTradeExchangesItemsAndPersistsBothProfiles(@TempDir Path directory) throws Exception {
+        Path worldFile = directory.resolve("trade-world.bwserver");
+        try (MultiplayerServer server = new MultiplayerServer("trade-room", 4, worldFile);
+             MultiplayerClient host = new MultiplayerClient();
+             MultiplayerClient guest = new MultiplayerClient()) {
+            int port = server.start(0);
+            CountDownLatch hostProfileEmpty = new CountDownLatch(1);
+            CountDownLatch hostProfileSaved = new CountDownLatch(1);
+            CountDownLatch worldAccepted = new CountDownLatch(1);
+            CountDownLatch guestProfileEmpty = new CountDownLatch(1);
+            CountDownLatch guestProfileSaved = new CountDownLatch(1);
+            CountDownLatch tradeMessage = new CountDownLatch(1);
+            var hostChats = new CopyOnWriteArrayList<String>();
+
+            host.setEventListener(event -> {
+                if (event.equals("PROFILE_EMPTY")) hostProfileEmpty.countDown();
+                if (event.equals("PROFILE_SAVED")) hostProfileSaved.countDown();
+                if (event.equals("WORLD_ACCEPTED")) worldAccepted.countDown();
+            });
+            host.connect("127.0.0.1", port, "trade-room", "Host", hostChats::add);
+            assertTrue(hostProfileEmpty.await(3, TimeUnit.SECONDS));
+            host.sendPlayerProfile(Map.of(), Map.of(ItemType.WHEAT, 5), java.util.Set.of());
+            assertTrue(hostProfileSaved.await(3, TimeUnit.SECONDS));
+            host.sendWorldSnapshot(9981L, false, false, 8,
+                    Map.of(new BlockPos(0, 1, 0), BlockType.GRASS));
+            assertTrue(worldAccepted.await(3, TimeUnit.SECONDS));
+
+            guest.setEventListener(event -> {
+                if (event.equals("PROFILE_EMPTY")) guestProfileEmpty.countDown();
+                if (event.equals("PROFILE_SAVED")) guestProfileSaved.countDown();
+            });
+            guest.connect("127.0.0.1", port, "trade-room", "Guest", ignored -> { });
+            assertTrue(guestProfileEmpty.await(3, TimeUnit.SECONDS));
+            guest.sendPlayerProfile(Map.of(), Map.of(ItemType.BREAD, 3), java.util.Set.of());
+            assertTrue(guestProfileSaved.await(3, TimeUnit.SECONDS));
+
+            host.sendChat("/trade Guest WHEAT 2 BREAD 1");
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+            while (hostChats.stream().noneMatch(message -> message.contains("Обмен с Guest завершён"))
+                    && System.nanoTime() < deadline) Thread.sleep(10);
+            assertTrue(hostChats.stream().anyMatch(message -> message.contains("Обмен с Guest завершён")));
+
+            MultiplayerPlayerStore store = new MultiplayerPlayerStore(worldFile);
+            var hostProfile = store.load("Host").orElseThrow();
+            var guestProfile = store.load("Guest").orElseThrow();
+            assertEquals(3, hostProfile.items().get(ItemType.WHEAT));
+            assertEquals(1, hostProfile.items().get(ItemType.BREAD));
+            assertEquals(2, guestProfile.items().get(ItemType.WHEAT));
+            assertEquals(2, guestProfile.items().get(ItemType.BREAD));
+        }
+    }
+
+    @Test void sharedChestContentsCanBeOpenedTakenAndDeposited(@TempDir Path directory) throws Exception {
+        Path worldFile = directory.resolve("chest-world.bwserver");
+        BlockPos chest = new BlockPos(2, 1, 3);
+        try (MultiplayerServer server = new MultiplayerServer("chest-room", 2, worldFile);
+             MultiplayerClient host = new MultiplayerClient()) {
+            int port = server.start(0);
+            CountDownLatch profileEmpty = new CountDownLatch(1);
+            CountDownLatch profileSaved = new CountDownLatch(1);
+            CountDownLatch worldAccepted = new CountDownLatch(1);
+            CountDownLatch chestOpened = new CountDownLatch(1);
+            CountDownLatch chestActions = new CountDownLatch(2);
+            CountDownLatch statsSaved = new CountDownLatch(1);
+            var events = new CopyOnWriteArrayList<String>();
+            host.setEventListener(event -> {
+                events.add(event);
+                if (event.equals("PROFILE_EMPTY")) profileEmpty.countDown();
+                if (event.equals("PROFILE_SAVED")) profileSaved.countDown();
+                if (event.equals("WORLD_ACCEPTED")) worldAccepted.countDown();
+                if (event.equals("CHEST_END")) chestOpened.countDown();
+                if (event.equals("CHEST_ACTION_RESULT true")) chestActions.countDown();
+                if (event.equals("PLAYER_STATS_SAVED")) statsSaved.countDown();
+            });
+            host.connect("127.0.0.1", port, "chest-room", "ChestHost", ignored -> { });
+            assertTrue(profileEmpty.await(3, TimeUnit.SECONDS));
+            host.sendPlayerProfile(Map.of(), Map.of(), java.util.Set.of(), 20f, 20f, 0);
+            assertTrue(profileSaved.await(3, TimeUnit.SECONDS));
+            host.sendWorldSnapshot(7234L, true, false, 16, Map.of(chest, BlockType.TREASURE_CHEST));
+            assertTrue(worldAccepted.await(3, TimeUnit.SECONDS));
+
+            host.openSharedChest(chest);
+            assertTrue(chestOpened.await(3, TimeUnit.SECONDS));
+            String firstItemLine = events.stream().filter(line -> line.startsWith("CHEST_ITEM "))
+                    .findFirst().orElseThrow();
+            String[] itemFields = firstItemLine.split(" ");
+            ItemType item = ItemType.valueOf(itemFields[1]);
+            int initialCount = Integer.parseInt(itemFields[2]);
+            assertTrue(initialCount > 0);
+
+            host.takeFromChest(chest, item, 1);
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+            while (events.stream().filter("CHEST_ACTION_RESULT true"::equals).count() < 1
+                    && System.nanoTime() < deadline) Thread.sleep(10);
+            assertTrue(events.contains("CHEST_ACTION_RESULT true"));
+
+            host.sendPlayerStats(12.5f, 7.5f, 4);
+            assertTrue(statsSaved.await(3, TimeUnit.SECONDS));
+            host.putIntoChest(chest, item, 1);
+            assertTrue(chestActions.await(3, TimeUnit.SECONDS));
+
+            MultiplayerChestStore chests = new MultiplayerChestStore(worldFile);
+            assertEquals(initialCount, chests.load().get(chest).get(item));
+            MultiplayerPlayerStore.Snapshot profile =
+                    new MultiplayerPlayerStore(worldFile).load("ChestHost").orElseThrow();
+            assertEquals(12.5f, profile.health());
+            assertEquals(7.5f, profile.hunger());
+            assertEquals(4, profile.foodCount());
+        }
+    }
+
     @Test void failedConnectionClosesClientSocket() {
         MultiplayerClient client = new MultiplayerClient();
         assertThrows(IOException.class,

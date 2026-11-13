@@ -40,6 +40,17 @@ class MultiplayerPlayerStoreTest {
         assertTrue(store.load("unknown").isEmpty());
     }
 
+    @Test void healthHungerAndFoodCountAreSavedWithTheProfile(@TempDir Path directory) throws Exception {
+        MultiplayerPlayerStore store = new MultiplayerPlayerStore(directory.resolve("survival.bwserver"));
+        var profile = new MultiplayerPlayerStore.Snapshot(java.util.Map.of(BlockType.STONE, 6),
+                java.util.Map.of(ItemType.BREAD, 3), java.util.Set.of(), 12.5f, 7.5f, 4);
+        store.save("Survivor", profile);
+        var loaded = store.load("Survivor").orElseThrow();
+        assertEquals(12.5f, loaded.health());
+        assertEquals(7.5f, loaded.hunger());
+        assertEquals(4, loaded.foodCount());
+    }
+
     @Test void invalidStacksAreRejected() {
         assertThrows(IllegalArgumentException.class, () -> new MultiplayerPlayerStore.Snapshot(
                 java.util.Map.of(BlockType.WOOD, -1), java.util.Map.of(), java.util.Set.of()));

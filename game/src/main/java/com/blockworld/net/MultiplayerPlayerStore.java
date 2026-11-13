@@ -12,7 +12,7 @@ import java.util.*;
 /** Per-player inventory persistence for one hosted multiplayer world. */
 public final class MultiplayerPlayerStore {
     private static final String HEADER = "BLOCKWORLD_PLAYER_PROFILE";
-    private static final int FORMAT = 1;
+    private static final int FORMAT = 2;
     private static final int MAX_STACK = 1_000_000;
     private final Path directory;
 
@@ -29,7 +29,12 @@ public final class MultiplayerPlayerStore {
         if (!Files.isRegularFile(file)) return Optional.empty();
         try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             if (!HEADER.equals(reader.readLine())) throw new IOException("Invalid player profile header");
-            if (!("format=" + FORMAT).equals(reader.readLine())) throw new IOException("Unsupported player profile format");
+            String formatLine = reader.readLine();
+            if (!"format=1".equals(formatLine) && !("format=" + FORMAT).equals(formatLine))
+                throw new IOException("Unsupported player profile format");
+            float health = 20f;
+            float hunger = 20f;
+            int foodCount = 0;
             EnumMap<BlockType, Integer> blocks = new EnumMap<>(BlockType.class);
             EnumMap<ItemType, Integer> items = new EnumMap<>(ItemType.class);
             EnumSet<ArmorSlot> armor = EnumSet.noneOf(ArmorSlot.class);
@@ -53,6 +58,13 @@ public final class MultiplayerPlayerStore {
                             if (fields.length != 2 || !armor.add(ArmorSlot.valueOf(fields[1])))
                                 throw new IOException("Invalid armor profile row");
                         }
+                        case "S" -> {
+                            if (fields.length != 4 || !"format=2".equals(formatLine))
+                                throw new IOException("Invalid player stats row");
+                            health = boundedStat(fields[1]);
+                            hunger = boundedStat(fields[2]);
+                            foodCount = boundedStack(fields[3]);
+                        }
                         default -> throw new IOException("Unknown profile row");
                     }
                 } catch (IllegalArgumentException error) {
@@ -61,7 +73,7 @@ public final class MultiplayerPlayerStore {
             }
             for (BlockType type : BlockType.values()) blocks.putIfAbsent(type, 0);
             for (ItemType type : ItemType.values()) items.putIfAbsent(type, 0);
-            return Optional.of(new Snapshot(blocks, items, armor));
+            return Optional.of(new Snapshot(blocks, items, armor, health, hunger, foodCount));
         }
     }
 
@@ -74,6 +86,8 @@ public final class MultiplayerPlayerStore {
             try (BufferedWriter writer = Files.newBufferedWriter(temporary, StandardCharsets.UTF_8)) {
                 writer.write(HEADER); writer.newLine();
                 writer.write("format=" + FORMAT); writer.newLine();
+                writer.write("S " + snapshot.health() + " " + snapshot.hunger() + " " + snapshot.foodCount());
+                writer.newLine();
                 for (BlockType type : BlockType.values()) {
                     writer.write("B " + type.name() + " " + snapshot.blocks().getOrDefault(type, 0));
                     writer.newLine();
@@ -106,6 +120,16 @@ public final class MultiplayerPlayerStore {
         return directory.resolve(clean + ".profile");
     }
 
+    private static float boundedStat(String text) throws IOException {
+        try {
+            float value = Float.parseFloat(text);
+            if (!Float.isFinite(value) || value < 0f || value > 20f) throw new IOException("Player stat out of range");
+            return value;
+        } catch (NumberFormatException error) {
+            throw new IOException("Invalid player stat", error);
+        }
+    }
+
     private static int boundedStack(String text) throws IOException {
         try {
             int value = Integer.parseInt(text);
@@ -116,8 +140,17 @@ public final class MultiplayerPlayerStore {
         }
     }
 
-    public record Snapshot(Map<BlockType, Integer> blocks, Map<ItemType, Integer> items, Set<ArmorSlot> armor) {
+    public record Snapshot(Map<BlockType, Integer> blocks, Map<ItemType, Integer> items, Set<ArmorSlot> armor,
+                           float health, float hunger, int foodCount) {
+        public Snapshot(Map<BlockType, Integer> blocks, Map<ItemType, Integer> items, Set<ArmorSlot> armor) {
+            this(blocks, items, armor, 20f, 20f, 0);
+        }
         public Snapshot {
+            if (!Float.isFinite(health) || health < 0f || health > 20f
+                    || !Float.isFinite(hunger) || hunger < 0f || hunger > 20f
+                    || foodCount < 0 || foodCount > MAX_STACK) {
+                throw new IllegalArgumentException("Invalid player survival stats");
+            }
             EnumMap<BlockType, Integer> blockCopy = new EnumMap<>(BlockType.class);
             EnumMap<ItemType, Integer> itemCopy = new EnumMap<>(ItemType.class);
             for (BlockType type : BlockType.values()) {

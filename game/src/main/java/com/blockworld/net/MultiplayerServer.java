@@ -6,6 +6,7 @@ import com.blockworld.core.ArmorSlot;
 import com.blockworld.core.CraftingRecipe;
 import com.blockworld.core.ItemType;
 import com.blockworld.core.TradeRecipe;
+import com.blockworld.core.TreasureLoot;
 import com.blockworld.core.WorldCreature;
 import java.nio.file.Path;
 
@@ -28,8 +29,13 @@ public final class MultiplayerServer implements AutoCloseable {
     private final Map<Integer, PlayerState> players = new ConcurrentHashMap<>();
     private final Object membershipLock = new Object();
     private final Object worldLock = new Object();
+    private final Object profileLock = new Object();
     private final MultiplayerWorldStore worldStore;
     private final MultiplayerPlayerStore playerStore;
+    private final MultiplayerAccountStore accountStore;
+    private final MultiplayerChestStore chestStore;
+    private final Map<BlockPos, Map<ItemType, Integer>> sharedChests = new HashMap<>();
+    private final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
     private final AtomicInteger nextPlayerId = new AtomicInteger(0);
     private final Map<BlockPos, BlockType> worldBlocks = new HashMap<>();
     private final Map<Long, WorldCreature> worldCreatures = new HashMap<>();
@@ -46,21 +52,29 @@ public final class MultiplayerServer implements AutoCloseable {
     private long lastCreaturePersistNanos;
 
     public MultiplayerServer(String password, int maxPlayers) {
-        this(password, maxPlayers, null);
+        this(password, maxPlayers, null, false);
     }
 
     public MultiplayerServer(String password, int maxPlayers, Path worldFile) {
+        this(password, maxPlayers, worldFile, false);
+    }
+
+    public MultiplayerServer(String password, int maxPlayers, Path worldFile, boolean accountsEnabled) {
         this.password = password == null ? "" : password;
         if (maxPlayers < 1 || maxPlayers > 32) throw new IllegalArgumentException("maxPlayers must be 1..32");
         this.maxPlayers = maxPlayers;
         this.worldStore = worldFile == null ? null : new MultiplayerWorldStore(worldFile);
         this.playerStore = worldFile == null ? null : new MultiplayerPlayerStore(worldFile);
+        this.accountStore = accountsEnabled && worldFile != null ? new MultiplayerAccountStore(worldFile) : null;
+        this.chestStore = worldFile == null ? null : new MultiplayerChestStore(worldFile);
     }
 
     public synchronized int start(int port) throws IOException {
         if (running) throw new IllegalStateException("Server already running");
         if (port < 0 || port > 65535) throw new IllegalArgumentException("Invalid port");
         restoreWorld();
+        if (accountStore != null) accountStore.load();
+        if (chestStore != null) sharedChests.putAll(chestStore.load());
         ServerSocket candidate = new ServerSocket();
         try {
             candidate.setReuseAddress(true);
@@ -126,7 +140,7 @@ public final class MultiplayerServer implements AutoCloseable {
     private void sendProfile(ClientHandler target, MultiplayerPlayerStore.Snapshot profile) {
         List<String> lines = new ArrayList<>();
         lines.add("PROFILE_BEGIN " + BlockType.values().length + " " + ItemType.values().length
-                + " " + profile.armor().size());
+                + " " + profile.armor().size() + " " + profile.health() + " " + profile.hunger() + " " + profile.foodCount());
         for (BlockType type : BlockType.values()) {
             lines.add("PROFILE_BLOCK " + type.name() + " " + profile.blocks().getOrDefault(type, 0));
         }
@@ -154,6 +168,7 @@ public final class MultiplayerServer implements AutoCloseable {
     }
 
     private void persistPlayerProfile(ClientHandler target, MultiplayerPlayerStore.Snapshot profile) {
+        synchronized (profileLock) {
         try {
             if (playerStore != null) playerStore.save(target.name, profile);
             target.profile = profile;
@@ -161,9 +176,190 @@ public final class MultiplayerServer implements AutoCloseable {
         } catch (IOException error) {
             target.send("PROFILE_ERROR");
         }
+    
+        }
+    }
+
+    private void sendChestSnapshot(ClientHandler target, BlockPos pos) {
+        synchronized (worldLock) {
+            Map<ItemType, Integer> contents = sharedChests.getOrDefault(pos, Map.of());
+            List<String> lines = new ArrayList<>();
+            lines.add("CHEST_BEGIN " + pos.x() + " " + pos.y() + " " + pos.z() + " " + contents.size());
+            for (Map.Entry<ItemType, Integer> entry : contents.entrySet()) {
+                lines.add("CHEST_ITEM " + entry.getKey().name() + " " + entry.getValue());
+            }
+            lines.add("CHEST_END");
+            target.sendBatch(lines);
+        }
+    }
+
+    private void openSharedChest(ClientHandler target, String line) {
+        String[] p = line.split(" ");
+        if (p.length != 4 || target.profile == null) return;
+        BlockPos pos;
+        try {
+            pos = parsePosition(p, 1);
+        } catch (IllegalArgumentException error) {
+            target.send("CHEST_ERROR Недопустимые координаты сундука");
+            return;
+        }
+        synchronized (worldLock) {
+            if (!worldReady || worldBlocks.get(pos) != BlockType.TREASURE_CHEST) {
+                target.send("CHEST_ERROR Сундук не найден в общем мире");
+                return;
+            }
+            if (!sharedChests.containsKey(pos)) {
+                Map<ItemType, Integer> loot = TreasureLoot.roll(worldSeed, pos);
+                EnumMap<ItemType, Integer> initialLoot = new EnumMap<>(ItemType.class);
+                initialLoot.putAll(loot);
+                sharedChests.put(pos, initialLoot);
+                try {
+                    if (chestStore != null) chestStore.save(sharedChests);
+                } catch (IOException error) {
+                    sharedChests.remove(pos);
+                    target.send("CHEST_ERROR Не удалось сохранить содержимое сундука");
+                    return;
+                }
+            }
+            sendChestSnapshot(target, pos);
+        }
+    }
+
+    private void transferSharedChest(ClientHandler target, String line, boolean take) {
+        synchronized (profileLock) {
+        String[] p = line.split(" ");
+        if (p.length != 6 || target.profile == null) return;
+        try {
+            BlockPos pos = parsePosition(p, 1);
+            ItemType item = ItemType.valueOf(p[4]);
+            int count = boundedTradeCount(p[5]);
+            synchronized (worldLock) {
+                if (!worldReady || worldBlocks.get(pos) != BlockType.TREASURE_CHEST
+                        || !sharedChests.containsKey(pos)) {
+                    target.send("CHEST_ERROR Сундук закрыт или не существует");
+                    return;
+                }
+                EnumMap<ItemType, Integer> originalChest = new EnumMap<>(ItemType.class);
+                originalChest.putAll(sharedChests.get(pos));
+                EnumMap<ItemType, Integer> updatedChest = new EnumMap<>(originalChest);
+                EnumMap<ItemType, Integer> updatedItems = target.profile.mutableItems();
+                if (take) {
+                    if (updatedChest.getOrDefault(item, 0) < count) {
+                        target.send("CHEST_ERROR В сундуке недостаточно предметов");
+                        return;
+                    }
+                    updatedChest.merge(item, -count, Integer::sum);
+                    updatedItems.merge(item, count, Integer::sum);
+                } else {
+                    if (updatedItems.getOrDefault(item, 0) < count) {
+                        target.send("CHEST_ERROR У тебя недостаточно предметов");
+                        return;
+                    }
+                    updatedItems.merge(item, -count, Integer::sum);
+                    updatedChest.merge(item, count, Integer::sum);
+                }
+                updatedChest.entrySet().removeIf(entry -> entry.getValue() <= 0);
+                MultiplayerPlayerStore.Snapshot updatedProfile = new MultiplayerPlayerStore.Snapshot(
+                        target.profile.blocks(), updatedItems, target.profile.armor(),
+                        target.profile.health(), target.profile.hunger(), target.profile.foodCount());
+                Map<BlockPos, Map<ItemType, Integer>> updatedContainers =
+                        MultiplayerChestStore.deepCopy(sharedChests);
+                updatedContainers.put(pos, updatedChest);
+                try {
+                    if (chestStore != null) chestStore.save(updatedContainers);
+                    if (playerStore != null) playerStore.save(target.name, updatedProfile);
+                } catch (IOException saveError) {
+                    if (chestStore != null) {
+                        try { chestStore.save(sharedChests); } catch (IOException rollbackError) {
+                            saveError.addSuppressed(rollbackError);
+                        }
+                    }
+                    target.send("CHEST_ERROR Не удалось сохранить операцию");
+                    return;
+                }
+                sharedChests.put(pos, updatedChest);
+                target.profile = updatedProfile;
+                sendProfile(target, updatedProfile);
+                sendChestSnapshot(target, pos);
+                target.send("CHEST_ACTION_RESULT true");
+            }
+        } catch (IllegalArgumentException error) {
+            target.send("CHEST_ERROR Неверный предмет или количество");
+        }
+    
+        }
+    }
+
+    private void processPlayerTrade(ClientHandler sender, String message) {
+        String[] fields = message.strip().split("\\s+");
+        if (fields.length != 6 || !"/trade".equalsIgnoreCase(fields[0])) {
+            sender.send("CHAT " + encode("Использование: /trade Ник ПРЕДМЕТ_ОТДАЮ Количество ПРЕДМЕТ_ПОЛУЧАЮ Количество"));
+            return;
+        }
+        ClientHandler receiver = clients.stream()
+                .filter(client -> client.name.equalsIgnoreCase(fields[1])).findFirst().orElse(null);
+        if (receiver == null || receiver == sender) {
+            sender.send("CHAT " + encode("Игрок не найден или нельзя обмениваться с самим собой."));
+            return;
+        }
+        try {
+            ItemType offered = ItemType.valueOf(fields[2].toUpperCase(Locale.ROOT));
+            int offeredCount = boundedTradeCount(fields[3]);
+            ItemType requested = ItemType.valueOf(fields[4].toUpperCase(Locale.ROOT));
+            int requestedCount = boundedTradeCount(fields[5]);
+            synchronized (profileLock) {
+                if (sender.profile == null || receiver.profile == null) {
+                    sender.send("CHAT " + encode("Профиль одного из игроков ещё загружается."));
+                    return;
+                }
+                EnumMap<ItemType, Integer> senderItems = sender.profile.mutableItems();
+                EnumMap<ItemType, Integer> receiverItems = receiver.profile.mutableItems();
+                if (senderItems.getOrDefault(offered, 0) < offeredCount
+                        || receiverItems.getOrDefault(requested, 0) < requestedCount) {
+                    sender.send("CHAT " + encode("Обмен отклонён: у одного из игроков недостаточно предметов."));
+                    return;
+                }
+                senderItems.merge(offered, -offeredCount, Integer::sum);
+                senderItems.merge(requested, requestedCount, Integer::sum);
+                receiverItems.merge(requested, -requestedCount, Integer::sum);
+                receiverItems.merge(offered, offeredCount, Integer::sum);
+                MultiplayerPlayerStore.Snapshot senderUpdated = new MultiplayerPlayerStore.Snapshot(
+                        sender.profile.blocks(), senderItems, sender.profile.armor(),
+                        sender.profile.health(), sender.profile.hunger(), sender.profile.foodCount());
+                MultiplayerPlayerStore.Snapshot receiverUpdated = new MultiplayerPlayerStore.Snapshot(
+                        receiver.profile.blocks(), receiverItems, receiver.profile.armor(),
+                        receiver.profile.health(), receiver.profile.hunger(), receiver.profile.foodCount());
+                if (playerStore != null) {
+                    playerStore.save(sender.name, senderUpdated);
+                    try {
+                        playerStore.save(receiver.name, receiverUpdated);
+                    } catch (IOException error) {
+                        playerStore.save(sender.name, sender.profile);
+                        throw error;
+                    }
+                }
+                sender.profile = senderUpdated;
+                receiver.profile = receiverUpdated;
+                sendProfile(sender, senderUpdated);
+                sendProfile(receiver, receiverUpdated);
+                sender.send("CHAT " + encode("Обмен с " + receiver.name + " завершён."));
+                receiver.send("CHAT " + encode("Обмен с " + sender.name + " завершён."));
+            }
+        } catch (IllegalArgumentException error) {
+            sender.send("CHAT " + encode("Неверный предмет или количество. Используй названия предметов из инвентаря."));
+        } catch (IOException error) {
+            sender.send("CHAT " + encode("Не удалось сохранить обмен. Попробуй позже."));
+        }
+    }
+
+    private static int boundedTradeCount(String text) {
+        int value = Integer.parseInt(text);
+        if (value < 1 || value > 64) throw new IllegalArgumentException("Trade count must be 1..64");
+        return value;
     }
 
     private void processCraftRequest(ClientHandler target, String[] parts) {
+        synchronized (profileLock) {
         if (parts.length != 3 || target.profile == null) {
             target.send("CRAFT_RESULT 0 false");
             return;
@@ -189,7 +385,8 @@ public final class MultiplayerServer implements AutoCloseable {
                 return;
             }
             MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
-                    blocks, items, target.profile.armor());
+                    blocks, items, target.profile.armor(), target.profile.health(),
+                    target.profile.hunger(), target.profile.foodCount());
             if (playerStore != null) playerStore.save(target.name, updated);
             target.profile = updated;
             sendProfile(target, updated);
@@ -198,9 +395,12 @@ public final class MultiplayerServer implements AutoCloseable {
             target.send("PROFILE_ERROR");
             target.send("CRAFT_RESULT 0 false");
         }
+    
+        }
     }
 
     private void processTradeRequest(ClientHandler target, String[] parts) {
+        synchronized (profileLock) {
         if (parts.length != 2 || target.profile == null) {
             target.send("TRADE_RESULT 0 false");
             return;
@@ -219,7 +419,8 @@ public final class MultiplayerServer implements AutoCloseable {
                 return;
             }
             MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
-                    target.profile.blocks(), items, target.profile.armor());
+                    target.profile.blocks(), items, target.profile.armor(),
+                    target.profile.health(), target.profile.hunger(), target.profile.foodCount());
             if (playerStore != null) playerStore.save(target.name, updated);
             target.profile = updated;
             sendProfile(target, updated);
@@ -228,6 +429,48 @@ public final class MultiplayerServer implements AutoCloseable {
             target.send("PROFILE_ERROR");
             target.send("TRADE_RESULT 0 false");
         }
+    
+        }
+    }
+
+    private boolean authenticateAccount(BufferedReader in, ClientHandler target) throws IOException {
+        if (accountStore == null) return true;
+        boolean exists = accountStore.exists(target.name);
+        byte[] salt = exists ? accountStore.saltFor(target.name) : new byte[16];
+        if (!exists) secureRandom.nextBytes(salt);
+        byte[] nonce = new byte[32];
+        secureRandom.nextBytes(nonce);
+        target.send("ACCOUNT_CHALLENGE " + (exists ? "EXISTING" : "NEW") + " "
+                + Base64.getUrlEncoder().withoutPadding().encodeToString(salt) + " "
+                + Base64.getUrlEncoder().withoutPadding().encodeToString(nonce));
+        String answer = readBoundedLine(in, 512);
+        if (answer == null) return false;
+        String[] parts = answer.split(" ");
+        try {
+            if (exists && parts.length == 2 && "ACCOUNT_LOGIN".equals(parts[0])) {
+                byte[] proof = Base64.getUrlDecoder().decode(parts[1]);
+                if (!accountStore.authenticate(target.name, nonce, proof)) {
+                    target.send("ERROR Неверный пароль аккаунта");
+                    return false;
+                }
+            } else if (!exists && parts.length == 3 && "ACCOUNT_REGISTER".equals(parts[0])) {
+                byte[] verifier = Base64.getUrlDecoder().decode(parts[1]);
+                byte[] proof = Base64.getUrlDecoder().decode(parts[2]);
+                if (!accountStore.register(target.name, salt, verifier, nonce, proof)) {
+                    target.send("ERROR Не удалось создать аккаунт");
+                    return false;
+                }
+            } else {
+                target.send(exists ? "ERROR Аккаунт уже существует. Выбери вход."
+                        : "ERROR Аккаунт не найден. Выбери создание аккаунта.");
+                return false;
+            }
+        } catch (IllegalArgumentException invalid) {
+            target.send("ERROR Некорректные данные аккаунта");
+            return false;
+        }
+        target.send("ACCOUNT_OK");
+        return true;
     }
 
     private void acceptLoop() {
@@ -317,7 +560,15 @@ public final class MultiplayerServer implements AutoCloseable {
         try {
             BlockPos pos = parsePosition(parts, 1);
             synchronized (worldLock) {
-                if (!worldReady || worldBlocks.remove(pos) == null) return;
+                if (!worldReady) return;
+                BlockType removed = worldBlocks.remove(pos);
+                if (removed == null) return;
+                if (removed == BlockType.TREASURE_CHEST && sharedChests.remove(pos) != null && chestStore != null) {
+                    try { chestStore.save(sharedChests); }
+                    catch (IOException error) {
+                        System.err.println("BLOCKWORLD 3D: failed to clean a removed shared chest: " + error.getMessage());
+                    }
+                }
                 persistWorldLocked();
                 String broadcast = "BLOCK_REMOVE " + pos.x() + " " + pos.y() + " " + pos.z();
                 for (ClientHandler client : clients) client.send(broadcast);
@@ -392,6 +643,9 @@ public final class MultiplayerServer implements AutoCloseable {
         private int expectedProfileArmor;
         private int receivedProfileBlocks;
         private int receivedProfileItems;
+        private float pendingHealth = 20f;
+        private float pendingHunger = 20f;
+        private int pendingFoodCount;
 
         ClientHandler(Socket peer) { this.peer = peer; }
 
@@ -527,10 +781,13 @@ public final class MultiplayerServer implements AutoCloseable {
 
         private void beginProfileUpload(String line) {
             String[] p = line.split(" ");
-            if (p.length != 4) throw new IllegalArgumentException("Invalid profile header");
+            if (p.length != 7) throw new IllegalArgumentException("Invalid profile header");
             expectedProfileBlocks = Integer.parseInt(p[1]);
             expectedProfileItems = Integer.parseInt(p[2]);
             expectedProfileArmor = Integer.parseInt(p[3]);
+            pendingHealth = parseStat(p[4]);
+            pendingHunger = parseStat(p[5]);
+            pendingFoodCount = parseProfileCount(p[6]);
             if (expectedProfileBlocks != BlockType.values().length
                     || expectedProfileItems != ItemType.values().length
                     || expectedProfileArmor < 0 || expectedProfileArmor > ArmorSlot.values().length) {
@@ -571,6 +828,7 @@ public final class MultiplayerServer implements AutoCloseable {
         }
 
         private void finishProfileUpload() {
+        synchronized (profileLock) {
             if (pendingProfileBlocks == null || pendingProfileItems == null || pendingProfileArmor == null
                     || receivedProfileBlocks != expectedProfileBlocks
                     || receivedProfileItems != expectedProfileItems
@@ -578,12 +836,15 @@ public final class MultiplayerServer implements AutoCloseable {
                 throw new IllegalArgumentException("Incomplete player profile");
             }
             MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
-                    pendingProfileBlocks, pendingProfileItems, pendingProfileArmor);
+                    pendingProfileBlocks, pendingProfileItems, pendingProfileArmor,
+                    pendingHealth, pendingHunger, pendingFoodCount);
             pendingProfileBlocks = null;
             pendingProfileItems = null;
             pendingProfileArmor = null;
             persistPlayerProfile(this, updated);
+        
         }
+    }
 
         private int parseProfileCount(String value) {
             int count = Integer.parseInt(value);
@@ -591,8 +852,41 @@ public final class MultiplayerServer implements AutoCloseable {
             return count;
         }
 
+        private float parseStat(String value) {
+            float stat = Float.parseFloat(value);
+            if (!Float.isFinite(stat) || stat < 0f || stat > 20f)
+                throw new IllegalArgumentException("Player stat out of range");
+            return stat;
+        }
+
+        private void processPlayerStats(String line) {
+        synchronized (profileLock) {
+            String[] p = line.split(" ");
+            if (p.length != 4 || profile == null) return;
+            try {
+                MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
+                        profile.blocks(), profile.items(), profile.armor(),
+                        parseStat(p[1]), parseStat(p[2]), parseProfileCount(p[3]));
+                if (playerStore != null) playerStore.save(name, updated);
+                profile = updated;
+                broadcastExcept(this, "PLAYER_STATS " + id + " " + updated.health()
+                        + " " + updated.hunger() + " " + updated.foodCount());
+                send("PLAYER_STATS_SAVED");
+            } catch (IOException | IllegalArgumentException error) {
+                send("PROFILE_ERROR");
+            }
+        
+        }
+    }
+
         private void process(String line) {
-            if (line.startsWith("PROFILE_UPLOAD_BEGIN ")) {
+            if (line.startsWith("CHEST_OPEN ")) {
+                openSharedChest(this, line);
+            } else if (line.startsWith("CHEST_TAKE ")) {
+                transferSharedChest(this, line, true);
+            } else if (line.startsWith("CHEST_PUT ")) {
+                transferSharedChest(this, line, false);
+            } else if (line.startsWith("PROFILE_UPLOAD_BEGIN ")) {
                 beginProfileUpload(line);
             } else if (line.startsWith("PROFILE_UPLOAD_BLOCK ")) {
                 acceptProfileBlock(line);
@@ -602,6 +896,8 @@ public final class MultiplayerServer implements AutoCloseable {
                 acceptProfileArmor(line);
             } else if (line.equals("PROFILE_UPLOAD_END")) {
                 finishProfileUpload();
+            } else if (line.startsWith("PLAYER_STATS ")) {
+                processPlayerStats(line);
             } else if (line.startsWith("CRAFT_REQUEST ")) {
                 processCraftRequest(this, line.split(" "));
             } else if (line.startsWith("TRADE_REQUEST ")) {
@@ -609,7 +905,11 @@ public final class MultiplayerServer implements AutoCloseable {
             } else if (line.startsWith("CHAT ")) {
                 String message = decode(line.substring(5));
                 if (message.length() > 240) message = message.substring(0, 240);
-                if (!message.isBlank()) broadcastChat(name + ": " + message);
+                if (!message.isBlank()) {
+                    if (message.startsWith("/trade ")) processPlayerTrade(this, message);
+                    else if (message.startsWith("/")) send("CHAT " + encode("Неизвестная команда. Используй /trade Ник ПРЕДМЕТ Количество ПРЕДМЕТ Количество."));
+                    else broadcastChat(name + ": " + message);
+                }
             } else if (line.startsWith("POS ")) {
                 handlePosition(this, line);
             } else if (line.startsWith("BLOCK_ADD ")) {
@@ -669,6 +969,7 @@ public final class MultiplayerServer implements AutoCloseable {
                         return;
                     }
                     if (!password.equals(supplied)) { send("ERROR Неверный пароль"); return; }
+                    if (!authenticateAccount(in, this)) return;
                     id = nextPlayerId.incrementAndGet();
                     if (hostPlayerId == 0) hostPlayerId = id;
                     send("WELCOME " + id + " " + hostPlayerId + " " + worldReady);

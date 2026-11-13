@@ -30,6 +30,12 @@ public final class MultiplayerClient implements AutoCloseable {
 
     public void connect(String host, int port, String password, String playerName,
                         Consumer<String> chatMessages) throws IOException {
+        connect(host, port, password, playerName, null, false, chatMessages);
+    }
+
+    public void connect(String host, int port, String password, String playerName,
+                        String accountPassword, boolean createAccount,
+                        Consumer<String> chatMessages) throws IOException {
         if (connected) throw new IllegalStateException("Already connected");
         if (socket.isClosed()) throw new IOException("Client is already closed");
         if (host == null || host.isBlank() || host.length() > 253) throw new IllegalArgumentException("Invalid host");
@@ -37,7 +43,7 @@ public final class MultiplayerClient implements AutoCloseable {
         Consumer<String> chats = chatMessages == null ? ignored -> { } : chatMessages;
         try {
             socket.connect(new InetSocketAddress(host.trim(), port), 5000);
-            socket.setSoTimeout(5000);
+            socket.setSoTimeout(15000);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
             out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
             String encodedPassword = encode(password == null ? "" : password);
@@ -46,7 +52,38 @@ public final class MultiplayerClient implements AutoCloseable {
             if (safeName.isBlank()) safeName = "Player";
             if (safeName.length() > 20) safeName = safeName.substring(0, 20);
             out.println("AUTH " + encodedPassword + " " + encode(safeName));
-            String response = readBoundedLine(in, 256);
+            String response = readBoundedLine(in, 512);
+            if (response != null && response.startsWith("ACCOUNT_CHALLENGE ")) {
+                if (accountPassword == null || accountPassword.length() < 8) {
+                    throw new IOException("Для этого сервера нужен пароль аккаунта (минимум 8 символов)");
+                }
+                String[] challenge = response.split(" ");
+                if (challenge.length != 4) throw new IOException("Invalid account challenge");
+                boolean exists = "EXISTING".equals(challenge[1]);
+                if (createAccount && exists) throw new IOException("Аккаунт уже существует. Выбери вход.");
+                if (!createAccount && !exists) throw new IOException("Аккаунт не найден. Выбери создание аккаунта.");
+                byte[] salt;
+                byte[] nonce;
+                try {
+                    salt = Base64.getUrlDecoder().decode(challenge[2]);
+                    nonce = Base64.getUrlDecoder().decode(challenge[3]);
+                } catch (IllegalArgumentException invalid) {
+                    throw new IOException("Invalid account challenge encoding", invalid);
+                }
+                byte[] verifier = MultiplayerAccountStore.deriveVerifier(accountPassword.toCharArray(), salt);
+                byte[] proof = MultiplayerAccountStore.proof(verifier, nonce);
+                String encodedProof = Base64.getUrlEncoder().withoutPadding().encodeToString(proof);
+                if (exists) out.println("ACCOUNT_LOGIN " + encodedProof);
+                else out.println("ACCOUNT_REGISTER "
+                        + Base64.getUrlEncoder().withoutPadding().encodeToString(verifier) + " " + encodedProof);
+                if (out.checkError()) throw new IOException("Не удалось отправить проверку аккаунта");
+                String accountResult = readBoundedLine(in, 256);
+                if (!"ACCOUNT_OK".equals(accountResult)) {
+                    throw new IOException(accountResult != null && accountResult.startsWith("ERROR ")
+                            ? accountResult.substring(6) : "Проверка аккаунта не пройдена");
+                }
+                response = readBoundedLine(in, 256);
+            }
             if (response == null || !response.startsWith("WELCOME ")) {
                 throw new IOException(response != null && response.startsWith("ERROR ")
                         ? response.substring(6) : "Server did not respond");
@@ -63,7 +100,11 @@ public final class MultiplayerClient implements AutoCloseable {
                     String line;
                     while ((line = readBoundedLine(in, MAX_PROTOCOL_LINE)) != null) {
                         if (line.startsWith("CHAT ")) {
-                            try { chats.accept(decode(line.substring(5))); } catch (RuntimeException ignored) { }
+                            try {
+                                String message = decode(line.substring(5));
+                                chats.accept(message);
+                                dispatchEvent("CHAT_TEXT " + encode(message));
+                            } catch (RuntimeException ignored) { }
                         } else {
                             if (line.startsWith("HOST_CHANGED ")) {
                                 String[] parts = line.split(" ");
@@ -140,8 +181,16 @@ public final class MultiplayerClient implements AutoCloseable {
     public synchronized void sendPlayerProfile(Map<BlockType, Integer> blocks,
                                                 Map<ItemType, Integer> items,
                                                 java.util.Set<ArmorSlot> armor) throws IOException {
+        sendPlayerProfile(blocks, items, armor, 20f, 20f, 0);
+    }
+
+    public synchronized void sendPlayerProfile(Map<BlockType, Integer> blocks,
+                                                Map<ItemType, Integer> items,
+                                                java.util.Set<ArmorSlot> armor,
+                                                float health, float hunger, int foodCount) throws IOException {
+        validateStats(health, hunger, foodCount);
         sendLine("PROFILE_UPLOAD_BEGIN " + BlockType.values().length + " " + ItemType.values().length
-                + " " + (armor == null ? 0 : armor.size()));
+                + " " + (armor == null ? 0 : armor.size()) + " " + health + " " + hunger + " " + foodCount);
         for (BlockType type : BlockType.values()) {
             int count = blocks == null ? 0 : blocks.getOrDefault(type, 0);
             if (count < 0 || count > 1_000_000) throw new IllegalArgumentException("Invalid block stack");
@@ -156,6 +205,39 @@ public final class MultiplayerClient implements AutoCloseable {
             for (ArmorSlot slot : armor) sendLine("PROFILE_UPLOAD_ARMOR " + slot.name());
         }
         sendLine("PROFILE_UPLOAD_END");
+    }
+
+    public synchronized void openSharedChest(BlockPos position) throws IOException {
+        if (position == null) throw new IllegalArgumentException("Chest position is required");
+        sendLine("CHEST_OPEN " + position.x() + " " + position.y() + " " + position.z());
+    }
+
+    public synchronized void takeFromChest(BlockPos position, ItemType item, int count) throws IOException {
+        sendChestTransfer("CHEST_TAKE", position, item, count);
+    }
+
+    public synchronized void putIntoChest(BlockPos position, ItemType item, int count) throws IOException {
+        sendChestTransfer("CHEST_PUT", position, item, count);
+    }
+
+    private void sendChestTransfer(String action, BlockPos position, ItemType item, int count) throws IOException {
+        if (position == null || item == null) throw new IllegalArgumentException("Chest and item are required");
+        if (count < 1 || count > 64) throw new IllegalArgumentException("Chest transfer must be 1..64");
+        sendLine(action + " " + position.x() + " " + position.y() + " " + position.z()
+                + " " + item.name() + " " + count);
+    }
+
+    public synchronized void sendPlayerStats(float health, float hunger, int foodCount) throws IOException {
+        validateStats(health, hunger, foodCount);
+        sendLine("PLAYER_STATS " + health + " " + hunger + " " + foodCount);
+    }
+
+    private static void validateStats(float health, float hunger, int foodCount) {
+        if (!Float.isFinite(health) || health < 0f || health > 20f
+                || !Float.isFinite(hunger) || hunger < 0f || hunger > 20f
+                || foodCount < 0 || foodCount > 1_000_000) {
+            throw new IllegalArgumentException("Invalid player stats");
+        }
     }
 
     public synchronized void sendCraftRequest(String catalog, int recipeNumber) throws IOException {

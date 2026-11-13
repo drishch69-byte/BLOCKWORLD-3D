@@ -1,31 +1,60 @@
-# BLOCKWORLD 3D — Multiplayer Server Profiles & Crafting Preview
+# BLOCKWORLD 3D — Multiplayer Accounts, Shared Chests & Trading Preview
 
-The launcher can host a password-protected LAN world or join one by address and port. Hosted block worlds and personal player profiles are stored separately for each selected world.
+The launcher can host a password-protected LAN world or join one by address and port. Select either **Create account** or **Sign in** in the launcher. An account uses the in-game nickname as its username and is stored in the account database for that hosted world.
 
 ## Included
 - Block-style player avatars, position updates, shared block placement/removal, and host-controlled creature movement
-- Server persistence for world blocks and creature states
-- Personal server profiles for block inventory, crafted items, and equipped armor
-- Profile restoration when a player reconnects with the same nickname
+- Server persistence for world blocks and creatures
+- Per-player profiles with block inventory, crafted items, equipped armor, health, hunger, and food count
 - Server-validated crafting recipes and village-trader exchanges
-- Inventory updates uploaded after mining, block placement, smelting, fishing, eating, and armor changes
-- Duplicate active nicknames are rejected to prevent two connected players from writing the same profile at once
+- Server accounts with salted PBKDF2 verifiers and one-time HMAC challenge-response login
+- Shared chests with persistent contents, deposits, and withdrawals
+- Reciprocal player-to-player item trades validated and saved by the server
 
 ## Storage
-Hosted world files are stored under:
+The selected hosted world has its own data files under:
 
-`~/.blockworld3d/servers/`
+~/.blockworld3d/servers/
 
-Player profiles for a hosted world are stored alongside that world's server file in a folder ending with `.bwserver.players/`. Each sanitized nickname has a separate `.profile` file. Writes use a temporary file and atomic replacement where supported.
+- .bwserver — hosted block world and creatures
+- .bwserver.accounts — account salts and PBKDF2 verifiers
+- .bwserver.players/ — per-player inventories, armor, and survival stats
+- .bwserver.chests — shared chest contents indexed by world coordinates
 
-## How profiles work
-1. On first connection, the server reports that the nickname has no profile. The client uploads its current local inventory and armor.
-2. On later connections, the server sends the saved profile to that nickname. The client applies it and refreshes its local sidecar cache.
-3. When a player crafts an item or trades with a village trader, the client sends a request, not a claimed result. The server checks the saved inventory, applies the recipe, saves the new profile, and returns the updated data.
-4. Normal inventory changes are uploaded as a complete personal profile snapshot. While the profile is loading or a server transaction is pending, inventory-changing actions are paused.
+Profile, chest, and world updates use temporary files and atomic replacement where supported.
 
-## Crafting and trading
-The server supports the starter, advanced, and release 1.0 recipe catalogues plus the four village-trader offers. Recipes are checked against the server-held player profile. Crafting and villager trades are server-authoritative in this preview. Direct player-to-player item exchange, shared chests, central health/hunger, and inventory drops on death are not implemented yet.
+## Accounts
+1. Enter a nickname and choose **Create account** on first connection.
+2. Use the same nickname and choose **Sign in** on later connections.
+3. Account passwords must be 8–128 characters. Use a unique password that is not used anywhere else.
+4. The room password (if the host sets one) and account password are separate.
 
-## Nicknames and network safety
-Player profiles are keyed by nickname, not by a separately authenticated user account. The shared server password controls entry to the room, but anyone who knows it could reconnect using an unoccupied nickname belonging to another player. Use unique nicknames, never reuse account passwords, and only host on a trusted LAN. The TCP protocol is not encrypted; do not expose the preview server to the public internet or share its address and password publicly.
+The server stores a per-account salt and a PBKDF2-HMAC-SHA256 verifier (210,000 iterations). Login uses a fresh server nonce and HMAC proof instead of sending the account password as ordinary text. However, this preview does not use TLS: account registration sends the derived verifier over the unencrypted TCP connection. A network observer may capture that verifier and impersonate the account. This is **not suitable for public internet servers**; use only a trusted LAN and a unique password.
+
+## Shared chests
+Look at a treasure chest and press **F**. The server initializes its contents from the world seed and coordinates and keeps the chest block in place. The contents are shared by all connected players and persist after server restart.
+
+- **1–9** selects an item entry
+- **Z** takes one item from the chest
+- **X** puts one item from your inventory into the chest
+- **Left/Right** changes pages
+- **F** closes the chest
+
+Breaking a shared chest removes its saved contents. Chest contents are not dropped into the world.
+
+## Player trading
+Press **Enter** in game to open multiplayer chat. To exchange items, send:
+
+/trade Nick ITEM_TO_GIVE COUNT ITEM_TO_RECEIVE COUNT
+
+For example:
+
+/trade Builder WHEAT 4 BREAD 2
+
+The server verifies that both active players have the requested items, updates both profiles, and writes the results before confirming the exchange. Counts must be between 1 and 64. This preview trades crafted ItemType items, not placeable blocks.
+
+## Survival stats and current limitations
+Health, hunger, and food count are saved in the server player profile and sent to other connected players. The client still simulates its own survival damage locally; the server stores the latest reported values rather than running an authoritative physics/health simulation. Remote player health and hunger are tracked in network state but are not yet shown above avatars. Direct block drops, death inventory drops, shared crafting stations, and full dedicated-server administration remain future work.
+
+## Network safety
+The TCP protocol is not encrypted. Do not expose the preview server to the public internet, and do not publish its address or room password. The account challenge-response avoids sending the account password as plain text, but it does not replace TLS.
