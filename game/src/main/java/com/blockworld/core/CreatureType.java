@@ -10,7 +10,15 @@ public enum CreatureType {
     SLIME("slime", "Слайм", 0.45f),
     FOX("fox", "Лиса", 0.58f),
     TURTLE("turtle", "Черепаха", 0.20f),
-    DOG("dog", "Пёс-компаньон", 0.85f);
+    DOG("dog", "Пёс-компаньон", 0.85f),
+    VILLAGER_FARMER("villager_farmer", "Житель-фермер", 0.30f),
+    VILLAGER_BLACKSMITH("villager_blacksmith", "Житель-кузнец", 0.30f),
+    VILLAGER_LIBRARIAN("villager_librarian", "Житель-библиотекарь", 0.30f),
+    VILLAGER_GUARD("villager_guard", "Житель-страж", 0.34f),
+    IRON_GOLEM("iron_golem", "Железный голем", 0.24f),
+    ZOMBIE("zombie", "Зомби", 0.30f),
+    SKELETON("skeleton", "Скелет", 0.36f),
+    SPIDER("spider", "Паук", 0.52f);
 
     private final String id;
     private final String displayName;
@@ -25,6 +33,33 @@ public enum CreatureType {
     public String id() { return id; }
     public String displayName() { return displayName; }
     public float moveSpeed() { return moveSpeed; }
+
+    public boolean isHostile() {
+        return this == ZOMBIE || this == SKELETON || this == SPIDER;
+    }
+    public boolean isVillager() {
+        return this == VILLAGER || this == VILLAGER_FARMER || this == VILLAGER_BLACKSMITH
+                || this == VILLAGER_LIBRARIAN || this == VILLAGER_GUARD;
+    }
+    public boolean isGuardian() { return this == IRON_GOLEM || this == VILLAGER_GUARD; }
+    public float maxHealth() {
+        return switch (this) {
+            case IRON_GOLEM -> 100f;
+            case ZOMBIE -> 16f;
+            case SKELETON -> 14f;
+            case SPIDER -> 12f;
+            case VILLAGER, VILLAGER_FARMER, VILLAGER_BLACKSMITH, VILLAGER_LIBRARIAN, VILLAGER_GUARD -> 20f;
+            default -> 10f;
+        };
+    }
+    public float attackDamage() {
+        return switch (this) {
+            case ZOMBIE -> 2.5f;
+            case SKELETON -> 2.0f;
+            case SPIDER -> 1.5f;
+            default -> 0f;
+        };
+    }
 
     public static CreatureType fromId(String id) {
         for (CreatureType type : values()) {

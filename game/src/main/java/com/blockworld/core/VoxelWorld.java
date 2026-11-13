@@ -127,6 +127,10 @@ public final class VoxelWorld {
         }
         return false;
     }
+
+    public boolean removeCreature(long id) {
+        return creatures.removeIf(creature -> creature.id() == id);
+    }
     public int getChunkCount() { return chunkBlocks.size(); }
     public int getRenderedChunkCount() { return chunkGeometries.size(); }
     public int getPendingChunkCount() { return pendingChunks.size(); }
@@ -769,8 +773,17 @@ public final class VoxelWorld {
         // A villager is placed outside each simple wooden village house.
         int firstY = terrainHeightFor(-32, 26);
         int secondY = terrainHeightFor(31, 26);
-        addCreature(new WorldCreature(id++, CreatureType.VILLAGER, -31.5f, firstY + 1f, 26.5f, 0f));
-        addCreature(new WorldCreature(id++, CreatureType.VILLAGER, 31.5f, secondY + 1f, 26.5f, 1.2f));
+        addCreature(new WorldCreature(id++, CreatureType.VILLAGER_FARMER, -31.5f, firstY + 1f, 26.5f, 0f));
+        addCreature(new WorldCreature(id++, CreatureType.VILLAGER_BLACKSMITH, 31.5f, secondY + 1f, 26.5f, 1.2f));
+        WorldCreature librarian = findCreatureSpawn(random, radius, id++, CreatureType.VILLAGER_LIBRARIAN);
+        if (librarian != null) addCreature(librarian);
+        WorldCreature guard = findCreatureSpawn(random, radius, id++, CreatureType.VILLAGER_GUARD);
+        if (guard != null) addCreature(guard);
+        int golemY = highestBlockY(-28, 29);
+        if (golemY >= -12 && !blocks.containsKey(new BlockPos(-28, golemY + 1, 29))
+                && !blocks.containsKey(new BlockPos(-28, golemY + 2, 29))) {
+            addCreature(new WorldCreature(id++, CreatureType.IRON_GOLEM, -27.5f, golemY + 1f, 29.5f, 0f));
+        }
 
         CreatureType[] farmAnimals = {CreatureType.COW, CreatureType.SHEEP, CreatureType.PIG, CreatureType.CHICKEN};
         for (int i = 0; i < 18; i++) {
@@ -780,6 +793,15 @@ public final class VoxelWorld {
         }
         for (int i = 0; i < 3; i++) {
             WorldCreature creature = findCreatureSpawn(random, radius, id++, CreatureType.SLIME);
+            if (creature != null) addCreature(creature);
+        }
+        for (int i = 0; i < 4; i++) {
+            CreatureType enemy = switch (i % 3) {
+                case 0 -> CreatureType.ZOMBIE;
+                case 1 -> CreatureType.SKELETON;
+                default -> CreatureType.SPIDER;
+            };
+            WorldCreature creature = findCreatureSpawn(random, radius, id++, enemy);
             if (creature != null) addCreature(creature);
         }
         for (int i = 0; i < 4; i++) {

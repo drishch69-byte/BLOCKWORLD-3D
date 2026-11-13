@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0.**
+**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.8.0 — Village Defense & Combat.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,7 +10,15 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.2.0 — Exploration Update**
+**1.8.0 — Village Defense & Combat**
+
+- Wooden, stone and iron swords; melee attacks against nearby creatures.
+- Zombies, skeletons and spiders; iron golem and villager guard protect village residents.
+- Farmer, blacksmith, librarian and guard villager professions.
+- Fifteen named flowers, tall and short grass, and ferns in seeded meadows.
+- Rain and nearby farmers boost wheat growth; PvP command is checked by the LAN server.
+
+**Earlier: 1.2.0 — Exploration Update**
 
 - Seven surface biomes: plains, forests, deserts, snowy tundra, mountains, taiga, and swamps (the two new biomes appear in the 1.1.0 profile).
 - Chunk-based voxel world, mining, and building.
@@ -24,7 +32,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.0.3)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.8.0)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

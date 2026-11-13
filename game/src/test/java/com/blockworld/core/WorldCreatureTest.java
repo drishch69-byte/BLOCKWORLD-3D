@@ -14,6 +14,13 @@ class WorldCreatureTest {
         assertEquals("fox", CreatureType.fromId("fox").id());
         assertEquals("turtle", CreatureType.fromId("turtle").id());
         assertEquals("dog", CreatureType.fromId("dog").id());
+        assertEquals("zombie", CreatureType.fromId("zombie").id());
+        assertEquals("skeleton", CreatureType.fromId("skeleton").id());
+        assertEquals("spider", CreatureType.fromId("spider").id());
+        assertEquals("iron_golem", CreatureType.fromId("iron_golem").id());
+        assertTrue(CreatureType.ZOMBIE.isHostile());
+        assertTrue(CreatureType.IRON_GOLEM.isGuardian());
+        assertTrue(CreatureType.VILLAGER_FARMER.isVillager());
         WorldCreature creature = new WorldCreature(17L, CreatureType.SHEEP, 1.5f, 4f, -2.5f, 0.75f);
         assertEquals(17L, creature.id());
         assertEquals(CreatureType.SHEEP, creature.type());

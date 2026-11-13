@@ -2,6 +2,7 @@ package com.blockworld.net;
 
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.CombatRules;
 import com.blockworld.core.ArmorSlot;
 import com.blockworld.core.CraftingRecipe;
 import com.blockworld.core.ItemType;
@@ -287,6 +288,56 @@ public final class MultiplayerServer implements AutoCloseable {
             target.send("CHEST_ERROR Неверный предмет или количество");
         }
     
+        }
+    }
+
+    private void processPlayerAttack(ClientHandler sender, String message) {
+        String[] fields = message.strip().split("\\s+");
+        if (fields.length != 2 || !"/hit".equalsIgnoreCase(fields[0])) {
+            sender.send("CHAT " + encode("Использование: /hit Ник (игрок должен быть рядом)."));
+            return;
+        }
+        ClientHandler target = clients.stream()
+                .filter(client -> client.name.equalsIgnoreCase(fields[1])).findFirst().orElse(null);
+        if (target == null || target == sender) {
+            sender.send("CHAT " + encode("Игрок не найден или нельзя атаковать самого себя."));
+            return;
+        }
+        long now = System.nanoTime();
+        if (sender.lastPlayerAttackNanos > 0L && now - sender.lastPlayerAttackNanos < 650_000_000L) {
+            sender.send("CHAT " + encode("Подожди перед следующим ударом."));
+            return;
+        }
+        PlayerState attackerPosition = players.get(sender.id);
+        PlayerState targetPosition = players.get(target.id);
+        if (attackerPosition == null || targetPosition == null
+                || !attackerPosition.hasPosition || !targetPosition.hasPosition
+                || !CombatRules.inMeleeRange(attackerPosition.x, attackerPosition.y, attackerPosition.z,
+                        targetPosition.x, targetPosition.y, targetPosition.z, 3.25f)) {
+            sender.send("CHAT " + encode("Слишком далеко: подойди к игроку ближе."));
+            return;
+        }
+        synchronized (profileLock) {
+            if (sender.profile == null || target.profile == null) {
+                sender.send("CHAT " + encode("Профиль одного из игроков ещё загружается."));
+                return;
+            }
+            float damage = CombatRules.applyArmor(4f, target.profile.armor());
+            float health = Math.max(0f, target.profile.health() - damage);
+            MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
+                    target.profile.blocks(), target.profile.items(), target.profile.armor(),
+                    health, target.profile.hunger(), target.profile.foodCount());
+            try {
+                if (playerStore != null) playerStore.save(target.name, updated);
+                target.profile = updated;
+                sender.lastPlayerAttackNanos = now;
+                sendProfile(target, updated);
+                sender.send("CHAT " + encode("Ты попал по игроку " + target.name
+                        + "; урон " + Math.round(damage) + "."));
+                target.send("CHAT " + encode(sender.name + " ударил тебя! Урон " + Math.round(damage) + "."));
+            } catch (IOException error) {
+                sender.send("CHAT " + encode("Не удалось сохранить результат удара."));
+            }
         }
     }
 
@@ -635,6 +686,7 @@ public final class MultiplayerServer implements AutoCloseable {
         private boolean pendingExtendedBiomes;
         private int pendingWorldRadius;
         private MultiplayerPlayerStore.Snapshot profile;
+        private long lastPlayerAttackNanos;
         private EnumMap<BlockType, Integer> pendingProfileBlocks;
         private EnumMap<ItemType, Integer> pendingProfileItems;
         private EnumSet<ArmorSlot> pendingProfileArmor;
@@ -907,7 +959,8 @@ public final class MultiplayerServer implements AutoCloseable {
                 if (message.length() > 240) message = message.substring(0, 240);
                 if (!message.isBlank()) {
                     if (message.startsWith("/trade ")) processPlayerTrade(this, message);
-                    else if (message.startsWith("/")) send("CHAT " + encode("Неизвестная команда. Используй /trade Ник ПРЕДМЕТ Количество ПРЕДМЕТ Количество."));
+                    else if (message.startsWith("/hit ")) processPlayerAttack(this, message);
+                    else if (message.startsWith("/")) send("CHAT " + encode("Команды: /trade Ник ПРЕДМЕТ Количество ПРЕДМЕТ Количество; /hit Ник."));
                     else broadcastChat(name + ": " + message);
                 }
             } else if (line.startsWith("POS ")) {
@@ -1074,10 +1127,20 @@ public final class MultiplayerServer implements AutoCloseable {
         final String name;
         final float x, y, z, yaw;
         final boolean moving;
+        final boolean hasPosition;
 
-        PlayerState(int id, String name) { this(id, name, 0f, 0f, 0f, 0f, false); }
+        PlayerState(int id, String name) {
+            this(id, name, 0f, 0f, 0f, 0f, false, false);
+        }
+
         PlayerState(int id, String name, float x, float y, float z, float yaw, boolean moving) {
-            this.id = id; this.name = name; this.x = x; this.y = y; this.z = z; this.yaw = yaw; this.moving = moving;
+            this(id, name, x, y, z, yaw, moving, true);
+        }
+
+        private PlayerState(int id, String name, float x, float y, float z, float yaw,
+                            boolean moving, boolean hasPosition) {
+            this.id = id; this.name = name; this.x = x; this.y = y; this.z = z;
+            this.yaw = yaw; this.moving = moving; this.hasPosition = hasPosition;
         }
     }
 }

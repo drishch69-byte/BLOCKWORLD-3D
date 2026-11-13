@@ -15,7 +15,9 @@ import com.jme3.scene.Node;
 import com.jme3.scene.shape.Box;
 import com.jme3.texture.Texture;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -48,6 +50,59 @@ public final class CreatureManager {
 
     public Node getNode() { return node; }
     public int size() { return visuals.size(); }
+
+    public String attackAlongRay(Vector3f origin, Vector3f direction, float reach,
+                                 float hitRadius, float damage, VoxelWorld world) {
+        if (origin == null || direction == null || world == null || direction.lengthSquared() < 0.0001f
+                || !Float.isFinite(reach) || reach <= 0f || !Float.isFinite(hitRadius) || hitRadius < 0f
+                || !Float.isFinite(damage) || damage <= 0f) return null;
+        Vector3f ray = direction.normalize();
+        Visual target = null;
+        float closest = reach;
+        for (Visual visual : visuals.values()) {
+            Vector3f center = new Vector3f(visual.state.x(), visual.state.y() + .72f, visual.state.z());
+            Vector3f offset = center.subtract(origin);
+            float along = offset.dot(ray);
+            if (along < 0f || along > closest) continue;
+            float missSquared = offset.lengthSquared() - along * along;
+            if (missSquared <= hitRadius * hitRadius) {
+                closest = along;
+                target = visual;
+            }
+        }
+        if (target == null) return null;
+        target.health = Math.max(0f, target.health - damage);
+        if (target.health <= 0f) {
+            long id = target.state.id();
+            target.root.removeFromParent();
+            visuals.remove(id);
+            world.removeCreature(id);
+            return target.state.type().displayName() + " побеждён!";
+        }
+        return "Попадание по " + target.state.type().displayName() + ": здоровье "
+                + Math.round(target.health) + "/" + Math.round(target.state.type().maxHealth()) + ".";
+    }
+
+    public float consumePlayerDamage() {
+        float damage = pendingPlayerDamage;
+        pendingPlayerDamage = 0f;
+        return damage;
+    }
+
+    public boolean hasFarmerNear(Vector3f position, float radius) {
+        if (position == null || !Float.isFinite(radius) || radius < 0f) return false;
+        float limit = radius * radius;
+        for (Visual visual : visuals.values()) {
+            if (visual.state.type() != CreatureType.VILLAGER_FARMER) continue;
+            float dx = visual.state.x() - position.x;
+            float dy = visual.state.y() - position.y;
+            float dz = visual.state.z() - position.z;
+            if (dx * dx + dy * dy + dz * dz <= limit) return true;
+        }
+        return false;
+    }
+
+    private float pendingPlayerDamage;
 
     public WorldCreature nearest(Vector3f position, float maxDistance) {
         WorldCreature closest = null;
@@ -122,41 +177,78 @@ public final class CreatureManager {
     }
 
     public void update(float tpf, Vector3f playerPosition, VoxelWorld world) {
+        List<Long> defeated = new ArrayList<>();
         for (Visual visual : visuals.values()) {
             WorldCreature state = visual.state;
             float previousX = state.x();
             float previousZ = state.z();
             float nextX = state.x();
             float nextZ = state.z();
-            if (state.type() == CreatureType.DOG && playerPosition != null) {
+            visual.attackCooldown = Math.max(0f, visual.attackCooldown - Math.max(0f, tpf));
+
+            if (state.type().isHostile() && playerPosition != null) {
                 float dx = playerPosition.x - state.x();
                 float dz = playerPosition.z - state.z();
                 float distance = (float) Math.sqrt(dx * dx + dz * dz);
-                if (distance > 0.001f) visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+                if (distance <= 13f && Math.abs(playerPosition.y - state.y()) <= 2.2f) {
+                    if (distance > 0.001f) visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+                    if (distance > 1.55f) {
+                        float step = state.type().moveSpeed() * Math.min(Math.max(tpf, 0f), .05f);
+                        nextX += (float) Math.sin(visual.yaw) * step;
+                        nextZ += (float) Math.cos(visual.yaw) * step;
+                    } else if (visual.attackCooldown <= 0f) {
+                        pendingPlayerDamage += state.type().attackDamage();
+                        visual.attackCooldown = 1.25f;
+                    }
+                } else {
+                    wander(visual, tpf, state);
+                    nextX = visual.nextX;
+                    nextZ = visual.nextZ;
+                }
+            } else if (state.type().isGuardian()) {
+                Visual threat = nearestProtectedHostile(visual);
+                if (threat != null) {
+                    float dx = threat.state.x() - state.x();
+                    float dz = threat.state.z() - state.z();
+                    float distance = (float) Math.sqrt(dx * dx + dz * dz);
+                    if (distance > .001f) visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+                    if (distance > 1.65f) {
+                        float step = Math.min(distance - 1.65f,
+                                state.type().moveSpeed() * Math.min(Math.max(tpf, 0f), .05f));
+                        nextX += (float) Math.sin(visual.yaw) * step;
+                        nextZ += (float) Math.cos(visual.yaw) * step;
+                    } else if (visual.attackCooldown <= 0f) {
+                        float guardianDamage = state.type() == CreatureType.IRON_GOLEM ? 12f : 4f;
+                        threat.health = Math.max(0f, threat.health - guardianDamage);
+                        visual.attackCooldown = state.type() == CreatureType.IRON_GOLEM ? 1.1f : 1.6f;
+                        if (threat.health <= 0f) defeated.add(threat.state.id());
+                    }
+                } else {
+                    wander(visual, tpf, state);
+                    nextX = visual.nextX;
+                    nextZ = visual.nextZ;
+                }
+            } else if (state.type() == CreatureType.DOG && playerPosition != null) {
+                float dx = playerPosition.x - state.x();
+                float dz = playerPosition.z - state.z();
+                float distance = (float) Math.sqrt(dx * dx + dz * dz);
+                if (distance > .001f) visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
                 float step = companionStep(distance, state.type().moveSpeed(), tpf);
                 nextX += (float) Math.sin(visual.yaw) * step;
                 nextZ += (float) Math.cos(visual.yaw) * step;
             } else {
-                visual.turnTimer -= tpf;
-                if (visual.turnTimer <= 0f) {
-                    visual.turnTimer = 2.5f + visual.random.nextFloat() * 5.5f;
-                    visual.yaw = visual.random.nextFloat() * (float) (Math.PI * 2.0);
-                    visual.pauseTimer = 0.5f + visual.random.nextFloat() * 2.4f;
-                }
-                if (visual.pauseTimer > 0f) {
-                    visual.pauseTimer -= tpf;
-                } else {
-                    float step = state.type().moveSpeed() * Math.min(tpf, 0.05f);
-                    nextX += (float) Math.sin(visual.yaw) * step;
-                    nextZ += (float) Math.cos(visual.yaw) * step;
-                }
+                wander(visual, tpf, state);
+                nextX = visual.nextX;
+                nextZ = visual.nextZ;
             }
 
-            if (playerPosition != null) {
+            if (playerPosition != null && !state.type().isHostile()) {
                 float playerDx = nextX - playerPosition.x;
                 float playerDz = nextZ - playerPosition.z;
-                if (playerDx * playerDx + playerDz * playerDz < 1.8f) visual.pauseTimer = Math.max(visual.pauseTimer, 0.8f);
+                if (playerDx * playerDx + playerDz * playerDz < 1.8f)
+                    visual.pauseTimer = Math.max(visual.pauseTimer, .8f);
             }
+
             int blockX = (int) Math.floor(nextX);
             int blockZ = (int) Math.floor(nextZ);
             int surfaceY = world.highestBlockY(blockX, blockZ);
@@ -171,24 +263,73 @@ public final class CreatureManager {
                     visual.state = state;
                     world.updateCreature(state);
                 } else {
-                    visual.pauseTimer = 1.0f;
+                    visual.pauseTimer = 1f;
                 }
             } else {
-                visual.pauseTimer = 1.0f;
+                visual.pauseTimer = 1f;
             }
+
             boolean walking = (state.x() - previousX) * (state.x() - previousX)
-                    + (state.z() - previousZ) * (state.z() - previousZ) > 0.000001f;
+                    + (state.z() - previousZ) * (state.z() - previousZ) > .000001f;
             visual.walking = walking;
             visual.animationClock += Math.max(0f, tpf) * (walking ? 8f : 1.8f);
             float bob = state.type() == CreatureType.SLIME
                     ? slimeBounce(visual.animationClock)
-                    : walking ? Math.abs(gaitSwing(visual.animationClock, true)) * 0.025f : 0f;
+                    : walking ? Math.abs(gaitSwing(visual.animationClock, true)) * .025f : 0f;
             visual.root.setLocalTranslation(state.x(), state.y() + bob, state.z());
             visual.root.setLocalRotation(new Quaternion().fromAngleAxis(state.yaw(), Vector3f.UNIT_Y));
             visual.root.setLocalScale(1f, state.type() == CreatureType.SLIME
-                    ? 0.82f + 0.18f * (float) Math.abs(Math.sin(visual.animationClock * 1.6f)) : 1f, 1f);
+                    ? .82f + .18f * (float) Math.abs(Math.sin(visual.animationClock * 1.6f)) : 1f, 1f);
             animateLimbs(visual);
         }
+        for (Long id : defeated) {
+            Visual removed = visuals.remove(id);
+            if (removed != null) removed.root.removeFromParent();
+            world.removeCreature(id);
+        }
+    }
+
+    private void wander(Visual visual, float tpf, WorldCreature state) {
+        visual.turnTimer -= tpf;
+        if (visual.turnTimer <= 0f) {
+            visual.turnTimer = 2.5f + visual.random.nextFloat() * 5.5f;
+            visual.yaw = visual.random.nextFloat() * (float) (Math.PI * 2.0);
+            visual.pauseTimer = .5f + visual.random.nextFloat() * 2.4f;
+        }
+        float nextX = state.x();
+        float nextZ = state.z();
+        if (visual.pauseTimer > 0f) visual.pauseTimer -= tpf;
+        else {
+            float step = state.type().moveSpeed() * Math.min(Math.max(tpf, 0f), .05f);
+            nextX += (float) Math.sin(visual.yaw) * step;
+            nextZ += (float) Math.cos(visual.yaw) * step;
+        }
+        visual.nextX = nextX;
+        visual.nextZ = nextZ;
+    }
+
+    private Visual nearestProtectedHostile(Visual guardian) {
+        Visual closest = null;
+        float best = 14f * 14f;
+        for (Visual candidate : visuals.values()) {
+            if (!candidate.state.type().isHostile() || candidate.health <= 0f) continue;
+            boolean threatensVillage = false;
+            for (Visual villager : visuals.values()) {
+                if (!villager.state.type().isVillager()) continue;
+                float vx = candidate.state.x() - villager.state.x();
+                float vz = candidate.state.z() - villager.state.z();
+                if (vx * vx + vz * vz <= 18f * 18f) {
+                    threatensVillage = true;
+                    break;
+                }
+            }
+            if (!threatensVillage) continue;
+            float dx = candidate.state.x() - guardian.state.x();
+            float dz = candidate.state.z() - guardian.state.z();
+            float distance = dx * dx + dz * dz;
+            if (distance < best) { best = distance; closest = candidate; }
+        }
+        return closest;
     }
 
     static float gaitSwing(float animationClock, boolean walking) {
@@ -230,11 +371,16 @@ public final class CreatureManager {
             case SHEEP -> buildSheep(root);
             case PIG -> buildPig(root);
             case CHICKEN -> buildChicken(root);
-            case VILLAGER -> buildVillager(root);
+            case VILLAGER, VILLAGER_FARMER, VILLAGER_BLACKSMITH,
+                    VILLAGER_LIBRARIAN, VILLAGER_GUARD -> buildVillager(root, creature.type());
             case SLIME -> buildSlime(root);
             case FOX -> buildFox(root);
             case TURTLE -> buildTurtle(root);
             case DOG -> buildDog(root);
+            case IRON_GOLEM -> buildIronGolem(root);
+            case ZOMBIE -> buildZombie(root);
+            case SKELETON -> buildSkeleton(root);
+            case SPIDER -> buildSpider(root);
         }
         Map<String, Geometry> animationParts = new HashMap<>();
         for (com.jme3.scene.Spatial child : root.getChildren()) {
@@ -287,8 +433,15 @@ public final class CreatureManager {
         addBox(root, "chicken-leg-right", .045f, .18f, .045f, .12f, .18f, 0f, color(.90f, .60f, .12f));
     }
 
-    private void buildVillager(Node root) {
-        addBox(root, "villager-robe", .34f, .52f, .27f, 0f, .69f, 0f, color(.44f, .32f, .20f));
+    private void buildVillager(Node root, CreatureType type) {
+        ColorRGBA robe = switch (type) {
+            case VILLAGER_FARMER -> color(.30f, .48f, .20f);
+            case VILLAGER_BLACKSMITH -> color(.43f, .25f, .23f);
+            case VILLAGER_LIBRARIAN -> color(.30f, .34f, .60f);
+            case VILLAGER_GUARD -> color(.43f, .43f, .40f);
+            default -> color(.44f, .32f, .20f);
+        };
+        addBox(root, "villager-robe", .34f, .52f, .27f, 0f, .69f, 0f, robe);
         addBox(root, "villager-head", .23f, .24f, .23f, 0f, 1.43f, -.02f, color(.75f, .57f, .43f));
         addBox(root, "villager-nose", .06f, .08f, .13f, 0f, 1.36f, -.31f, color(.66f, .45f, .35f));
         addBox(root, "villager-eye-left", .035f, .035f, .025f, -.09f, 1.48f, -.235f, color(.96f, .92f, .82f));
@@ -302,6 +455,59 @@ public final class CreatureManager {
         addBox(root, "villager-arm-right", .10f, .28f, .11f, .40f, .68f, 0f, color(.55f, .40f, .27f));
         addBox(root, "villager-leg-left", .12f, .18f, .13f, -.16f, .18f, .02f, color(.30f, .25f, .20f));
         addBox(root, "villager-leg-right", .12f, .18f, .13f, .16f, .18f, .02f, color(.30f, .25f, .20f));
+    }
+
+    private void buildIronGolem(Node root) {
+        ColorRGBA iron = color(.60f, .61f, .56f);
+        addBox(root, "golem-body", .55f, .72f, .38f, 0f, .91f, 0f, iron);
+        addBox(root, "golem-head", .38f, .31f, .36f, 0f, 1.86f, -.02f, color(.68f, .68f, .61f));
+        addBox(root, "golem-eye-left", .055f, .045f, .025f, -.15f, 1.90f, -.39f, color(.55f, .18f, .14f));
+        addBox(root, "golem-eye-right", .055f, .045f, .025f, .15f, 1.90f, -.39f, color(.55f, .18f, .14f));
+        addBox(root, "golem-nose", .07f, .09f, .08f, 0f, 1.68f, -.38f, color(.48f, .45f, .39f));
+        addBox(root, "golem-arm-left", .16f, .57f, .16f, -.68f, .89f, 0f, iron);
+        addBox(root, "golem-arm-right", .16f, .57f, .16f, .68f, .89f, 0f, iron);
+        addBox(root, "golem-leg-left", .19f, .34f, .20f, -.27f, .28f, .03f, color(.48f, .49f, .45f));
+        addBox(root, "golem-leg-right", .19f, .34f, .20f, .27f, .28f, .03f, color(.48f, .49f, .45f));
+        addBox(root, "golem-vines", .12f, .26f, .08f, .38f, 1.17f, -.29f, color(.20f, .42f, .17f));
+    }
+
+    private void buildZombie(Node root) {
+        ColorRGBA skin = color(.28f, .56f, .31f);
+        addBox(root, "zombie-body", .29f, .38f, .16f, 0f, .98f, 0f, color(.17f, .35f, .55f));
+        addBox(root, "zombie-head", .22f, .23f, .22f, 0f, 1.62f, 0f, skin);
+        addBox(root, "zombie-eye-left", .035f, .035f, .02f, -.09f, 1.66f, -.225f, ColorRGBA.Black);
+        addBox(root, "zombie-eye-right", .035f, .035f, .02f, .09f, 1.66f, -.225f, ColorRGBA.Black);
+        addBox(root, "zombie-arm-left", .09f, .34f, .09f, -.39f, 1.10f, -.03f, skin);
+        addBox(root, "zombie-arm-right", .09f, .34f, .09f, .39f, 1.10f, -.03f, skin);
+        addBox(root, "zombie-leg-left", .13f, .34f, .14f, -.15f, .36f, 0f, color(.18f, .29f, .38f));
+        addBox(root, "zombie-leg-right", .13f, .34f, .14f, .15f, .36f, 0f, color(.18f, .29f, .38f));
+    }
+
+    private void buildSkeleton(Node root) {
+        ColorRGBA bone = color(.80f, .79f, .70f);
+        addBox(root, "skeleton-ribcage", .24f, .37f, .13f, 0f, 1.02f, 0f, bone);
+        addBox(root, "skeleton-head", .20f, .21f, .20f, 0f, 1.63f, 0f, bone);
+        addBox(root, "skeleton-eye-left", .04f, .04f, .025f, -.08f, 1.66f, -.21f, ColorRGBA.Black);
+        addBox(root, "skeleton-eye-right", .04f, .04f, .025f, .08f, 1.66f, -.21f, ColorRGBA.Black);
+        addBox(root, "skeleton-arm-left", .065f, .34f, .07f, -.36f, 1.08f, 0f, bone);
+        addBox(root, "skeleton-arm-right", .065f, .34f, .07f, .36f, 1.08f, 0f, bone);
+        addBox(root, "skeleton-leg-left", .07f, .34f, .08f, -.13f, .35f, 0f, bone);
+        addBox(root, "skeleton-leg-right", .07f, .34f, .08f, .13f, .35f, 0f, bone);
+    }
+
+    private void buildSpider(Node root) {
+        ColorRGBA shell = color(.19f, .12f, .15f);
+        addBox(root, "spider-body", .38f, .24f, .48f, 0f, .47f, .18f, shell);
+        addBox(root, "spider-head", .25f, .20f, .26f, 0f, .53f, -.36f, color(.30f, .18f, .19f));
+        for (int side : new int[]{-1, 1}) {
+            for (int leg = 0; leg < 4; leg++) {
+                float z = -.48f + leg * .32f;
+                addBox(root, "spider-leg-" + side + "-" + leg, .055f, .055f, .30f,
+                        side * (.38f + leg * .025f), .26f, z, shell);
+            }
+        }
+        addBox(root, "spider-eye-left", .045f, .045f, .025f, -.12f, .59f, -.61f, color(.86f, .16f, .12f));
+        addBox(root, "spider-eye-right", .045f, .045f, .025f, .12f, .59f, -.61f, color(.86f, .16f, .12f));
     }
 
     private void buildFox(Node root) {
@@ -383,6 +589,10 @@ public final class CreatureManager {
         private float pauseTimer;
         private float yaw;
         private float animationClock;
+        private float attackCooldown;
+        private float health;
+        private float nextX;
+        private float nextZ;
         private boolean walking;
 
         private Visual(WorldCreature state, Node root, Map<String, Geometry> animationParts) {
@@ -391,6 +601,9 @@ public final class CreatureManager {
             this.animationParts = animationParts;
             this.random = new Random(state.id() * 0x9E3779B97F4A7C15L + state.type().ordinal());
             this.yaw = state.yaw();
+            this.health = state.type().maxHealth();
+            this.nextX = state.x();
+            this.nextZ = state.z();
             this.turnTimer = 1f + random.nextFloat() * 3f;
         }
     }

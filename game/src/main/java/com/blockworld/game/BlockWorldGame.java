@@ -1657,6 +1657,7 @@ public final class BlockWorldGame extends SimpleApplication {
             playerEyePosition.set(spawnPosition);
             if (!thirdPersonView) cam.setLocation(spawnPosition.clone());
             statusMessage = "Ты возродился на точке появления. Часть прогресса персонажа пока не сохраняется.";
+            savePlayerDataQuietly();
         }
     }
 

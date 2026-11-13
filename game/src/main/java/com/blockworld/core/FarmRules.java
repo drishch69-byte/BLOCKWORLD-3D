@@ -11,6 +11,13 @@ public final class FarmRules {
         return Math.min(MATURATION_SECONDS, currentSeconds + elapsedSeconds);
     }
 
+    /** Rain and nearby farmers provide gentle crop-growth bonuses. */
+    public static float advance(float currentSeconds, float elapsedSeconds,
+                                boolean raining, boolean farmerNearby) {
+        float multiplier = (raining ? 1.25f : 1f) * (farmerNearby ? 1.15f : 1f);
+        return advance(currentSeconds, elapsedSeconds * multiplier);
+    }
+
     public static boolean isMature(float progressSeconds) {
         return Float.isFinite(progressSeconds) && progressSeconds >= MATURATION_SECONDS;
     }
