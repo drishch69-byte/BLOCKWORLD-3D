@@ -33,13 +33,13 @@ public final class LogTailReader {
             String result = StandardCharsets.UTF_8.decode(buffer).toString();
             boolean truncated = start > 0L;
             if (truncated) {
-                int firstLineBreak = result.indexOf('\\n');
+                int firstLineBreak = result.indexOf('\n');
                 result = firstLineBreak >= 0 ? result.substring(firstLineBreak + 1) : "";
             }
             if (result.length() > maxChars) {
                 result = result.substring(result.length() - maxChars);
             }
-            return truncated ? "[Показан конец журнала; начало опущено]\\n" + result : result;
+            return truncated ? "[Показан конец журнала; начало опущено]\n" + result : result;
         }
     }
 }

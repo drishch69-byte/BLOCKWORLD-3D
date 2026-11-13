@@ -18,7 +18,7 @@ class LogTailReaderTest {
     @Test
     void returnsWholeShortLogWithoutTruncationMarker() throws IOException {
         Path log = tempDir.resolve("latest-run.log");
-        String content = "[INFO] Начало\\n[INFO] Готово\\n";
+        String content = "[INFO] Начало\n[INFO] Готово\n";
         Files.writeString(log, content);
 
         assertEquals(content, LogTailReader.readTail(log, 100));
@@ -28,7 +28,7 @@ class LogTailReaderTest {
     void boundsLargeLogAndKeepsItsLastEntries() throws IOException {
         Path log = tempDir.resolve("large.log");
         StringBuilder content = new StringBuilder();
-        for (int i = 0; i < 2000; i++) content.append("line-").append(i).append("-длинная запись диагностики\\n");
+        for (int i = 0; i < 2000; i++) content.append("line-").append(i).append("-длинная запись диагностики\n");
         Files.writeString(log, content);
 
         String tail = LogTailReader.readTail(log, 512);
