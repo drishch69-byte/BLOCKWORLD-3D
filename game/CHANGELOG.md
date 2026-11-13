@@ -8,7 +8,7 @@
 - Kept the world save format number and block/creature records unchanged.
 
 ## 1.9.0 — Living World & Companions
-- Renamed the player-facing game brand to CUBEVERSE 3D.
+- Renamed the player-facing game brand to Minecraft 3D.
 - Kept Java package names, save headers, and the existing .blockworld3d data folder stable so earlier saves, mods, and settings remain compatible.
 - Added a dog companion command: press N near the closest dog to switch between Follow and Stay.
 - Dogs in Stay mode keep their position instead of automatically following the player; pressing N nearby switches them back to Follow.

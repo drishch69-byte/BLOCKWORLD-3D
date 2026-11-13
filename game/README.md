@@ -1,4 +1,6 @@
-# CUBEVERSE 3D — World Creator & Seeds
+# Minecraft 3D — World Creator & Seeds
+
+> Unofficial fan project; not affiliated with or endorsed by Mojang or Microsoft. Uses independently created code and assets only.
 
 ## 1.9.1 — WORLD CREATOR & SEEDS
 
@@ -10,7 +12,7 @@
 
 ## 1.9.0 — LIVING WORLD & COMPANIONS
 
-**CUBEVERSE 3D** — самостоятельная Java voxel-игра на jMonkeyEngine. Это независимый проект в жанре строительства из блоков и выживания.
+**Minecraft 3D** — самостоятельная Java voxel-игра на jMonkeyEngine. Это независимый проект в жанре строительства из блоков и выживания.
 
 ## 1.9.0 — LIVING WORLD & COMPANIONS
 

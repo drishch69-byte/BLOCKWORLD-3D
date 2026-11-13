@@ -1,12 +1,12 @@
-# CUBEVERSE 3D
+# Minecraft 3D — Unofficial Fan Project
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.1 — World Creator & Seeds.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.1 — World Creator & Seeds.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
-> CUBEVERSE 3D is an independent voxel sandbox game. It is not an official Minecraft product and does not include Minecraft source code or assets.
+> Minecraft 3D is an unofficial, independent voxel sandbox fan project. It is not affiliated with or endorsed by Mojang or Microsoft. It does not include Minecraft source code, textures, sounds, models, or other official assets. All game code and original assets in this repository are independently created.
 
 ## Current release
 

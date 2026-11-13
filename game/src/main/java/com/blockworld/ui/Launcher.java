@@ -80,7 +80,7 @@ public final class Launcher {
     }
 
     public static void main(String[] args) {
-        GameLog.info("===== CUBEVERSE process start =====");
+        GameLog.info("===== Minecraft 3D process start =====");
         GameLog.info("Java=" + System.getProperty("java.version")
                 + "; VM=" + System.getProperty("java.vm.name")
                 + "; OS=" + System.getProperty("os.name") + " " + System.getProperty("os.version")
@@ -104,7 +104,7 @@ public final class Launcher {
                 JOptionPane.showMessageDialog(null,
                         "Не удалось открыть лаунчер\n" + formatThrowable(error)
                                 + "\n\nЖурнал: .logs\\latest-run.log",
-                        "CUBEVERSE 3D — ошибка запуска", JOptionPane.ERROR_MESSAGE);
+                        "Minecraft 3D — ошибка запуска", JOptionPane.ERROR_MESSAGE);
             }
         });
     }
@@ -118,7 +118,7 @@ public final class Launcher {
             JOptionPane.showMessageDialog(frame,
                     title + "\n" + formatThrowable(error)
                             + "\n\nПодробности: .logs\\latest-run.log",
-                    "CUBEVERSE 3D — ошибка", JOptionPane.ERROR_MESSAGE);
+                    "Minecraft 3D — ошибка", JOptionPane.ERROR_MESSAGE);
         };
         if (SwingUtilities.isEventDispatchThread()) action.run();
         else SwingUtilities.invokeLater(action);
@@ -132,14 +132,14 @@ public final class Launcher {
     }
 
     private void createWindow() {
-        frame = new JFrame("CUBEVERSE 3D — лаунчер");
+        frame = new JFrame("Minecraft 3D — лаунчер");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setMinimumSize(new Dimension(760, 560));
         frame.setSize(850, 630);
         frame.setLocationRelativeTo(null);
         frame.setLayout(new BorderLayout(12, 12));
 
-        JLabel title = new JLabel("CUBEVERSE 3D", JLabel.CENTER);
+        JLabel title = new JLabel("Minecraft 3D", JLabel.CENTER);
         title.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 30));
         title.setBorder(BorderFactory.createEmptyBorder(20, 12, 8, 12));
         frame.add(title, BorderLayout.NORTH);
@@ -209,7 +209,7 @@ public final class Launcher {
                 "1.9.0 Living World & Companions — команды следовать и оставаться для пса-компаньона.\n" +
                 "1.8.1 Rabbit & Wildlife — кролики, новая модель и PNG-текстура, прыжковая анимация и появление на равнинах, в лесах, тайге и снежной тундре.\n\n" +
                 "ВАЖНО: список миров не зависит от выбранной версии. Один и тот же файл мира\n" +
-                "можно открыть в любом установленном профиле CUBEVERSE. Перед новым миром\n" +
+                "можно открыть в любом установленном профиле Minecraft 3D. Перед новым миром\n" +
                 "создаётся резервная копия файла с таким же названием.");
         details.setEditable(false);
         details.setFocusable(false);
@@ -392,7 +392,7 @@ public final class Launcher {
         }
         final PlayerProfileStore.Profile current = loaded;
 
-        JDialog dialog = new JDialog(frame, "CUBEVERSE 3D — Профиль игрока", true);
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Профиль игрока", true);
         dialog.setLayout(new BorderLayout(10, 10));
         JPanel form = new JPanel(new GridLayout(2, 2, 10, 10));
         form.setBorder(BorderFactory.createEmptyBorder(16, 16, 8, 16));
@@ -561,7 +561,7 @@ public final class Launcher {
         long freeMiB = Runtime.getRuntime().freeMemory() / (1024L * 1024L);
         long totalMiB = Runtime.getRuntime().totalMemory() / (1024L * 1024L);
         long maxMiB = Runtime.getRuntime().maxMemory() / (1024L * 1024L);
-        String summary = "CUBEVERSE 3D — ДИАГНОСТИКА\n"
+        String summary = "Minecraft 3D — ДИАГНОСТИКА\n"
                 + "Java: " + System.getProperty("java.version") + "\n"
                 + "Система: " + System.getProperty("os.name") + " " + System.getProperty("os.version")
                 + " (" + System.getProperty("os.arch") + ")\n"
@@ -578,7 +578,7 @@ public final class Launcher {
         report.setEditable(false);
         report.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         report.setCaretPosition(report.getDocument().getLength());
-        JDialog dialog = new JDialog(frame, "CUBEVERSE 3D — Диагностика", true);
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Диагностика", true);
         dialog.setLayout(new BorderLayout(8, 8));
         dialog.add(new JScrollPane(report), BorderLayout.CENTER);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -623,7 +623,7 @@ public final class Launcher {
         fields.add(new JLabel("Большой мир генерируется дольше."));
 
         int result = JOptionPane.showConfirmDialog(frame, fields,
-                "CUBEVERSE 3D — создание мира", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+                "Minecraft 3D — создание мира", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
         if (result != JOptionPane.OK_OPTION) return;
 
         String name = nameField.getText().trim();
@@ -716,7 +716,7 @@ public final class Launcher {
                     frame.toFront();
                     status.setText("Игра завершилась с ошибкой. Журнал: .logs\\latest-run.log");
                     JOptionPane.showMessageDialog(frame,
-                            "Не удалось запустить CUBEVERSE:\n" + formatThrowable(error)
+                            "Не удалось запустить Minecraft 3D:\n" + formatThrowable(error)
                                     + "\n\nПроверь Java 17+, драйвер видеокарты и журнал .logs\\latest-run.log.",
                             "Ошибка запуска", JOptionPane.ERROR_MESSAGE);
                 });
@@ -769,7 +769,7 @@ public final class Launcher {
 
     private void showSettingsDialog() {
         GameSettings current = GameSettings.load();
-        JDialog dialog = new JDialog(frame, "CUBEVERSE 3D — Настройки", true);
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Настройки", true);
         dialog.setLayout(new BorderLayout(10, 10));
         JPanel form = new JPanel(new GridLayout(8, 2, 10, 10));
         form.setBorder(BorderFactory.createEmptyBorder(18, 18, 10, 18));
@@ -841,7 +841,7 @@ public final class Launcher {
 
     private void showModsDialog() {
         ModManager manager = new ModManager();
-        JDialog dialog = new JDialog(frame, "CUBEVERSE 3D — Моды", true);
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Моды", true);
         dialog.setLayout(new BorderLayout(8, 8));
         DefaultListModel<ModManager.ModInfo> model = new DefaultListModel<>();
         JList<ModManager.ModInfo> list = new JList<>(model);
@@ -905,7 +905,7 @@ public final class Launcher {
         Object[] options = {"Создать LAN-сервер", "Подключиться", "Отмена"};
         int choice = JOptionPane.showOptionDialog(frame,
                 "Совместный мир: персонажи, перемещение и блоки синхронизируются через сервер. Инвентарь и существа пока локальные.",
-                "CUBEVERSE 3D — Multiplayer", JOptionPane.DEFAULT_OPTION,
+                "Minecraft 3D — Multiplayer", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
         if (choice == 0) hostMultiplayerServer();
         else if (choice == 1) joinMultiplayerServer();
@@ -991,7 +991,7 @@ public final class Launcher {
     private void showMultiplayerLobby(String infoText, MultiplayerClient client, MultiplayerServer server,
                                       String nickname, String password, String accountPassword,
                                       boolean createAccount, String host, int port, WorldEntry hostWorld) {
-        JDialog dialog = new JDialog(frame, "CUBEVERSE 3D — Сетевая комната", false);
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Сетевая комната", false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout(8, 8));
         JLabel info = new JLabel(infoText + " | Подключение...");
@@ -1091,7 +1091,7 @@ public final class Launcher {
 
     private void showResourcePacksDialog() {
         ResourcePackManager manager = new ResourcePackManager();
-        JDialog dialog = new JDialog(frame, "CUBEVERSE 3D — Ресурс-паки", true);
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Ресурс-паки", true);
         dialog.setLayout(new BorderLayout(8, 8));
         JComboBox<ResourcePackManager.ResourcePackInfo> packs = new JComboBox<>();
         JLabel description = new JLabel("PNG-текстуры 16×16: textures/blocks/<block-id>.png; доступны варианты _top, _side, _bottom.");
