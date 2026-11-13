@@ -24,6 +24,16 @@ class CreatureManagerAnimationTest {
     }
 
     @Test
+    void rabbitHopIsBoundedAndStopsWhenTheRabbitIsIdle() {
+        assertEquals(0f, CreatureManager.rabbitHop(1.2f, false), 0.0001f);
+        for (int i = 0; i < 100; i++) {
+            float hop = CreatureManager.rabbitHop(i * 0.1f, true);
+            assertTrue(hop >= 0f);
+            assertTrue(hop <= 0.11f);
+        }
+    }
+
+    @Test
     void slimeBounceStaysInsideSmallAnimationRange() {
         for (int i = 0; i < 100; i++) {
             float bounce = CreatureManager.slimeBounce(i * 0.1f);

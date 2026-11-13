@@ -827,6 +827,10 @@ public final class VoxelWorld {
             WorldCreature creature = findCreatureSpawn(random, radius, id++, CreatureType.TURTLE);
             if (creature != null) addCreature(creature);
         }
+        for (int i = 0; i < 5; i++) {
+            WorldCreature rabbit = findCreatureSpawn(random, radius, id++, CreatureType.RABBIT);
+            if (rabbit != null) addCreature(rabbit);
+        }
         int dogX = 4;
         int dogZ = 8;
         int dogY = highestBlockY(dogX, dogZ);
@@ -855,6 +859,12 @@ public final class VoxelWorld {
             } else if (type == CreatureType.FOX) {
                 boolean forestFloor = surface == BlockType.GRASS || surface == BlockType.PODZOL;
                 if (!forestFloor || (biome != BiomeType.FOREST && biome != BiomeType.TAIGA)) continue;
+            } else if (type == CreatureType.RABBIT) {
+                boolean greenHabitat = surface == BlockType.GRASS
+                        && (biome == BiomeType.PLAINS || biome == BiomeType.FOREST);
+                boolean taigaHabitat = surface == BlockType.PODZOL && biome == BiomeType.TAIGA;
+                boolean snowyHabitat = surface == BlockType.SNOW && biome == BiomeType.SNOWY_TUNDRA;
+                if (!greenHabitat && !taigaHabitat && !snowyHabitat) continue;
             } else if (surface != BlockType.GRASS && surface != BlockType.PODZOL) continue;
             if (blocks.containsKey(new BlockPos(x, surfaceY + 1, z))
                     || blocks.containsKey(new BlockPos(x, surfaceY + 2, z))) continue;

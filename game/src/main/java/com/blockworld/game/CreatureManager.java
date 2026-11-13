@@ -167,6 +167,8 @@ public final class CreatureManager {
             visual.animationClock += Math.max(0f, tpf) * (visual.walking ? 8f : 1.8f);
             float bob = visual.state.type() == CreatureType.SLIME
                     ? slimeBounce(visual.animationClock)
+                    : visual.state.type() == CreatureType.RABBIT
+                    ? rabbitHop(visual.animationClock, visual.walking)
                     : visual.walking ? Math.abs(gaitSwing(visual.animationClock, true)) * 0.025f : 0f;
             visual.root.setLocalTranslation(visual.state.x(), visual.state.y() + bob, visual.state.z());
             visual.root.setLocalRotation(new Quaternion().fromAngleAxis(visual.state.yaw(), Vector3f.UNIT_Y));
@@ -255,7 +257,8 @@ public final class CreatureManager {
             if (surfaceY >= -12 && Math.abs((surfaceY + 1f) - state.y()) <= 1.25f) {
                 BlockType surface = world.getBlock(new BlockPos(blockX, surfaceY, blockZ));
                 boolean safeSurface = surface == BlockType.GRASS || surface == BlockType.DIRT
-                        || surface == BlockType.SAND || surface == BlockType.PODZOL || surface == BlockType.MUD;
+                        || surface == BlockType.SAND || surface == BlockType.PODZOL
+                        || surface == BlockType.MUD || surface == BlockType.SNOW;
                 boolean clearAbove = !world.contains(new BlockPos(blockX, surfaceY + 1, blockZ))
                         && !world.contains(new BlockPos(blockX, surfaceY + 2, blockZ));
                 if (safeSurface && clearAbove) {
@@ -275,6 +278,8 @@ public final class CreatureManager {
             visual.animationClock += Math.max(0f, tpf) * (walking ? 8f : 1.8f);
             float bob = state.type() == CreatureType.SLIME
                     ? slimeBounce(visual.animationClock)
+                    : state.type() == CreatureType.RABBIT
+                    ? rabbitHop(visual.animationClock, walking)
                     : walking ? Math.abs(gaitSwing(visual.animationClock, true)) * .025f : 0f;
             visual.root.setLocalTranslation(state.x(), state.y() + bob, state.z());
             visual.root.setLocalRotation(new Quaternion().fromAngleAxis(state.yaw(), Vector3f.UNIT_Y));
@@ -340,6 +345,11 @@ public final class CreatureManager {
         return Math.abs(com.jme3.math.FastMath.sin(animationClock * 2f)) * 0.13f;
     }
 
+    static float rabbitHop(float animationClock, boolean hopping) {
+        if (!Float.isFinite(animationClock)) return 0f;
+        return hopping ? Math.abs(com.jme3.math.FastMath.sin(animationClock * 2.6f)) * 0.11f : 0f;
+    }
+
     static float companionStep(float distance, float speed, float tpf) {
         if (!Float.isFinite(distance) || !Float.isFinite(speed) || !Float.isFinite(tpf)
                 || distance < 0f || speed < 0f || tpf < 0f) {
@@ -377,6 +387,7 @@ public final class CreatureManager {
             case FOX -> buildFox(root);
             case TURTLE -> buildTurtle(root);
             case DOG -> buildDog(root);
+            case RABBIT -> buildRabbit(root);
             case IRON_GOLEM -> buildIronGolem(root);
             case ZOMBIE -> buildZombie(root);
             case SKELETON -> buildSkeleton(root);
@@ -547,6 +558,29 @@ public final class CreatureManager {
         addBox(root, "dog-ear-right", .08f, .16f, .08f, .17f, 1.04f, -.59f, color(.43f, .28f, .19f));
         addBox(root, "dog-tail", .08f, .20f, .08f, 0f, .83f, .59f, coat);
         legs(root, color(.43f, .31f, .22f), .09f, .23f, .10f);
+    }
+
+    private void buildRabbit(Node root) {
+        ColorRGBA fur = color(.88f, .79f, .66f);
+        ColorRGBA belly = color(.96f, .91f, .82f);
+        ColorRGBA innerEar = color(.88f, .48f, .49f);
+        addBox(root, "rabbit-body", .23f, .19f, .34f, 0f, .43f, .04f, fur);
+        addBox(root, "rabbit-belly", .16f, .11f, .25f, 0f, .39f, -.02f, belly);
+        addBox(root, "rabbit-head", .19f, .18f, .18f, 0f, .69f, -.30f, fur);
+        addBox(root, "rabbit-muzzle", .10f, .07f, .08f, 0f, .60f, -.45f, belly);
+        addBox(root, "rabbit-nose", .035f, .025f, .02f, 0f, .63f, -.51f, innerEar);
+        addBox(root, "rabbit-eye-left", .022f, .028f, .018f, -.115f, .72f, -.455f, color(.16f, .12f, .11f));
+        addBox(root, "rabbit-eye-right", .022f, .028f, .018f, .115f, .72f, -.455f, color(.16f, .12f, .11f));
+        addBox(root, "rabbit-ear-left", .055f, .23f, .055f, -.105f, .98f, -.30f, fur);
+        addBox(root, "rabbit-ear-right", .055f, .23f, .055f, .105f, .98f, -.30f, fur);
+        addBox(root, "rabbit-ear-inner-left", .020f, .16f, .012f, -.105f, .99f, -.354f, innerEar);
+        addBox(root, "rabbit-ear-inner-right", .020f, .16f, .012f, .105f, .99f, -.354f, innerEar);
+        addBox(root, "rabbit-tail", .09f, .09f, .09f, 0f, .48f, .40f, belly);
+        ColorRGBA feet = color(.76f, .63f, .51f);
+        addBox(root, "rabbit-leg-front-left", .065f, .11f, .07f, -.14f, .16f, -.20f, feet);
+        addBox(root, "rabbit-leg-front-right", .065f, .11f, .07f, .14f, .16f, -.20f, feet);
+        addBox(root, "rabbit-leg-back-left", .085f, .13f, .10f, -.15f, .15f, .22f, feet);
+        addBox(root, "rabbit-leg-back-right", .085f, .13f, .10f, .15f, .15f, .22f, feet);
     }
 
     private void buildSlime(Node root) {

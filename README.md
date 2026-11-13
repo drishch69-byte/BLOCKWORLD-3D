@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.8.0 — Village Defense & Combat.**
+**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.8.1 — Rabbit & Wildlife.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,9 +10,15 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.8.0 — Village Defense & Combat**
+**1.8.1 — Rabbit & Wildlife**
 
-- Non-weapon close-range interactions with nearby creatures.
+- Rabbits with a dedicated 16×16 PNG texture, blocky model, ears, tail, and a small hopping animation.
+- Rabbits spawn in suitable plains, forest, taiga, and snowy-tundra habitats.
+- Rabbit creature IDs use the existing world-creature save format, so older worlds remain readable.
+- Includes the 1.8.0 village, flower, farming, and creature features.
+
+**Earlier: 1.8.0 — Village Defense & Combat**
+
 - Zombies, skeletons and spiders; iron golem and villager guard protect village residents.
 - Farmer, blacksmith, librarian and guard villager professions.
 - Fifteen named flowers, tall and short grass, and ferns in seeded meadows.
@@ -32,7 +38,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.8.0)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.8.1)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

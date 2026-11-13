@@ -18,7 +18,8 @@ public enum CreatureType {
     IRON_GOLEM("iron_golem", "Железный голем", 0.24f),
     ZOMBIE("zombie", "Зомби", 0.30f),
     SKELETON("skeleton", "Скелет", 0.36f),
-    SPIDER("spider", "Паук", 0.52f);
+    SPIDER("spider", "Паук", 0.52f),
+    RABBIT("rabbit", "Кролик", 0.72f);
 
     private final String id;
     private final String displayName;

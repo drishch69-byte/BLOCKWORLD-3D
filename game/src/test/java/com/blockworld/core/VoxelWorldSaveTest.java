@@ -65,6 +65,40 @@ class VoxelWorldSaveTest {
     }
 
     @Test
+    void version181SpawnsAndPersistsRabbitsOnNaturalHabitats() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion version = VersionManager.find("1.8.1");
+        VoxelWorld source = new VoxelWorld(assets);
+        source.generate(version, 8675309L);
+
+        long rabbits = source.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.RABBIT).count();
+        assertTrue(rabbits >= 3, "New wildlife profile should generate several rabbits");
+        for (WorldCreature rabbit : source.getCreatures()) {
+            if (rabbit.type() != CreatureType.RABBIT) continue;
+            int x = (int) Math.floor(rabbit.x());
+            int z = (int) Math.floor(rabbit.z());
+            int surfaceY = source.highestBlockY(x, z);
+            BlockType surface = source.getBlock(new BlockPos(x, surfaceY, z));
+            BiomeType biome = source.getBiomeAt(x, z);
+            assertTrue((surface == BlockType.GRASS
+                            && (biome == BiomeType.PLAINS || biome == BiomeType.FOREST))
+                    || (surface == BlockType.PODZOL && biome == BiomeType.TAIGA)
+                    || (surface == BlockType.SNOW && biome == BiomeType.SNOWY_TUNDRA),
+                    "Rabbit should spawn in a suitable natural habitat");
+        }
+
+        Path file = tempDir.resolve("version-181-rabbits.bwworld");
+        source.save(file, version);
+        assertTrue(Files.readString(file).contains(",rabbit,"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(version.id(), restored.load(file));
+        assertEquals(rabbits, restored.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.RABBIT).count());
+    }
+
+    @Test
     void loadsLegacyFormatOneWorldWithoutCreatures() throws IOException {
         AssetManager assets = new DesktopAssetManager(true);
         Path file = tempDir.resolve("legacy-format-one.bwworld");

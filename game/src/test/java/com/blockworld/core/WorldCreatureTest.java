@@ -18,6 +18,10 @@ class WorldCreatureTest {
         assertEquals("zombie", CreatureType.fromId("zombie").id());
         assertEquals("skeleton", CreatureType.fromId("skeleton").id());
         assertEquals("spider", CreatureType.fromId("spider").id());
+        assertEquals("rabbit", CreatureType.fromId("rabbit").id());
+        assertEquals("Кролик", CreatureType.RABBIT.displayName());
+        assertEquals(0f, CreatureType.RABBIT.attackDamage());
+        assertTrue(!CreatureType.RABBIT.isHostile());
         assertEquals("iron_golem", CreatureType.fromId("iron_golem").id());
         assertTrue(CreatureType.ZOMBIE.isHostile());
         assertTrue(CreatureType.IRON_GOLEM.isGuardian());
