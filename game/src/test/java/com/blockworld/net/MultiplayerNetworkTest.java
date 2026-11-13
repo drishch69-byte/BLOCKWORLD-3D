@@ -445,6 +445,7 @@ class MultiplayerNetworkTest {
              MultiplayerClient attacker = new MultiplayerClient();
              MultiplayerClient defender = new MultiplayerClient()) {
             int port = server.start(0);
+            CountDownLatch attackerWorldAccepted = new CountDownLatch(1);
             CountDownLatch attackerProfileEmpty = new CountDownLatch(1);
             CountDownLatch defenderProfileEmpty = new CountDownLatch(1);
             CountDownLatch attackerProfileSaved = new CountDownLatch(1);
@@ -453,6 +454,7 @@ class MultiplayerNetworkTest {
             CountDownLatch defenderPositionSeen = new CountDownLatch(1);
 
             attacker.setEventListener(event -> {
+                if (event.equals("WORLD_ACCEPTED")) attackerWorldAccepted.countDown();
                 if (event.equals("PROFILE_EMPTY")) attackerProfileEmpty.countDown();
                 if (event.equals("PROFILE_SAVED")) attackerProfileSaved.countDown();
                 if (event.startsWith("PLAYER_POS ")) defenderPositionSeen.countDown();
@@ -467,6 +469,9 @@ class MultiplayerNetworkTest {
             });
 
             attacker.connect("127.0.0.1", port, "pvp-room", "Attacker", ignored -> { });
+            attacker.sendWorldSnapshot(314159L, false, false, 0,
+                    Map.of(new BlockPos(0, 1, 0), BlockType.GRASS));
+            assertTrue(attackerWorldAccepted.await(3, TimeUnit.SECONDS));
             defender.connect("127.0.0.1", port, "pvp-room", "Defender", ignored -> { });
             assertTrue(attackerProfileEmpty.await(3, TimeUnit.SECONDS));
             assertTrue(defenderProfileEmpty.await(3, TimeUnit.SECONDS));

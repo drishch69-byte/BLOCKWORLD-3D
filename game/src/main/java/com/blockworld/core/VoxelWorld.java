@@ -773,8 +773,14 @@ public final class VoxelWorld {
         // A villager is placed outside each simple wooden village house.
         int firstY = terrainHeightFor(-32, 26);
         int secondY = terrainHeightFor(31, 26);
-        addCreature(new WorldCreature(id++, CreatureType.VILLAGER_FARMER, -31.5f, firstY + 1f, 26.5f, 0f));
+        // Keep the original generic villager ID represented for old gameplay and saves.
+        addCreature(new WorldCreature(id++, CreatureType.VILLAGER, -31.5f, firstY + 1f, 26.5f, 0f));
         addCreature(new WorldCreature(id++, CreatureType.VILLAGER_BLACKSMITH, 31.5f, secondY + 1f, 26.5f, 1.2f));
+        int farmerY = highestBlockY(-29, 24);
+        if (farmerY >= -12 && !blocks.containsKey(new BlockPos(-29, farmerY + 1, 24))
+                && !blocks.containsKey(new BlockPos(-29, farmerY + 2, 24))) {
+            addCreature(new WorldCreature(id++, CreatureType.VILLAGER_FARMER, -28.5f, farmerY + 1f, 24.5f, .4f));
+        }
         WorldCreature librarian = findCreatureSpawn(random, radius, id++, CreatureType.VILLAGER_LIBRARIAN);
         if (librarian != null) addCreature(librarian);
         WorldCreature guard = findCreatureSpawn(random, radius, id++, CreatureType.VILLAGER_GUARD);

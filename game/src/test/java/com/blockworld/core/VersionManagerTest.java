@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionManagerTest {
     @Test
-    void includesAllProfilesAndBiomesFarmingFurnaceUpdateAsDefault() {
-        assertEquals(24, VersionManager.getSupportedVersions().size());
-        assertEquals("1.2.0", VersionManager.getDefaultVersion().id());
+    void includesAllProfilesAndDefaultsToVillageDefenseAndCombat() {
+        assertEquals(25, VersionManager.getSupportedVersions().size());
+        assertEquals("1.8.0", VersionManager.getDefaultVersion().id());
+        assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
+        assertEquals(144, VersionManager.find("1.8.0").worldRadius());
+        assertTrue(VersionManager.find("1.8.0").survival());
         assertTrue(VersionManager.find("0.3.0").caves());
         assertTrue(VersionManager.find("0.3.0").ores());
         assertTrue(VersionManager.find("0.4.0").survival());
