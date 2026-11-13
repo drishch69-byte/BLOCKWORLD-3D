@@ -1,6 +1,6 @@
 # BLOCKWORLD 3D — Roadmap
 
-This roadmap describes possible future development. Versions 1.1.0 and 1.2.0 are implemented in the current source. Items in later sections are proposals and are not included unless explicitly listed in the README. Priorities may change after testing and feedback.
+This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
 
 ## 1.1.0 — Wildlands & Crystal Caves (released)
 - Added taiga and swamp biomes, crystal-lined underground caves, and underground water pools.
@@ -8,6 +8,10 @@ This roadmap describes possible future development. Versions 1.1.0 and 1.2.0 are
 - Expanded villages with a market stall and garden.
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
+
+## 1.9.0 — Living World & Companions (released)
+- Added Follow and Stay commands for the nearest dog companion using N.
+- Persisted pet commands separately from the world file and included them in world backups.
 
 ## 1.2.0 — Exploration Update (released)
 - Added mineshaft entrances, a watchtower, ruins, and camps to each generated 1.2.0 world.

@@ -1,4 +1,4 @@
 BLOCKWORLD 3D
-Version: 1.0.0
-Codename: Trading, Fishing & Achievements
+Version: 1.9.0
+Codename: Living World & Companions
 Status: Feature Release

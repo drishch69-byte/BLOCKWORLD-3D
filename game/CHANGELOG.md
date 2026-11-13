@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.0 — Living World & Companions
+- Added a dog companion command: press N near the closest dog to switch between Follow and Stay.
+- Dogs in Stay mode keep their position instead of automatically following the player; pressing N nearby switches them back to Follow.
+- Saved non-default pet commands in a separate pets.properties sidecar file.
+- Included pet sidecars in world backup, restore, and backup deletion operations.
+- Kept world save format 2 and all existing creature IDs unchanged; older worlds without pet data keep the default Follow behavior.
+- Added tests for pet-mode storage, corrupted entries, version selection, and pet-sidecar backup restoration.
+
+
 ## 1.2.0 — Exploration Update
 - Fixed the gameplay mouse pointer: it is now hidden in both survival and creative modes, while pause, launcher, and settings screens keep the normal visible pointer.
 - Added four deterministic exploration sites per world: a watchtower, ruins, a camp, and a mineshaft entrance; village markers are included in the map.

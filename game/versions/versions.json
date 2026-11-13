@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.2.0",
+  "defaultVersion": "1.9.0",
   "versions": [
     {
       "id": "0.1.0",
@@ -119,6 +119,21 @@
     {
       "id": "1.2.0",
       "name": "Exploration Update",
+      "status": "previous"
+    },
+    {
+      "id": "1.8.0",
+      "name": "Village Defense & Combat Update",
+      "status": "previous"
+    },
+    {
+      "id": "1.8.1",
+      "name": "Rabbit & Wildlife Update",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.0",
+      "name": "Living World & Companions",
       "status": "current"
     }
   ]

@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.8.1 — Rabbit & Wildlife.**
+**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.0 — Living World & Companions.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,12 +10,19 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.8.1 — Rabbit & Wildlife**
+**1.9.0 — Living World & Companions**
+
+- Press **N** near a dog companion to switch between **Follow** and **Stay** commands.
+- Companion commands are saved in a separate pets.properties sidecar; the world file format and creature IDs remain unchanged.
+- Pet sidecars are included in world backups and restores.
+- Existing worlds without a pet sidecar continue to load with dogs following the player by default.
+- Includes all 1.8.1 wildlife and 1.8.0 village, flower, farming, and creature features.
+
+**Earlier: 1.8.1 — Rabbit & Wildlife**
 
 - Rabbits with a dedicated 16×16 PNG texture, blocky model, ears, tail, and a small hopping animation.
 - Rabbits spawn in suitable plains, forest, taiga, and snowy-tundra habitats.
 - Rabbit creature IDs use the existing world-creature save format, so older worlds remain readable.
-- Includes the 1.8.0 village, flower, farming, and creature features.
 
 **Earlier: 1.8.0 — Village Defense & Combat**
 
@@ -38,7 +45,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.8.1)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.0)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
