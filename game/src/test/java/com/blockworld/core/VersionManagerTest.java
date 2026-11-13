@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionManagerTest {
     @Test
-    void includesAllProfilesAndDefaultsToVillageDefenseAndCombat() {
-        assertEquals(25, VersionManager.getSupportedVersions().size());
-        assertEquals("1.8.0", VersionManager.getDefaultVersion().id());
+    void includesAllProfilesAndDefaultsToRabbitAndWildlife() {
+        assertEquals(26, VersionManager.getSupportedVersions().size());
+        assertEquals("1.8.1", VersionManager.getDefaultVersion().id());
+        assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
+        assertEquals(144, VersionManager.find("1.8.1").worldRadius());
+        assertTrue(VersionManager.find("1.8.1").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());
