@@ -296,4 +296,53 @@ class VoxelWorldSaveTest {
         assertEquals(world.countBlocks(BlockType.SAPPHIRE_ORE), restored.countBlocks(BlockType.SAPPHIRE_ORE));
     }
 
+    @Test
+    void version196AddsCaveBiomesGlowfloraAndUndergroundLakesAndRoundTripsThem() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion previous = VersionManager.find("1.9.5");
+        GameVersion updated = VersionManager.find("1.9.6");
+
+        VoxelWorld oldWorld = new VoxelWorld(assets);
+        oldWorld.generate(previous, 8675309L);
+        assertFalse(oldWorld.hasCaveBiomes());
+        assertEquals(0L, oldWorld.countBlocks(BlockType.GLOWING_CRYSTAL));
+        assertEquals(0L, oldWorld.countBlocks(BlockType.CAVE_MOSS));
+        assertEquals(0L, oldWorld.countBlocks(BlockType.CAVE_FERN));
+
+        VoxelWorld world = new VoxelWorld(assets);
+        world.generate(updated, 8675309L);
+        assertTrue(world.hasCaveBiomes());
+        assertTrue(world.countBlocks(BlockType.GLOWING_CRYSTAL) > 0, "Expected luminous crystal blocks");
+        assertTrue(world.countBlocks(BlockType.CAVE_MOSS) > 0, "Expected moss patches");
+        assertTrue(world.countBlocks(BlockType.CAVE_FERN) > 0, "Expected cave ferns");
+        assertTrue(world.countBlocks(BlockType.WATER) > oldWorld.countBlocks(BlockType.WATER),
+                "Underground lake rooms should add water pools");
+        assertTrue(world.getCaveBiomeAt(24, -8, 24) != CaveBiomeType.NONE
+                        || world.getCaveBiomeAt(-24, -8, 24) != CaveBiomeType.NONE,
+                "Expected a classified underground biome at a generated cell");
+
+        Path file = tempDir.resolve("version-196-cave-biomes.bwworld");
+        world.save(file, updated);
+        String saved = Files.readString(file);
+        assertTrue(saved.contains("caveBiomes=true"));
+        assertTrue(saved.contains(",glowing_crystal"));
+        assertTrue(saved.contains(",cave_moss"));
+        assertTrue(saved.contains(",cave_fern"));
+        assertTrue(saved.contains("format=2"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(updated.id(), restored.load(file));
+        assertTrue(restored.hasCaveBiomes());
+        assertEquals(world.getBlockCount(), restored.getBlockCount());
+        assertEquals(world.countBlocks(BlockType.GLOWING_CRYSTAL), restored.countBlocks(BlockType.GLOWING_CRYSTAL));
+        assertEquals(world.countBlocks(BlockType.CAVE_MOSS), restored.countBlocks(BlockType.CAVE_MOSS));
+        assertEquals(world.countBlocks(BlockType.CAVE_FERN), restored.countBlocks(BlockType.CAVE_FERN));
+
+        Path olderSave = tempDir.resolve("version-195-no-cave-biomes.bwworld");
+        oldWorld.save(olderSave, previous);
+        VoxelWorld oldRestored = new VoxelWorld(assets);
+        oldRestored.load(olderSave);
+        assertFalse(oldRestored.hasCaveBiomes());
+    }
+
 }
