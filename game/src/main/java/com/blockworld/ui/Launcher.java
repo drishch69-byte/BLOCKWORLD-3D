@@ -10,6 +10,8 @@ import com.blockworld.core.GameSettings;
 import com.blockworld.core.ModManager;
 import com.blockworld.core.ResourcePackManager;
 import com.blockworld.game.BlockWorldGame;
+import com.blockworld.net.MultiplayerClient;
+import com.blockworld.net.MultiplayerServer;
 
 import javax.swing.BorderFactory;
 import javax.swing.JCheckBox;
@@ -28,6 +30,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
@@ -176,6 +180,7 @@ public final class Launcher {
         JButton settings = new JButton("НАСТРОЙКИ");
         JButton mods = new JButton("МОДЫ");
         JButton packs = new JButton("РЕСУРС-ПАКИ");
+        JButton multiplayer = new JButton("СЕТЕВАЯ ИГРА");
         JButton refresh = new JButton("ОБНОВИТЬ СПИСОК");
         JButton worlds = new JButton("ПАПКА МИРОВ");
         JButton close = new JButton("ВЫХОД");
@@ -184,6 +189,7 @@ public final class Launcher {
         settings.addActionListener(event -> showSettingsDialog());
         mods.addActionListener(event -> showModsDialog());
         packs.addActionListener(event -> showResourcePacksDialog());
+        multiplayer.addActionListener(event -> showMultiplayerDialog());
         refresh.addActionListener(event -> refreshWorldList(selectedWorldPath()));
         worlds.addActionListener(event -> openWorldFolder());
         close.addActionListener(event -> frame.dispose());
@@ -192,6 +198,7 @@ public final class Launcher {
         buttons.add(settings);
         buttons.add(mods);
         buttons.add(packs);
+        buttons.add(multiplayer);
         buttons.add(refresh);
         buttons.add(worlds);
         buttons.add(close);
@@ -458,6 +465,90 @@ public final class Launcher {
         dialog.setSize(760, 430); dialog.setLocationRelativeTo(frame); dialog.setVisible(true);
     }
 
+    private void showMultiplayerDialog() {
+        Object[] options = {"Создать LAN-сервер", "Подключиться", "Отмена"};
+        int choice = JOptionPane.showOptionDialog(frame,
+                "Сетевая комната: сервер и чат. Синхронизация игрового мира будет добавлена отдельно.",
+                "BLOCKWORLD 3D — Multiplayer", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+        if (choice == 0) hostMultiplayerServer();
+        else if (choice == 1) joinMultiplayerServer();
+    }
+
+    private void hostMultiplayerServer() {
+        JTextField port = new JTextField("25575");
+        JTextField limit = new JTextField("8");
+        JPasswordField password = new JPasswordField();
+        JPanel form = new JPanel(new GridLayout(3, 2, 8, 8));
+        form.add(new JLabel("Порт:")); form.add(port);
+        form.add(new JLabel("Игроков (1–32):")); form.add(limit);
+        form.add(new JLabel("Пароль (необязательно):")); form.add(password);
+        if (JOptionPane.showConfirmDialog(frame, form, "Создать LAN-сервер", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
+        MultiplayerServer server = null;
+        MultiplayerClient client = null;
+        try {
+            server = new MultiplayerServer(new String(password.getPassword()), Integer.parseInt(limit.getText().trim()));
+            int actualPort = server.start(Integer.parseInt(port.getText().trim()));
+            client = new MultiplayerClient();
+            showMultiplayerLobby("Сервер запущен. Порт: " + actualPort + ". Друзьям в одной Wi-Fi сети нужен локальный IP компьютера.",
+                    client, server, "Host", new String(password.getPassword()), "127.0.0.1", actualPort);
+        } catch (Exception error) {
+            if (client != null) client.close();
+            if (server != null) server.close();
+            JOptionPane.showMessageDialog(frame, "Не удалось создать сервер: " + error.getMessage(), "Сетевая игра", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void joinMultiplayerServer() {
+        JTextField host = new JTextField("127.0.0.1");
+        JTextField port = new JTextField("25575");
+        JTextField nickname = new JTextField("Player");
+        JPasswordField password = new JPasswordField();
+        JPanel form = new JPanel(new GridLayout(4, 2, 8, 8));
+        form.add(new JLabel("Адрес:")); form.add(host);
+        form.add(new JLabel("Порт:")); form.add(port);
+        form.add(new JLabel("Никнейм:")); form.add(nickname);
+        form.add(new JLabel("Пароль:")); form.add(password);
+        if (JOptionPane.showConfirmDialog(frame, form, "Подключиться к серверу", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
+        showMultiplayerLobby("Подключение к " + host.getText() + ":" + port.getText(),
+                new MultiplayerClient(), null, nickname.getText(), new String(password.getPassword()), host.getText(),
+                Integer.parseInt(port.getText().trim()));
+    }
+
+    private void showMultiplayerLobby(String infoText, MultiplayerClient client, MultiplayerServer server,
+                                      String nickname, String password, String host, int port) {
+        JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Сетевая комната", false);
+        dialog.setLayout(new BorderLayout(8, 8));
+        JLabel info = new JLabel("<html>" + infoText + "<br>Предварительная версия: чат работает, игровой мир пока не синхронизируется.</html>");
+        info.setBorder(BorderFactory.createEmptyBorder(10, 10, 4, 10));
+        JTextArea chat = new JTextArea(); chat.setEditable(false); chat.setLineWrap(true);
+        JTextField message = new JTextField(); JButton send = new JButton("ОТПРАВИТЬ");
+        Runnable connect = () -> {
+            try {
+                client.connect(host, port, password, nickname, line -> SwingUtilities.invokeLater(() -> {
+                    chat.append(line + "\\n"); chat.setCaretPosition(chat.getDocument().getLength());
+                }));
+                info.setText("<html>Подключено к " + host + ":" + port + "<br>Чат доступен. Мир пока не синхронизируется.</html>");
+            } catch (Exception error) {
+                chat.append("Ошибка подключения: " + error.getMessage() + "\\n");
+                JOptionPane.showMessageDialog(dialog, error.getMessage(), "Сетевая игра", JOptionPane.ERROR_MESSAGE);
+            }
+        };
+        connect.run();
+        Runnable sendMessage = () -> {
+            try { client.sendChat(message.getText()); message.setText(""); }
+            catch (IOException error) { JOptionPane.showMessageDialog(dialog, error.getMessage(), "Чат", JOptionPane.ERROR_MESSAGE); }
+        };
+        send.addActionListener(e -> sendMessage.run()); message.addActionListener(e -> sendMessage.run());
+        JPanel bottom = new JPanel(new BorderLayout(6, 6)); bottom.add(message, BorderLayout.CENTER); bottom.add(send, BorderLayout.EAST);
+        dialog.add(info, BorderLayout.NORTH); dialog.add(new JScrollPane(chat), BorderLayout.CENTER); dialog.add(bottom, BorderLayout.SOUTH);
+        dialog.setSize(650, 420); dialog.setLocationRelativeTo(frame);
+        dialog.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosed(java.awt.event.WindowEvent event) { client.close(); if (server != null) server.close(); }
+            @Override public void windowClosing(java.awt.event.WindowEvent event) { client.close(); if (server != null) server.close(); }
+        });
+        dialog.setVisible(true);
+    }
     private void showResourcePacksDialog() {
         ResourcePackManager manager = new ResourcePackManager();
         JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Ресурс-паки", true);
