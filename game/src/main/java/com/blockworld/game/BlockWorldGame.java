@@ -111,6 +111,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private BitmapText pauseText;
     private Geometry inventoryPanel;
     private BitmapText inventoryText;
+    private InventoryVisualPanel inventoryVisualPanel;
     private boolean inventoryOpen;
     private boolean craftingOpen;
     private boolean furnaceOpen;
@@ -435,10 +436,12 @@ public final class BlockWorldGame extends SimpleApplication {
         inventoryPanel.setQueueBucket(RenderQueue.Bucket.Gui);
         inventoryPanel.setLocalTranslation(settings.getWidth() / 2f - 350f, settings.getHeight() / 2f - 250f, 8f);
         inventoryText = new BitmapText(guiFont);
-        inventoryText.setSize(14f);
+        inventoryText.setSize(12.5f);
         inventoryText.setColor(ColorRGBA.White);
         inventoryText.setQueueBucket(RenderQueue.Bucket.Gui);
         inventoryText.setLocalTranslation(settings.getWidth() / 2f - 325f, settings.getHeight() / 2f + 220f, 9f);
+        inventoryVisualPanel = new InventoryVisualPanel(assetManager, guiNode, guiFont);
+        inventoryVisualPanel.layout(settings.getWidth(), settings.getHeight());
         updateInventoryUi();
     }
 
@@ -1292,6 +1295,10 @@ public final class BlockWorldGame extends SimpleApplication {
             guiNode.detachChild(inventoryPanel);
             guiNode.detachChild(inventoryText);
         }
+        if (inventoryVisualPanel != null) {
+            inventoryVisualPanel.refresh(craftedItems);
+            inventoryVisualPanel.setVisible(show && (inventoryOpen || craftingOpen));
+        }
     }
 
     private void updateInventoryUi() {
@@ -1351,11 +1358,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 int count = inventory.getOrDefault(block, 0);
                 if (count > 0) text.append("• ").append(block.displayName()).append(" × ").append(count).append("\n");
             }
-            text.append("\nПредметы:\n");
-            for (ItemType item : ItemType.values()) {
-                int count = craftedItems.getOrDefault(item, 0);
-                if (count > 0) text.append("• ").append(item.displayName()).append(" × ").append(count).append("\n");
-            }
+            text.append("\nПредметы и их количество показаны справа.\n");
             if (equipmentEnabled) {
                 text.append("\nЭкипировка:\n");
                 for (ArmorSlot slot : ArmorSlot.values()) {
@@ -1378,6 +1381,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (release100Enabled) text.append("\nM — достижения    P — рыбалка (с удочкой, прицел на воду)");
         }
         inventoryText.setText(text.toString());
+        if (inventoryVisualPanel != null) inventoryVisualPanel.refresh(craftedItems);
     }
 
     private int armorDefense() {
@@ -1516,6 +1520,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (pauseText != null) pauseText.setLocalTranslation(width / 2f - 205f, height / 2f + 82f, 5f);
             if (inventoryPanel != null) inventoryPanel.setLocalTranslation(width / 2f - 350f, height / 2f - 250f, 8f);
             if (inventoryText != null) inventoryText.setLocalTranslation(width / 2f - 325f, height / 2f + 220f, 9f);
+            if (inventoryVisualPanel != null) inventoryVisualPanel.layout(width, height);
         }
     }
 

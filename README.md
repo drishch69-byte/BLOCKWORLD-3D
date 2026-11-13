@@ -10,12 +10,12 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.0.0 — Trading, Fishing & Achievements**
+**1.0.1 — Visual Inventory Update**
 
 - Five biomes: plains, forests, deserts, snowy tundra, and mountains.
 - Chunk-based voxel world, mining, and building.
 - Creatures, villagers, and trading, now with six original PNG creature textures.
-- A 64×64 player skin template, a 32×48 player sprite, and a 23-icon PNG item atlas.
+- A player portrait and 23 separate PNG item icons shown directly in the inventory and crafting workshop.
 - Inventory, crafting, tools, and iron armor.
 - Farming, wheat, furnaces, smelting, and cooked food.
 - Fishing, copper and emerald ores, and achievements.
@@ -24,11 +24,9 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download BLOCKWORLD 3D 1.0.0 (ZIP)**](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip)
+[**Download latest source ZIP (1.0.1)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
-The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod.
-
-The older [0.8.5 Inventory & Crafting Update](BLOCKWORLD_3D_0.8.5_INVENTORY_CRAFTING_UPDATE.zip) is retained as a previous snapshot.
+The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
 ## Build and test
 
@@ -44,7 +42,7 @@ cd game
 mvn clean verify
 ```
 
-The GitHub Actions Java CI workflow runs the same Maven verification on pushes and pull requests that change the game source. The verified 1.0.0 source build completed successfully with **118 tests, 0 failures, 0 errors, and 0 skipped**.
+The GitHub Actions Java CI workflow runs the same Maven verification on pushes and pull requests that change the game source. The 1.0.1 source build is verified by the Java 17 CI workflow; the job compiles the project, runs JUnit tests, and packages the application.
 
 Launch scripts are provided for Windows (run.bat) and Linux/macOS (run.sh).
 

@@ -25,7 +25,8 @@ public final class VersionManager {
             new GameVersion("0.8.5", "Inventory & Crafting Update", "Инвентарь игрока, рецепты крафта, доски, палки, верстак и факелы", 64, true, true, true, true, true),
             new GameVersion("0.9.0", "Tools & Equipment Update", "Кирки с уровнями добычи, лопата, экипируемая броня и защита при падении", 64, true, true, true, true, true),
             new GameVersion("0.9.5", "Biomes, Farming & Furnace Update", "Пять биомов, расширенный мир, фермерство с ростом урожая и плавка руды в печи", 88, true, true, true, true, true),
-            new GameVersion("1.0.0", "Trading, Fishing & Achievements", "Торговля с жителями, рыбалка, новые руды, достижения и звуковые эффекты", 96, true, true, true, true, true)
+            new GameVersion("1.0.0", "Trading, Fishing & Achievements", "Торговля с жителями, рыбалка, новые руды, достижения и звуковые эффекты", 96, true, true, true, true, true),
+            new GameVersion("1.0.1", "Visual Inventory Update", "PNG-иконки предметов в инвентаре и мастерской, портрет игрока и обновлённый интерфейс", 96, true, true, true, true, true)
     );
 
     private VersionManager() {

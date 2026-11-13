@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.0.0",
+  "defaultVersion": "1.0.1",
   "versions": [
     {
       "id": "0.1.0",
@@ -94,6 +94,11 @@
     {
       "id": "1.0.0",
       "name": "Trading, Fishing & Achievements",
+      "status": "previous"
+    },
+    {
+      "id": "1.0.1",
+      "name": "Visual Inventory Update",
       "status": "current"
     }
   ]

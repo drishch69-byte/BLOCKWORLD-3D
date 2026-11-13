@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1 — Visual Inventory Update
+- Added 23 separate 16×16 PNG item icons generated from the original item atlas.
+- Replaced the long crafted-item text list in inventory with a visual side panel showing each icon, localized item name, and current count.
+- Added the player sprite as a character portrait in the inventory/workshop panel.
+- Kept the visual item panel available while the crafting workshop is open.
+- Made 1.0.1 the default profile while keeping 1.0.0 selectable.
+- Kept world save format 2 and existing player/farm/achievement sidecar formats unchanged.
+- Added tests that verify every individual item icon is a valid 16×16 PNG.
+
 ## 1.0.0 — Trading, Fishing & Achievements
 - Added six original 16×16 PNG creature textures and connected them to cow, sheep, pig, chicken, villager, and slime models using nearest-neighbour filtering; color-only fallback remains available if a texture is missing.
 - Added an editable 64×64 player skin atlas and a 128×64 PNG atlas containing 23 crafted-item icons, with a stable `ItemType` mapping file.
