@@ -2,6 +2,7 @@ package com.blockworld.net;
 
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.WorldCreature;
 
 import java.io.*;
 import java.net.*;
@@ -23,6 +24,7 @@ public final class MultiplayerClient implements AutoCloseable {
     private volatile boolean connected;
     private volatile int playerId;
     private volatile int hostPlayerId;
+    private volatile boolean serverWorldReady;
 
     public void connect(String host, int port, String password, String playerName,
                         Consumer<String> chatMessages) throws IOException {
@@ -46,9 +48,10 @@ public final class MultiplayerClient implements AutoCloseable {
                         ? response.substring(6) : "Server did not respond");
             }
             String[] welcome = response.split(" ");
-            if (welcome.length < 3) throw new IOException("Invalid server handshake");
+            if (welcome.length < 4) throw new IOException("Invalid server handshake");
             playerId = Integer.parseInt(welcome[1]);
             hostPlayerId = Integer.parseInt(welcome[2]);
+            serverWorldReady = Boolean.parseBoolean(welcome[3]);
             socket.setSoTimeout(0);
             connected = true;
             Thread reader = new Thread(() -> {
@@ -58,6 +61,10 @@ public final class MultiplayerClient implements AutoCloseable {
                         if (line.startsWith("CHAT ")) {
                             try { chats.accept(decode(line.substring(5))); } catch (RuntimeException ignored) { }
                         } else {
+                            if (line.startsWith("HOST_CHANGED ")) {
+                                String[] parts = line.split(" ");
+                                if (parts.length == 2) hostPlayerId = Integer.parseInt(parts[1]);
+                            }
                             dispatchEvent(line);
                         }
                     }
@@ -78,6 +85,7 @@ public final class MultiplayerClient implements AutoCloseable {
 
     public int playerId() { return playerId; }
     public boolean isHost() { return playerId > 0 && playerId == hostPlayerId; }
+    public boolean hasServerWorld() { return serverWorldReady; }
     public boolean isConnected() { return connected && !socket.isClosed(); }
 
     public void setEventListener(Consumer<String> listener) {
@@ -127,13 +135,37 @@ public final class MultiplayerClient implements AutoCloseable {
     /** Sends the host's complete current world. Call from a background thread. */
     public synchronized void sendWorldSnapshot(long seed, boolean activeBiomes, boolean extendedBiomes,
                                                 int worldRadius, Map<BlockPos, BlockType> blocks) throws IOException {
+        sendWorldSnapshot(seed, activeBiomes, extendedBiomes, worldRadius, blocks, java.util.List.of());
+    }
+
+    public synchronized void sendWorldSnapshot(long seed, boolean activeBiomes, boolean extendedBiomes,
+                                                int worldRadius, Map<BlockPos, BlockType> blocks,
+                                                java.util.List<WorldCreature> creatures) throws IOException {
         if (blocks == null || blocks.size() > 1_000_000) throw new IllegalArgumentException("World snapshot exceeds limits");
+        if (creatures == null || creatures.size() > 256) throw new IllegalArgumentException("Creature snapshot exceeds limits");
         sendLine("WORLD_BEGIN " + seed + " " + activeBiomes + " " + extendedBiomes + " " + worldRadius + " " + blocks.size());
         for (Map.Entry<BlockPos, BlockType> entry : blocks.entrySet()) {
             BlockPos p = entry.getKey();
             sendLine("WORLD_BLOCK " + p.x() + " " + p.y() + " " + p.z() + " " + entry.getValue().name());
         }
+        sendLine("WORLD_CREATURES_BEGIN " + creatures.size());
+        for (WorldCreature creature : creatures) {
+            sendLine("WORLD_CREATURE " + creature.id() + " " + creature.type().name() + " "
+                    + creature.x() + " " + creature.y() + " " + creature.z() + " " + creature.yaw());
+        }
+        sendLine("WORLD_CREATURES_END");
         sendLine("WORLD_END");
+    }
+
+    /** Host-authoritative creature state; call periodically from a background thread. */
+    public synchronized void sendCreatureSnapshot(java.util.List<WorldCreature> creatures) throws IOException {
+        if (creatures == null || creatures.size() > 256) throw new IllegalArgumentException("Creature snapshot exceeds limits");
+        sendLine("CREATURES_BEGIN " + creatures.size());
+        for (WorldCreature creature : creatures) {
+            sendLine("CREATURE " + creature.id() + " " + creature.type().name() + " "
+                    + creature.x() + " " + creature.y() + " " + creature.z() + " " + creature.yaw());
+        }
+        sendLine("CREATURES_END");
     }
 
     private void sendLine(String line) throws IOException {

@@ -499,16 +499,24 @@ public final class Launcher {
         form.add(new JLabel("Пароль (необязательно):")); form.add(password);
         if (JOptionPane.showConfirmDialog(frame, form, "Создать LAN-сервер", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
 
+        WorldEntry selectedWorld = (WorldEntry) worldSelector.getSelectedItem();
+        if (selectedWorld == null) {
+            JOptionPane.showMessageDialog(frame, "Сначала создай или выбери мир в лаунчере.",
+                    "Нет выбранного мира", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         MultiplayerServer server = null;
         MultiplayerClient client = null;
         try {
             String secret = new String(password.getPassword());
-            server = new MultiplayerServer(secret, Integer.parseInt(limit.getText().trim()));
+            server = new MultiplayerServer(secret, Integer.parseInt(limit.getText().trim()),
+                    GamePaths.multiplayerServerWorld(selectedWorld.file()));
             int actualPort = server.start(Integer.parseInt(port.getText().trim()));
             client = new MultiplayerClient();
             showMultiplayerLobby("LAN-сервер запущен. Порт: " + actualPort
+                    + ". Сохранение сервера: " + GamePaths.multiplayerServerWorld(selectedWorld.file()).getFileName()
                     + ". Игроки должны использовать адрес этого компьютера в своей сети.",
-                    client, server, "Host", secret, "127.0.0.1", actualPort);
+                    client, server, "Host", secret, "127.0.0.1", actualPort, selectedWorld);
         } catch (Exception error) {
             if (client != null) client.close();
             if (server != null) server.close();
@@ -537,7 +545,7 @@ public final class Launcher {
             String playerName = nickname.getText().trim();
             if (playerName.isBlank()) playerName = "Player";
             showMultiplayerLobby("Подключение к " + address + ":" + portNumber,
-                    new MultiplayerClient(), null, playerName, new String(password.getPassword()), address, portNumber);
+                    new MultiplayerClient(), null, playerName, new String(password.getPassword()), address, portNumber, null);
         } catch (IllegalArgumentException error) {
             JOptionPane.showMessageDialog(frame, "Проверь адрес и порт: " + error.getMessage(),
                     "Неверные данные сервера", JOptionPane.WARNING_MESSAGE);
@@ -545,7 +553,7 @@ public final class Launcher {
     }
 
     private void showMultiplayerLobby(String infoText, MultiplayerClient client, MultiplayerServer server,
-                                      String nickname, String password, String host, int port) {
+                                      String nickname, String password, String host, int port, WorldEntry hostWorld) {
         JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Сетевая комната", false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout(8, 8));
@@ -595,7 +603,7 @@ public final class Launcher {
         });
 
         play.addActionListener(event -> {
-            WorldEntry selected = (WorldEntry) worldSelector.getSelectedItem();
+            WorldEntry selected = hostWorld != null ? hostWorld : (WorldEntry) worldSelector.getSelectedItem();
             if (selected == null) {
                 JOptionPane.showMessageDialog(dialog,
                         "Сначала создай или выбери мир в лаунчере, затем запускай сетевую игру.",

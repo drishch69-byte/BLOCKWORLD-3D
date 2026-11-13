@@ -10,6 +10,14 @@ public final class GamePaths {
         return Path.of(System.getProperty("user.home"), ".blockworld3d");
     }
 
+    public static Path serversDirectory() { return gameDirectory().resolve("servers"); }
+    public static Path multiplayerServerWorld() { return serversDirectory().resolve("hosted-world.bwserver"); }
+    public static Path multiplayerServerWorld(Path worldFile) {
+        String name = worldFile == null || worldFile.getFileName() == null ? "default" : worldFile.getFileName().toString();
+        String safeName = name.replaceAll("[^A-Za-z0-9._-]", "_");
+        return serversDirectory().resolve(safeName + ".bwserver");
+    }
+
     public static Path worldsDirectory() {
         return gameDirectory().resolve("worlds");
     }

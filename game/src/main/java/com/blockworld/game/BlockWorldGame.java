@@ -95,6 +95,9 @@ public final class BlockWorldGame extends SimpleApplication {
     private boolean pendingNetworkExtendedBiomes;
     private int pendingNetworkRadius;
     private int pendingNetworkBlockCount;
+    private final Map<Long, com.blockworld.core.WorldCreature> pendingNetworkCreatures = new HashMap<>();
+    private int pendingNetworkCreatureCount;
+    private float creatureSyncClock;
     private boolean multiplayerSnapshotStarted;
     private boolean multiplayerSyncReady;
     private float multiplayerPositionClock;
@@ -743,8 +746,12 @@ public final class BlockWorldGame extends SimpleApplication {
             }
         }
         if (worldReady && modLoader != null) modLoader.update(tpf);
-        if (worldReady && creatureManager != null && world != null) {
+        if (worldReady && creatureManager != null && world != null
+                && (multiplayerClient == null || !multiplayerClient.isConnected() || multiplayerClient.isHost())) {
             creatureManager.update(tpf, version.survival() ? playerEyePosition : cam.getLocation(), world);
+        } else if (worldReady && creatureManager != null && multiplayerClient != null
+                && multiplayerClient.isConnected()) {
+            creatureManager.updateNetworkAnimations(tpf);
         }
 
         if (worldReady && version.survival() && world != null) {
@@ -774,7 +781,8 @@ public final class BlockWorldGame extends SimpleApplication {
             processed++;
         }
 
-        if (worldReady && !multiplayerSnapshotStarted && multiplayerClient.isHost()) {
+        if (worldReady && !multiplayerSnapshotStarted && multiplayerClient.isHost()
+                && !multiplayerClient.hasServerWorld()) {
             multiplayerSnapshotStarted = true;
             uploadInitialWorldSnapshot();
         }
@@ -793,6 +801,13 @@ public final class BlockWorldGame extends SimpleApplication {
                     GameLog.error("Не удалось отправить координаты игрока", error);
                 }
             }
+            if (multiplayerClient.isHost()) {
+                creatureSyncClock += Math.max(0f, tpf);
+                if (creatureSyncClock >= 0.25f) {
+                    creatureSyncClock = 0f;
+                    sendCreatureSnapshot();
+                }
+            }
         }
 
         for (RemotePlayerState remote : remotePlayers.values()) {
@@ -804,6 +819,7 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void uploadInitialWorldSnapshot() {
         Map<BlockPos, BlockType> blocks = world.snapshotBlocks();
+        List<com.blockworld.core.WorldCreature> creatures = world.getCreatures();
         long seed = world.getSeed();
         boolean active = world.hasActiveBiomes();
         boolean extended = world.hasExtendedBiomes();
@@ -811,13 +827,26 @@ public final class BlockWorldGame extends SimpleApplication {
         statusMessage = "Передача мира на сервер (" + blocks.size() + " блоков)...";
         Thread sender = new Thread(() -> {
             try {
-                multiplayerClient.sendWorldSnapshot(seed, active, extended, radius, blocks);
+                multiplayerClient.sendWorldSnapshot(seed, active, extended, radius, blocks, creatures);
                 GameLog.info("Отправлен снимок сетевого мира: seed=" + seed + ", blocks=" + blocks.size());
             } catch (IOException | RuntimeException error) {
                 GameLog.error("Не удалось передать снимок мира на сервер", error);
                 multiplayerInbox.add("NETWORK_ERROR " + error.getMessage());
             }
         }, "BlockWorld-World-Snapshot-Sender");
+        sender.setDaemon(true);
+        sender.start();
+    }
+
+    private void sendCreatureSnapshot() {
+        List<com.blockworld.core.WorldCreature> snapshot = world.getCreatures();
+        Thread sender = new Thread(() -> {
+            try {
+                multiplayerClient.sendCreatureSnapshot(snapshot);
+            } catch (IOException | RuntimeException error) {
+                multiplayerInbox.add("NETWORK_ERROR " + error.getMessage());
+            }
+        }, "BlockWorld-Creature-Snapshot-Sender");
         sender.setDaemon(true);
         sender.start();
     }
@@ -868,6 +897,63 @@ public final class BlockWorldGame extends SimpleApplication {
                         if (remote != null && remote.avatar != null) remote.avatar.detach();
                     }
                 }
+                case "WORLD_CREATURES_BEGIN" -> {
+                    if (parts.length == 2) {
+                        pendingNetworkCreatureCount = Integer.parseInt(parts[1]);
+                        if (pendingNetworkCreatureCount < 0 || pendingNetworkCreatureCount > 256)
+                            throw new IllegalArgumentException("Слишком много существ в мире");
+                        pendingNetworkCreatures.clear();
+                    }
+                }
+                case "WORLD_CREATURE" -> {
+                    if (parts.length == 7 && pendingNetworkCreatures.size() < pendingNetworkCreatureCount) {
+                        long id = Long.parseLong(parts[1]);
+                        var state = new com.blockworld.core.WorldCreature(id,
+                                com.blockworld.core.CreatureType.valueOf(parts[2]),
+                                Float.parseFloat(parts[3]), Float.parseFloat(parts[4]),
+                                Float.parseFloat(parts[5]), Float.parseFloat(parts[6]));
+                        pendingNetworkCreatures.put(id, state);
+                    }
+                }
+                case "WORLD_CREATURES_END" -> {
+                    if (pendingNetworkCreatures.size() != pendingNetworkCreatureCount)
+                        throw new IllegalArgumentException("Неполный список существ");
+                }
+                case "CREATURES_BEGIN" -> {
+                    if (parts.length == 2) {
+                        pendingNetworkCreatureCount = Integer.parseInt(parts[1]);
+                        if (pendingNetworkCreatureCount < 0 || pendingNetworkCreatureCount > 256)
+                            throw new IllegalArgumentException("Слишком много существ в снимке");
+                        pendingNetworkCreatures.clear();
+                    }
+                }
+                case "CREATURE" -> {
+                    if (parts.length == 7 && pendingNetworkCreatures.size() < pendingNetworkCreatureCount) {
+                        long id = Long.parseLong(parts[1]);
+                        var state = new com.blockworld.core.WorldCreature(id,
+                                com.blockworld.core.CreatureType.valueOf(parts[2]),
+                                Float.parseFloat(parts[3]), Float.parseFloat(parts[4]),
+                                Float.parseFloat(parts[5]), Float.parseFloat(parts[6]));
+                        pendingNetworkCreatures.put(id, state);
+                    }
+                }
+                case "CREATURES_END" -> {
+                    if (pendingNetworkCreatures.size() != pendingNetworkCreatureCount)
+                        throw new IllegalArgumentException("Неполный снимок существ");
+                    if (creatureManager != null && world != null) {
+                        creatureManager.applyNetworkSnapshot(new ArrayList<>(pendingNetworkCreatures.values()), world);
+                    }
+                }
+                case "HOST_CHANGED" -> {
+                    statusMessage = multiplayerClient.isHost()
+                            ? "Ты стал ведущим сервера. Управление мобами и сохранением мира передано тебе."
+                            : "Ведущий сервера изменился.";
+                    updateHud();
+                }
+                case "WORLD_SAVE_ERROR" -> {
+                    statusMessage = "Не удалось сохранить общий мир на сервере. Проверь папку servers.";
+                    updateHud();
+                }
                 case "WORLD_BEGIN" -> {
                     if (parts.length == 6) {
                         pendingNetworkSeed = Long.parseLong(parts[1]);
@@ -897,6 +983,7 @@ public final class BlockWorldGame extends SimpleApplication {
                         world.replaceBlockSnapshot(pendingNetworkSeed, pendingNetworkActiveBiomes,
                                 pendingNetworkExtendedBiomes, pendingNetworkRadius, pendingNetworkWorld);
                         farmGrowth.keySet().removeIf(position -> world.getBlock(position) != BlockType.WHEAT_CROP);
+                        world.replaceCreatureSnapshot(new ArrayList<>(pendingNetworkCreatures.values()));
                         if (creatureManager != null) creatureManager.sync(world);
                         pendingNetworkWorld = null;
                         multiplayerSyncReady = true;

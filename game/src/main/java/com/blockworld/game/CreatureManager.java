@@ -76,6 +76,51 @@ public final class CreatureManager {
         }
     }
 
+    /** Apply authoritative host creature states without recreating existing visuals. */
+    public void applyNetworkSnapshot(java.util.List<WorldCreature> snapshot, VoxelWorld world) {
+        java.util.Set<Long> keep = new java.util.HashSet<>();
+        for (WorldCreature state : snapshot) {
+            keep.add(state.id());
+            Visual visual = visuals.get(state.id());
+            if (visual == null) {
+                visual = createVisual(state);
+                visuals.put(state.id(), visual);
+                node.attachChild(visual.root);
+            } else {
+                WorldCreature previous = visual.state;
+                float dx = state.x() - previous.x();
+                float dz = state.z() - previous.z();
+                visual.walking = dx * dx + dz * dz > 0.0001f;
+                visual.state = state;
+            }
+            visual.yaw = state.yaw();
+            visual.root.setLocalTranslation(state.x(), state.y(), state.z());
+            visual.root.setLocalRotation(new Quaternion().fromAngleAxis(state.yaw(), Vector3f.UNIT_Y));
+        }
+        for (Long id : new java.util.ArrayList<>(visuals.keySet())) {
+            if (!keep.contains(id)) {
+                Visual removed = visuals.remove(id);
+                if (removed != null) removed.root.removeFromParent();
+            }
+        }
+        world.replaceCreatureSnapshot(snapshot);
+    }
+
+    /** Animate authoritative network creature states without running local AI. */
+    public void updateNetworkAnimations(float tpf) {
+        for (Visual visual : visuals.values()) {
+            visual.animationClock += Math.max(0f, tpf) * (visual.walking ? 8f : 1.8f);
+            float bob = visual.state.type() == CreatureType.SLIME
+                    ? slimeBounce(visual.animationClock)
+                    : visual.walking ? Math.abs(gaitSwing(visual.animationClock, true)) * 0.025f : 0f;
+            visual.root.setLocalTranslation(visual.state.x(), visual.state.y() + bob, visual.state.z());
+            visual.root.setLocalRotation(new Quaternion().fromAngleAxis(visual.state.yaw(), Vector3f.UNIT_Y));
+            visual.root.setLocalScale(1f, visual.state.type() == CreatureType.SLIME
+                    ? 0.82f + 0.18f * (float) Math.abs(Math.sin(visual.animationClock * 1.6f)) : 1f, 1f);
+            animateLimbs(visual);
+        }
+    }
+
     public void update(float tpf, Vector3f playerPosition, VoxelWorld world) {
         for (Visual visual : visuals.values()) {
             WorldCreature state = visual.state;

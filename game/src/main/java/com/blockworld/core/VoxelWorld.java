@@ -110,6 +110,13 @@ public final class VoxelWorld {
         return true;
     }
 
+    public void replaceCreatureSnapshot(List<WorldCreature> snapshot) {
+        Objects.requireNonNull(snapshot, "snapshot");
+        if (snapshot.size() > 256) throw new IllegalArgumentException("Creature snapshot exceeds limit");
+        creatures.clear();
+        creatures.addAll(snapshot);
+    }
+
     public boolean updateCreature(WorldCreature updated) {
         Objects.requireNonNull(updated, "updated");
         for (int i = 0; i < creatures.size(); i++) {

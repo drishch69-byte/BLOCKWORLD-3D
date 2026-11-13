@@ -2,6 +2,8 @@ package com.blockworld.net;
 
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.WorldCreature;
+import java.nio.file.Path;
 
 import java.io.*;
 import java.net.*;
@@ -22,8 +24,10 @@ public final class MultiplayerServer implements AutoCloseable {
     private final Map<Integer, PlayerState> players = new ConcurrentHashMap<>();
     private final Object membershipLock = new Object();
     private final Object worldLock = new Object();
+    private final MultiplayerWorldStore worldStore;
     private final AtomicInteger nextPlayerId = new AtomicInteger(0);
     private final Map<BlockPos, BlockType> worldBlocks = new HashMap<>();
+    private final Map<Long, WorldCreature> worldCreatures = new HashMap<>();
 
     private volatile boolean running;
     private volatile ServerSocket socket;
@@ -34,16 +38,23 @@ public final class MultiplayerServer implements AutoCloseable {
     private boolean activeBiomes;
     private boolean extendedBiomes;
     private int worldRadius;
+    private long lastCreaturePersistNanos;
 
     public MultiplayerServer(String password, int maxPlayers) {
+        this(password, maxPlayers, null);
+    }
+
+    public MultiplayerServer(String password, int maxPlayers, Path worldFile) {
         this.password = password == null ? "" : password;
         if (maxPlayers < 1 || maxPlayers > 32) throw new IllegalArgumentException("maxPlayers must be 1..32");
         this.maxPlayers = maxPlayers;
+        this.worldStore = worldFile == null ? null : new MultiplayerWorldStore(worldFile);
     }
 
     public synchronized int start(int port) throws IOException {
         if (running) throw new IllegalStateException("Server already running");
         if (port < 0 || port > 65535) throw new IllegalArgumentException("Invalid port");
+        restoreWorld();
         ServerSocket candidate = new ServerSocket();
         try {
             candidate.setReuseAddress(true);
@@ -68,6 +79,43 @@ public final class MultiplayerServer implements AutoCloseable {
     public int playerCount() { return clients.size(); }
     public boolean isRunning() { return running; }
     public boolean isWorldReady() { return worldReady; }
+
+    private void restoreWorld() throws IOException {
+        if (worldStore == null) return;
+        Optional<MultiplayerWorldStore.Snapshot> stored = worldStore.load();
+        if (stored.isEmpty()) return;
+        MultiplayerWorldStore.Snapshot snapshot = stored.get();
+        synchronized (worldLock) {
+            worldBlocks.clear();
+            worldBlocks.putAll(snapshot.blocks());
+            worldCreatures.clear();
+            for (WorldCreature creature : snapshot.creatures()) worldCreatures.put(creature.id(), creature);
+            worldSeed = snapshot.seed();
+            activeBiomes = snapshot.activeBiomes();
+            extendedBiomes = snapshot.extendedBiomes();
+            worldRadius = snapshot.radius();
+            worldReady = true;
+        }
+    }
+
+    private void persistCreaturesIfDueLocked() {
+        long now = System.nanoTime();
+        if (lastCreaturePersistNanos == 0L || now - lastCreaturePersistNanos >= java.util.concurrent.TimeUnit.SECONDS.toNanos(10)) {
+            persistWorldLocked();
+            lastCreaturePersistNanos = now;
+        }
+    }
+
+    private void persistWorldLocked() {
+        if (worldStore == null || !worldReady) return;
+        try {
+            worldStore.save(worldSeed, activeBiomes, extendedBiomes, worldRadius,
+                    worldBlocks, List.copyOf(worldCreatures.values()));
+        } catch (IOException error) {
+            System.err.println("BLOCKWORLD 3D: failed to save hosted multiplayer world: " + error.getMessage());
+            for (ClientHandler client : clients) client.send("WORLD_SAVE_ERROR");
+        }
+    }
 
     private void acceptLoop() {
         while (running) {
@@ -105,7 +153,8 @@ public final class MultiplayerServer implements AutoCloseable {
     private void sendSnapshotTo(ClientHandler target) {
         synchronized (worldLock) {
             if (!worldReady) return;
-            target.sendSnapshot(worldSeed, activeBiomes, extendedBiomes, worldRadius, worldBlocks);
+            target.sendSnapshot(worldSeed, activeBiomes, extendedBiomes, worldRadius,
+                    worldBlocks, List.copyOf(worldCreatures.values()));
         }
     }
 
@@ -140,6 +189,7 @@ public final class MultiplayerServer implements AutoCloseable {
                 if (!worldReady) return;
                 if (!worldBlocks.containsKey(pos) && worldBlocks.size() >= MAX_WORLD_BLOCKS) return;
                 worldBlocks.put(pos, type);
+                persistWorldLocked();
                 broadcast = "BLOCK_ADD " + pos.x() + " " + pos.y() + " " + pos.z() + " " + type.name();
                 for (ClientHandler client : clients) client.send(broadcast);
             }
@@ -155,6 +205,7 @@ public final class MultiplayerServer implements AutoCloseable {
             BlockPos pos = parsePosition(parts, 1);
             synchronized (worldLock) {
                 if (!worldReady || worldBlocks.remove(pos) == null) return;
+                persistWorldLocked();
                 String broadcast = "BLOCK_REMOVE " + pos.x() + " " + pos.y() + " " + pos.z();
                 for (ClientHandler client : clients) client.send(broadcast);
             }
@@ -183,18 +234,22 @@ public final class MultiplayerServer implements AutoCloseable {
             }
             worldBlocks.clear();
             worldBlocks.putAll(sender.pendingSnapshot);
+            worldCreatures.clear();
+            worldCreatures.putAll(sender.pendingCreatures);
             worldSeed = sender.pendingSeed;
             activeBiomes = sender.pendingActiveBiomes;
             extendedBiomes = sender.pendingExtendedBiomes;
             worldRadius = sender.pendingWorldRadius;
             worldReady = true;
+            persistWorldLocked();
             snapshotInProgress = false;
             sender.pendingSnapshot = null;
 
             // Keep snapshot transfer and later block changes ordered for every peer.
             for (ClientHandler client : clients) {
                 if (client != sender) {
-                    client.sendSnapshot(worldSeed, activeBiomes, extendedBiomes, worldRadius, worldBlocks);
+                    client.sendSnapshot(worldSeed, activeBiomes, extendedBiomes, worldRadius,
+                            worldBlocks, List.copyOf(worldCreatures.values()));
                 }
             }
         }
@@ -208,6 +263,8 @@ public final class MultiplayerServer implements AutoCloseable {
         private int id;
         private String name = "Player";
         private Map<BlockPos, BlockType> pendingSnapshot;
+        private Map<Long, WorldCreature> pendingCreatures = new HashMap<>();
+        private int expectedCreatures;
         private int expectedSnapshotBlocks;
         private long pendingSeed;
         private boolean pendingActiveBiomes;
@@ -229,7 +286,7 @@ public final class MultiplayerServer implements AutoCloseable {
         }
 
         void sendSnapshot(long seed, boolean active, boolean extended, int radius,
-                          Map<BlockPos, BlockType> blocks) {
+                          Map<BlockPos, BlockType> blocks, List<WorldCreature> creatures) {
             synchronized (sendLock) {
                 PrintWriter writer = out;
                 if (writer == null) return;
@@ -238,6 +295,12 @@ public final class MultiplayerServer implements AutoCloseable {
                     BlockPos p = entry.getKey();
                     writer.println("WORLD_BLOCK " + p.x() + " " + p.y() + " " + p.z() + " " + entry.getValue().name());
                 }
+                writer.println("WORLD_CREATURES_BEGIN " + creatures.size());
+                for (WorldCreature creature : creatures) {
+                    writer.println("WORLD_CREATURE " + creature.id() + " " + creature.type().name() + " "
+                            + creature.x() + " " + creature.y() + " " + creature.z() + " " + creature.yaw());
+                }
+                writer.println("WORLD_CREATURES_END");
                 writer.println("WORLD_END");
                 if (writer.checkError()) {
                     try { peer.close(); } catch (IOException ignored) { }
@@ -266,6 +329,7 @@ public final class MultiplayerServer implements AutoCloseable {
                 pendingActiveBiomes = active;
                 pendingExtendedBiomes = extended;
                 pendingWorldRadius = radius;
+                pendingCreatures = new HashMap<>();
             }
         }
 
@@ -276,6 +340,56 @@ public final class MultiplayerServer implements AutoCloseable {
             BlockPos pos = parsePosition(p, 1);
             BlockType type = BlockType.valueOf(p[4]);
             pendingSnapshot.put(pos, type);
+        }
+
+        private void acceptWorldCreature(String line) {
+            if (id != hostPlayerId || pendingSnapshot == null) return;
+            String[] p = line.split(" ");
+            if (p.length != 7 || pendingCreatures.size() >= 256) return;
+            long creatureId = Long.parseLong(p[1]);
+            WorldCreature creature = new WorldCreature(creatureId,
+                    com.blockworld.core.CreatureType.valueOf(p[2]),
+                    Float.parseFloat(p[3]), Float.parseFloat(p[4]),
+                    Float.parseFloat(p[5]), Float.parseFloat(p[6]));
+            pendingCreatures.put(creatureId, creature);
+        }
+
+        private void processCreatureSnapshot(String line) {
+            String[] p = line.split(" ");
+            if (id != hostPlayerId) return;
+            if (p[0].equals("CREATURES_BEGIN")) {
+                if (p.length != 2) return;
+                expectedCreatures = Integer.parseInt(p[1]);
+                if (expectedCreatures < 0 || expectedCreatures > 256)
+                    throw new IllegalArgumentException("Invalid creature count");
+                pendingCreatures = new HashMap<>();
+            } else if (p[0].equals("CREATURE")) {
+                if (p.length != 7 || pendingCreatures.size() >= expectedCreatures) return;
+                long creatureId = Long.parseLong(p[1]);
+                WorldCreature creature = new WorldCreature(creatureId,
+                        com.blockworld.core.CreatureType.valueOf(p[2]),
+                        Float.parseFloat(p[3]), Float.parseFloat(p[4]),
+                        Float.parseFloat(p[5]), Float.parseFloat(p[6]));
+                pendingCreatures.put(creatureId, creature);
+            } else if (p[0].equals("CREATURES_END")) {
+                if (pendingCreatures.size() != expectedCreatures)
+                    throw new IllegalArgumentException("Incomplete creature snapshot");
+                synchronized (worldLock) {
+                    if (!worldReady) return;
+                    worldCreatures.clear();
+                    worldCreatures.putAll(pendingCreatures);
+                    persistCreaturesIfDueLocked();
+                    for (ClientHandler client : clients) {
+                        if (client == this) continue;
+                        client.send("CREATURES_BEGIN " + worldCreatures.size());
+                        for (WorldCreature creature : worldCreatures.values()) {
+                            client.send("CREATURE " + creature.id() + " " + creature.type().name() + " "
+                                    + creature.x() + " " + creature.y() + " " + creature.z() + " " + creature.yaw());
+                        }
+                        client.send("CREATURES_END");
+                    }
+                }
+            }
         }
 
         private void process(String line) {
@@ -293,6 +407,23 @@ public final class MultiplayerServer implements AutoCloseable {
                 beginSnapshot(line);
             } else if (line.startsWith("WORLD_BLOCK ")) {
                 acceptSnapshotBlock(line);
+            } else if (line.startsWith("WORLD_CREATURES_BEGIN ")) {
+                String[] p = line.split(" ");
+                if (p.length == 2 && id == hostPlayerId && pendingSnapshot != null) {
+                    expectedCreatures = Integer.parseInt(p[1]);
+                    if (expectedCreatures < 0 || expectedCreatures > 256)
+                        throw new IllegalArgumentException("Invalid creature count");
+                    pendingCreatures = new HashMap<>();
+                }
+            } else if (line.startsWith("WORLD_CREATURE ")) {
+                acceptWorldCreature(line);
+            } else if (line.equals("WORLD_CREATURES_END")) {
+                if (id == hostPlayerId && pendingCreatures.size() != expectedCreatures)
+                    throw new IllegalArgumentException("Incomplete world creature snapshot");
+            } else if (line.startsWith("CREATURES_BEGIN ") || line.startsWith("CREATURE ")) {
+                processCreatureSnapshot(line);
+            } else if (line.equals("CREATURES_END")) {
+                processCreatureSnapshot(line);
             } else if (line.equals("WORLD_END")) {
                 finishSnapshot(this);
             }
@@ -323,7 +454,7 @@ public final class MultiplayerServer implements AutoCloseable {
                     if (!password.equals(supplied)) { send("ERROR Неверный пароль"); return; }
                     id = nextPlayerId.incrementAndGet();
                     if (hostPlayerId == 0) hostPlayerId = id;
-                    send("WELCOME " + id + " " + hostPlayerId);
+                    send("WELCOME " + id + " " + hostPlayerId + " " + worldReady);
 
                     for (ClientHandler existing : clients) {
                         PlayerState state = players.get(existing.id);
@@ -350,6 +481,11 @@ public final class MultiplayerServer implements AutoCloseable {
                     clients.remove(this);
                     players.remove(id);
                     broadcastExcept(this, "PLAYER_LEAVE " + id);
+                    if (id == hostPlayerId) {
+                        ClientHandler successor = clients.stream().findFirst().orElse(null);
+                        hostPlayerId = successor == null ? 0 : successor.id;
+                        for (ClientHandler client : clients) client.send("HOST_CHANGED " + hostPlayerId);
+                    }
                 }
             }
         }
@@ -401,9 +537,13 @@ public final class MultiplayerServer implements AutoCloseable {
             clients.clear();
             players.clear();
             hostPlayerId = 0;
-            worldReady = false;
             snapshotInProgress = false;
-            synchronized (worldLock) { worldBlocks.clear(); }
+            synchronized (worldLock) {
+                persistWorldLocked();
+                worldReady = false;
+                worldBlocks.clear();
+                worldCreatures.clear();
+            }
         }
         if (current != null) {
             try { current.close(); } catch (IOException ignored) { }

@@ -1,21 +1,32 @@
-# BLOCKWORLD 3D — Multiplayer World Sync Preview
+# BLOCKWORLD 3D — Multiplayer Server Save & Creature Sync Preview
 
-The launcher can create a password-protected LAN server or join one by address and port. Once the selected world has loaded, the host publishes its complete block map to the server. New players receive that map when they join.
+The launcher can host a password-protected LAN world or join one by address and port. The selected host world is saved separately from the ordinary single-player save.
 
-## Included in this preview
-- A visible block-style avatar for each connected player, with a name label
-- Player position and facing updates during gameplay
-- Synchronized block placement and block removal
-- An authoritative server-side copy of the current block map
-- Full block-map transfer to newly joined players
-- Lobby chat before entering the world
-- Optional server password and a player limit of up to 32
+## Included
+- Block-style player avatars with names and position updates
+- Shared block placement and removal
+- A host-authoritative creature simulation; creature states and movement animations are relayed to other players
+- Complete world transfer for joining players, including block data, seed, biome flags, radius, and creature list
+- Server-side persistence of blocks and creatures
+- Host migration when the original host disconnects
+- A separate server-world file for each selected world
 
-## How to play together
-1. Create or select a saved world in the launcher.
-2. The host chooses **СЕТЕВАЯ ИГРА → Создать LAN-сервер**, connects, then clicks **ЗАПУСТИТЬ ВЫБРАННЫЙ МИР**.
-3. Friends on the same trusted network choose **Подключиться**, enter the host computer's local network address, port, and password, then launch the same profile/world slot from their launcher.
-4. The host's loaded world is copied to joining players. Block changes and player movement are relayed by the server.
+## Server world files
+The server stores hosted copies under:
 
-## Current limitations and safety
-This is an early multiplayer preview, not a complete dedicated-server release. Inventory, crafting transactions, health, hunger, farming timers, achievements, mob positions, and creature AI are still local to each player. The server's block map is held in memory and the host's local world file is saved when the host exits. The protocol is not encrypted; use trusted LANs only, choose a password, and do not share public IP addresses or passwords in public chats. Do not expose the server to the public internet.
+`~/.blockworld3d/servers/`
+
+Each world gets a separate `.bwserver` file based on its world filename. The server writes block edits immediately, periodically stores creature positions, and flushes the latest world when the server closes. On the next host session, the saved server world is restored and sent to the joining host.
+
+## How to play
+1. Select a world in the launcher.
+2. Choose **СЕТЕВАЯ ИГРА → Создать LAN-сервер**.
+3. Connect as host and choose **ЗАПУСТИТЬ ВЫБРАННЫЙ МИР**.
+4. Friends on the same trusted network use **Подключиться**, enter the host's local network address, port, and password, then launch the multiplayer world.
+5. The server sends the current world snapshot to every new player. Block changes and host-controlled creature states are relayed while playing.
+
+## Personal inventories and current limitations
+Inventory, armor, crafting results, health, hunger, farming timers, and achievements remain personal to each player and are saved in the local `.player.properties` and other sidecar files for that world. They are not yet synchronized to a central server or transferred between different computers. Crafting is not a shared transaction system. Creature updates are sent four times per second; interpolation and prediction are still basic. This is an early multiplayer preview, not a complete dedicated-server release.
+
+## Network safety
+The TCP protocol is not encrypted. Use trusted local networks only, choose a password, and do not publish public IP addresses or passwords. Do not expose the preview server to the public internet.
