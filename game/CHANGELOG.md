@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.3 — Creature & Camera Polish
+- Added a world-geometry ray check between the player and desired third-person camera position; the camera moves closer before block walls instead of clipping through them.
+- Added procedural leg/arm gait animation for walking cows, sheep, pigs, chickens, and villagers.
+- Added a gentle idle hop and squash/stretch motion to slimes.
+- Improved villager face and clothing details with eyes, pupils, a hat brim, and a robe belt.
+- Added unit coverage for camera obstruction distance and creature animation ranges.
+- Kept world save format and creature record layout unchanged; animation state is transient.
+
 ## 1.0.2 — Third-Person Camera Update
 - Added F5 camera switching between first-person and third-person views for survival profiles.
 - Added a lightweight blocky player model with head, body, arms, legs, and simple facial details.

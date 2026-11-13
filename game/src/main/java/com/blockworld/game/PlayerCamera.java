@@ -20,6 +20,17 @@ public final class PlayerCamera {
                 player.y + vertical, player.z + FastMath.cos(yaw) * horizontal);
     }
 
+    /** Keeps the camera in front of a wall hit by the player-to-camera ray. */
+    public static float safeDistance(float desiredDistance, float obstructionDistance, float margin) {
+        if (!Float.isFinite(desiredDistance) || desiredDistance <= 0f
+                || !Float.isFinite(margin) || margin < 0f
+                || !Float.isFinite(obstructionDistance)) {
+            throw new IllegalArgumentException("Camera distances must be finite and non-negative");
+        }
+        if (obstructionDistance < 0f) return desiredDistance;
+        return Math.max(0.55f, Math.min(desiredDistance, obstructionDistance - margin));
+    }
+
     public static Vector3f lookTarget(Vector3f player) {
         if (player == null) throw new IllegalArgumentException("Player position is required");
         return player.add(0f, -0.45f, 0f);

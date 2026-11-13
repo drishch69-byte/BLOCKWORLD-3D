@@ -79,6 +79,8 @@ public final class CreatureManager {
     public void update(float tpf, Vector3f playerPosition, VoxelWorld world) {
         for (Visual visual : visuals.values()) {
             WorldCreature state = visual.state;
+            float previousX = state.x();
+            float previousZ = state.z();
             visual.turnTimer -= tpf;
             if (visual.turnTimer <= 0f) {
                 visual.turnTimer = 2.5f + visual.random.nextFloat() * 5.5f;
@@ -119,8 +121,41 @@ public final class CreatureManager {
             } else {
                 visual.pauseTimer = 1.0f;
             }
-            visual.root.setLocalTranslation(state.x(), state.y(), state.z());
+            boolean walking = (state.x() - previousX) * (state.x() - previousX)
+                    + (state.z() - previousZ) * (state.z() - previousZ) > 0.000001f;
+            visual.walking = walking;
+            visual.animationClock += Math.max(0f, tpf) * (walking ? 8f : 1.8f);
+            float bob = state.type() == CreatureType.SLIME
+                    ? slimeBounce(visual.animationClock)
+                    : walking ? Math.abs(gaitSwing(visual.animationClock, true)) * 0.025f : 0f;
+            visual.root.setLocalTranslation(state.x(), state.y() + bob, state.z());
             visual.root.setLocalRotation(new Quaternion().fromAngleAxis(state.yaw(), Vector3f.UNIT_Y));
+            visual.root.setLocalScale(1f, state.type() == CreatureType.SLIME
+                    ? 0.82f + 0.18f * (float) Math.abs(Math.sin(visual.animationClock * 1.6f)) : 1f, 1f);
+            animateLimbs(visual);
+        }
+    }
+
+    static float gaitSwing(float animationClock, boolean walking) {
+        return walking ? com.jme3.math.FastMath.sin(animationClock) * 0.42f : 0f;
+    }
+
+    static float slimeBounce(float animationClock) {
+        return Math.abs(com.jme3.math.FastMath.sin(animationClock * 2f)) * 0.13f;
+    }
+
+    private void animateLimbs(Visual visual) {
+        float swing = gaitSwing(visual.animationClock, visual.walking);
+        for (Map.Entry<String, Geometry> part : visual.animationParts.entrySet()) {
+            String name = part.getKey();
+            float angle = 0f;
+            if (name.contains("leg")) {
+                angle = name.contains("back") ? -swing : swing;
+                if (name.contains("right")) angle = -angle;
+            } else if (name.contains("arm")) {
+                angle = name.contains("right") ? -swing * 0.7f : swing * 0.7f;
+            }
+            part.getValue().setLocalRotation(new Quaternion().fromAngleAxis(angle, Vector3f.UNIT_X));
         }
     }
 
@@ -134,9 +169,16 @@ public final class CreatureManager {
             case VILLAGER -> buildVillager(root);
             case SLIME -> buildSlime(root);
         }
+        Map<String, Geometry> animationParts = new HashMap<>();
+        for (com.jme3.scene.Spatial child : root.getChildren()) {
+            if (child instanceof Geometry geometry) {
+                String name = geometry.getName();
+                if (name.contains("leg") || name.contains("arm")) animationParts.put(name, geometry);
+            }
+        }
         root.setLocalTranslation(creature.x(), creature.y(), creature.z());
         root.setLocalRotation(new Quaternion().fromAngleAxis(creature.yaw(), Vector3f.UNIT_Y));
-        return new Visual(creature, root);
+        return new Visual(creature, root, animationParts);
     }
 
     private void buildCow(Node root) {
@@ -182,7 +224,13 @@ public final class CreatureManager {
         addBox(root, "villager-robe", .34f, .52f, .27f, 0f, .69f, 0f, color(.44f, .32f, .20f));
         addBox(root, "villager-head", .23f, .24f, .23f, 0f, 1.43f, -.02f, color(.75f, .57f, .43f));
         addBox(root, "villager-nose", .06f, .08f, .13f, 0f, 1.36f, -.31f, color(.66f, .45f, .35f));
+        addBox(root, "villager-eye-left", .035f, .035f, .025f, -.09f, 1.48f, -.235f, color(.96f, .92f, .82f));
+        addBox(root, "villager-eye-right", .035f, .035f, .025f, .09f, 1.48f, -.235f, color(.96f, .92f, .82f));
+        addBox(root, "villager-pupil-left", .014f, .022f, .012f, -.09f, 1.48f, -.261f, color(.16f, .12f, .09f));
+        addBox(root, "villager-pupil-right", .014f, .022f, .012f, .09f, 1.48f, -.261f, color(.16f, .12f, .09f));
         addBox(root, "villager-hat", .25f, .07f, .25f, 0f, 1.70f, -.02f, color(.35f, .25f, .15f));
+        addBox(root, "villager-hat-brim", .32f, .035f, .31f, 0f, 1.63f, -.02f, color(.28f, .19f, .11f));
+        addBox(root, "villager-robe-belt", .345f, .055f, .28f, 0f, .46f, 0f, color(.26f, .18f, .12f));
         addBox(root, "villager-arm-left", .10f, .28f, .11f, -.40f, .68f, 0f, color(.55f, .40f, .27f));
         addBox(root, "villager-arm-right", .10f, .28f, .11f, .40f, .68f, 0f, color(.55f, .40f, .27f));
         addBox(root, "villager-leg-left", .12f, .18f, .13f, -.16f, .18f, .02f, color(.30f, .25f, .20f));
@@ -224,13 +272,17 @@ public final class CreatureManager {
         private WorldCreature state;
         private final Node root;
         private final Random random;
+        private final Map<String, Geometry> animationParts;
         private float turnTimer;
         private float pauseTimer;
         private float yaw;
+        private float animationClock;
+        private boolean walking;
 
-        private Visual(WorldCreature state, Node root) {
+        private Visual(WorldCreature state, Node root, Map<String, Geometry> animationParts) {
             this.state = state;
             this.root = root;
+            this.animationParts = animationParts;
             this.random = new Random(state.id() * 0x9E3779B97F4A7C15L + state.type().ordinal());
             this.yaw = state.yaw();
             this.turnTimer = 1f + random.nextFloat() * 3f;

@@ -863,9 +863,23 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void updateThirdPersonCamera() {
-        if (!thirdPersonView || playerEyePosition == null) return;
-        cam.setLocation(PlayerCamera.orbitPosition(playerEyePosition, yaw, pitch));
-        cam.lookAt(PlayerCamera.lookTarget(playerEyePosition), Vector3f.UNIT_Y);
+        if (!thirdPersonView || playerEyePosition == null || world == null) return;
+        Vector3f target = PlayerCamera.lookTarget(playerEyePosition);
+        Vector3f desired = PlayerCamera.orbitPosition(playerEyePosition, yaw, pitch);
+        Vector3f offset = desired.subtract(target);
+        float desiredDistance = offset.length();
+        Vector3f direction = offset.normalizeLocal();
+
+        CollisionResults cameraHits = new CollisionResults();
+        Ray cameraRay = new Ray(target, direction);
+        cameraRay.setLimit(desiredDistance);
+        world.getNode().collideWith(cameraRay, cameraHits);
+
+        float obstructionDistance = cameraHits.size() == 0
+                ? -1f : cameraHits.getClosestCollision().getDistance();
+        float safeDistance = PlayerCamera.safeDistance(desiredDistance, obstructionDistance, 0.32f);
+        cam.setLocation(target.add(direction.mult(safeDistance)));
+        cam.lookAt(target, Vector3f.UNIT_Y);
     }
 
     private void applyLandingImpact(float fallDistance) {

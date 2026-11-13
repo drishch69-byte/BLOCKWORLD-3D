@@ -29,4 +29,13 @@ class PlayerCameraTest {
         Vector3f target = PlayerCamera.lookTarget(new Vector3f(1f, 3f, 2f));
         assertEquals(2.55f, target.y, 0.0001f);
     }
+    @Test void cameraKeepsDesiredDistanceWhenThereIsNoWall() {
+        assertEquals(4.5f, PlayerCamera.safeDistance(4.5f, -1f, 0.3f), 0.0001f);
+    }
+    @Test void cameraStopsBeforeWallWithSafetyMargin() {
+        assertEquals(2.15f, PlayerCamera.safeDistance(4.5f, 2.45f, 0.3f), 0.0001f);
+    }
+    @Test void cameraKeepsMinimumDistanceNearAnObstacle() {
+        assertEquals(0.55f, PlayerCamera.safeDistance(4.5f, 0.2f, 0.3f), 0.0001f);
+    }
 }
