@@ -49,6 +49,7 @@ public final class MultiplayerServer implements AutoCloseable {
     private long worldSeed;
     private boolean activeBiomes;
     private boolean extendedBiomes;
+    private boolean enchantedBiomes;
     private int worldRadius;
     private long lastCreaturePersistNanos;
 
@@ -114,6 +115,7 @@ public final class MultiplayerServer implements AutoCloseable {
             worldSeed = snapshot.seed();
             activeBiomes = snapshot.activeBiomes();
             extendedBiomes = snapshot.extendedBiomes();
+            enchantedBiomes = snapshot.enchantedBiomes();
             worldRadius = snapshot.radius();
             worldReady = true;
         }
@@ -130,7 +132,7 @@ public final class MultiplayerServer implements AutoCloseable {
     private void persistWorldLocked() {
         if (worldStore == null || !worldReady) return;
         try {
-            worldStore.save(worldSeed, activeBiomes, extendedBiomes, worldRadius,
+            worldStore.save(worldSeed, activeBiomes, extendedBiomes, enchantedBiomes, worldRadius,
                     worldBlocks, List.copyOf(worldCreatures.values()));
         } catch (IOException error) {
             System.err.println("CUBEVERSE 3D: failed to save hosted multiplayer world: " + error.getMessage());
@@ -566,7 +568,7 @@ public final class MultiplayerServer implements AutoCloseable {
     private void sendSnapshotTo(ClientHandler target) {
         synchronized (worldLock) {
             if (!worldReady) return;
-            target.sendSnapshot(worldSeed, activeBiomes, extendedBiomes, worldRadius,
+            target.sendSnapshot(worldSeed, activeBiomes, extendedBiomes, enchantedBiomes, worldRadius,
                     worldBlocks, List.copyOf(worldCreatures.values()));
         }
     }
@@ -662,6 +664,7 @@ public final class MultiplayerServer implements AutoCloseable {
             worldSeed = sender.pendingSeed;
             activeBiomes = sender.pendingActiveBiomes;
             extendedBiomes = sender.pendingExtendedBiomes;
+            enchantedBiomes = sender.pendingEnchantedBiomes;
             worldRadius = sender.pendingWorldRadius;
             worldReady = true;
             persistWorldLocked();
@@ -671,7 +674,7 @@ public final class MultiplayerServer implements AutoCloseable {
             // Keep snapshot transfer and later block changes ordered for every peer.
             for (ClientHandler client : clients) {
                 if (client != sender) {
-                    client.sendSnapshot(worldSeed, activeBiomes, extendedBiomes, worldRadius,
+                    client.sendSnapshot(worldSeed, activeBiomes, extendedBiomes, enchantedBiomes, worldRadius,
                             worldBlocks, List.copyOf(worldCreatures.values()));
                 }
             }
@@ -692,6 +695,7 @@ public final class MultiplayerServer implements AutoCloseable {
         private long pendingSeed;
         private boolean pendingActiveBiomes;
         private boolean pendingExtendedBiomes;
+        private boolean pendingEnchantedBiomes;
         private int pendingWorldRadius;
         private MultiplayerPlayerStore.Snapshot profile;
         private long lastPlayerAttackNanos;
@@ -732,12 +736,13 @@ public final class MultiplayerServer implements AutoCloseable {
             }
         }
 
-        void sendSnapshot(long seed, boolean active, boolean extended, int radius,
+        void sendSnapshot(long seed, boolean active, boolean extended, boolean enchanted, int radius,
                           Map<BlockPos, BlockType> blocks, List<WorldCreature> creatures) {
             synchronized (sendLock) {
                 PrintWriter writer = out;
                 if (writer == null) return;
                 writer.println("WORLD_BEGIN " + seed + " " + active + " " + extended + " " + radius + " " + blocks.size());
+                writer.println("WORLD_ENCHANTED " + enchanted);
                 for (Map.Entry<BlockPos, BlockType> entry : blocks.entrySet()) {
                     BlockPos p = entry.getKey();
                     writer.println("WORLD_BLOCK " + p.x() + " " + p.y() + " " + p.z() + " " + entry.getValue().name());
@@ -775,9 +780,19 @@ public final class MultiplayerServer implements AutoCloseable {
                 pendingSeed = seed;
                 pendingActiveBiomes = active;
                 pendingExtendedBiomes = extended;
+                pendingEnchantedBiomes = false;
                 pendingWorldRadius = radius;
                 pendingCreatures = new HashMap<>();
             }
+        }
+
+        private void acceptSnapshotEnchanted(String line) {
+            if (id != hostPlayerId || pendingSnapshot == null) return;
+            String[] p = line.split(" ");
+            if (p.length != 2 || !(p[1].equals("true") || p[1].equals("false"))) {
+                throw new IllegalArgumentException("Invalid enchanted-biome metadata");
+            }
+            pendingEnchantedBiomes = Boolean.parseBoolean(p[1]);
         }
 
         private void acceptSnapshotBlock(String line) {
@@ -979,6 +994,8 @@ public final class MultiplayerServer implements AutoCloseable {
                 handleBlockRemove(line);
             } else if (line.startsWith("WORLD_BEGIN ")) {
                 beginSnapshot(line);
+            } else if (line.startsWith("WORLD_ENCHANTED ")) {
+                acceptSnapshotEnchanted(line);
             } else if (line.startsWith("WORLD_BLOCK ")) {
                 acceptSnapshotBlock(line);
             } else if (line.startsWith("WORLD_CREATURES_BEGIN ")) {

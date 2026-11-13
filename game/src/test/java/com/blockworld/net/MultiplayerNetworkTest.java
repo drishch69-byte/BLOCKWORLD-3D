@@ -94,7 +94,7 @@ class MultiplayerNetworkTest {
             Map<BlockPos, BlockType> initialWorld = Map.of(
                     new BlockPos(0, 3, 0), BlockType.GRASS,
                     new BlockPos(1, 3, 0), BlockType.STONE);
-            host.sendWorldSnapshot(987654321L, true, true, 32, initialWorld);
+            host.sendWorldSnapshot(987654321L, true, true, true, 32, initialWorld, List.of());
             assertTrue(accepted.await(3, TimeUnit.SECONDS));
             assertTrue(server.isWorldReady());
 
@@ -106,6 +106,7 @@ class MultiplayerNetworkTest {
             assertFalse(guest.isHost());
             assertTrue(guestReceivedWorld.await(3, TimeUnit.SECONDS));
             assertTrue(guestEvents.stream().anyMatch(line -> line.startsWith("WORLD_BEGIN 987654321 true true 32 2")));
+            assertTrue(guestEvents.contains("WORLD_ENCHANTED true"));
             assertTrue(guestEvents.stream().anyMatch(line -> line.equals("WORLD_BLOCK 0 3 0 GRASS")));
             assertTrue(guestEvents.stream().anyMatch(line -> line.equals("WORLD_BLOCK 1 3 0 STONE")));
 
@@ -173,7 +174,7 @@ class MultiplayerNetworkTest {
                 if (event.equals("WORLD_ACCEPTED")) saved.countDown();
             });
             firstHost.connect("127.0.0.1", port, "persist", "Host", ignored -> { });
-            firstHost.sendWorldSnapshot(555123L, true, true, 24, blocks, creatures);
+            firstHost.sendWorldSnapshot(555123L, true, true, true, 24, blocks, creatures);
             assertTrue(saved.await(3, TimeUnit.SECONDS));
             assertTrue(java.nio.file.Files.isRegularFile(worldFile));
         }
@@ -192,6 +193,7 @@ class MultiplayerNetworkTest {
             assertTrue(returningHost.hasServerWorld());
             assertTrue(restored.await(3, TimeUnit.SECONDS));
             assertTrue(received.stream().anyMatch(line -> line.startsWith("WORLD_BEGIN 555123 true true 24 2")));
+            assertTrue(received.contains("WORLD_ENCHANTED true"));
             assertTrue(received.stream().anyMatch(line -> line.equals("WORLD_BLOCK 1 2 0 STONE")));
             assertTrue(received.stream().anyMatch(line -> line.startsWith("WORLD_CREATURE 7 FOX")));
         }

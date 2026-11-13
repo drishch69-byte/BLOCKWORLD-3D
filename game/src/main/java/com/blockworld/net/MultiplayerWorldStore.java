@@ -11,7 +11,7 @@ import java.util.*;
 
 public final class MultiplayerWorldStore {
     private static final String HEADER = "BLOCKWORLD_SERVER_WORLD";
-    private static final int FORMAT = 1;
+    private static final int FORMAT = 2;
     private static final int MAX_BLOCKS = 1_000_000;
     private static final int MAX_CREATURES = 256;
     private final Path file;
@@ -26,10 +26,14 @@ public final class MultiplayerWorldStore {
         if (!Files.isRegularFile(file)) return Optional.empty();
         try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             if (!HEADER.equals(reader.readLine())) throw new IOException("Invalid multiplayer world header");
-            if (!("format=" + FORMAT).equals(reader.readLine())) throw new IOException("Unsupported multiplayer world format");
+            String formatLine = reader.readLine();
+            boolean formatOne = "format=1".equals(formatLine);
+            boolean formatTwo = ("format=" + FORMAT).equals(formatLine);
+            if (!formatOne && !formatTwo) throw new IOException("Unsupported multiplayer world format");
             long seed = parseLong(reader.readLine(), "seed=");
             boolean active = parseBoolean(reader.readLine(), "activeBiomes=");
             boolean extended = parseBoolean(reader.readLine(), "extendedBiomes=");
+            boolean enchanted = formatTwo && parseBoolean(reader.readLine(), "enchantedBiomes=");
             int radius = parseInt(reader.readLine(), "radius=", 0, 100_000);
             if (!"--blocks--".equals(reader.readLine())) throw new IOException("Missing blocks section");
             Map<BlockPos, BlockType> blocks = new HashMap<>();
@@ -59,11 +63,17 @@ public final class MultiplayerWorldStore {
                     throw new IOException("Invalid multiplayer world row: " + line, error);
                 }
             }
-            return Optional.of(new Snapshot(seed, active, extended, radius, blocks, creatures));
+            return Optional.of(new Snapshot(seed, active, extended, enchanted, radius, blocks, creatures));
         }
     }
 
     public synchronized void save(long seed, boolean activeBiomes, boolean extendedBiomes, int radius,
+                                  Map<BlockPos, BlockType> blocks, List<WorldCreature> creatures) throws IOException {
+        save(seed, activeBiomes, extendedBiomes, false, radius, blocks, creatures);
+    }
+
+    public synchronized void save(long seed, boolean activeBiomes, boolean extendedBiomes,
+                                  boolean enchantedBiomes, int radius,
                                   Map<BlockPos, BlockType> blocks, List<WorldCreature> creatures) throws IOException {
         if (blocks == null || blocks.size() > MAX_BLOCKS) throw new IOException("World block limit exceeded");
         if (creatures == null || creatures.size() > MAX_CREATURES) throw new IOException("World creature limit exceeded");
@@ -77,6 +87,7 @@ public final class MultiplayerWorldStore {
                 writer.write("seed=" + seed); writer.newLine();
                 writer.write("activeBiomes=" + activeBiomes); writer.newLine();
                 writer.write("extendedBiomes=" + extendedBiomes); writer.newLine();
+                writer.write("enchantedBiomes=" + enchantedBiomes); writer.newLine();
                 writer.write("radius=" + radius); writer.newLine();
                 writer.write("--blocks--"); writer.newLine();
                 for (Map.Entry<BlockPos, BlockType> entry : blocks.entrySet()) {
@@ -124,8 +135,15 @@ public final class MultiplayerWorldStore {
         } catch (NumberFormatException error) { throw new IOException("Invalid integer", error); }
     }
 
-    public record Snapshot(long seed, boolean activeBiomes, boolean extendedBiomes, int radius,
+    public record Snapshot(long seed, boolean activeBiomes, boolean extendedBiomes,
+                           boolean enchantedBiomes, int radius,
                            Map<BlockPos, BlockType> blocks, List<WorldCreature> creatures) {
         public Snapshot { blocks = Map.copyOf(blocks); creatures = List.copyOf(creatures); }
+
+        /** Keeps source compatibility for callers constructing pre-format-2 snapshots. */
+        public Snapshot(long seed, boolean activeBiomes, boolean extendedBiomes, int radius,
+                        Map<BlockPos, BlockType> blocks, List<WorldCreature> creatures) {
+            this(seed, activeBiomes, extendedBiomes, false, radius, blocks, creatures);
+        }
     }
 }

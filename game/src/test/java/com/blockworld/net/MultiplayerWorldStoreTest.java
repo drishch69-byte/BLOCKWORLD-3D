@@ -22,12 +22,13 @@ class MultiplayerWorldStoreTest {
                 new WorldCreature(3, CreatureType.DOG, 1.5f, 2f, 3.5f, 0.7f),
                 new WorldCreature(4, CreatureType.TURTLE, -4f, 2f, 9f, 1.1f));
 
-        store.save(123456L, true, true, 64, blocks, creatures);
+        store.save(123456L, true, true, true, 64, blocks, creatures);
         MultiplayerWorldStore.Snapshot loaded = store.load().orElseThrow();
 
         assertEquals(123456L, loaded.seed());
         assertTrue(loaded.activeBiomes());
         assertTrue(loaded.extendedBiomes());
+        assertTrue(loaded.enchantedBiomes());
         assertEquals(64, loaded.radius());
         assertEquals(blocks, loaded.blocks());
         assertEquals(creatures, loaded.creatures());
@@ -39,4 +40,19 @@ class MultiplayerWorldStoreTest {
         assertTrue(store.load().isEmpty());
         assertFalse(java.nio.file.Files.exists(store.file()));
     }
+
+    @Test void loadsLegacyFormatOneWithoutEnchantedBiomeFlag(@TempDir Path directory) throws Exception {
+        Path file = directory.resolve("legacy-world.bwserver");
+        java.nio.file.Files.writeString(file, String.join("\n",
+                "BLOCKWORLD_SERVER_WORLD", "format=1", "seed=77", "activeBiomes=true",
+                "extendedBiomes=true", "radius=16", "--blocks--", "B 0 1 0 GRASS",
+                "--creatures--", ""));
+        MultiplayerWorldStore.Snapshot loaded = new MultiplayerWorldStore(file).load().orElseThrow();
+        assertEquals(77L, loaded.seed());
+        assertTrue(loaded.activeBiomes());
+        assertTrue(loaded.extendedBiomes());
+        assertFalse(loaded.enchantedBiomes());
+        assertEquals(BlockType.GRASS, loaded.blocks().get(new BlockPos(0, 1, 0)));
+    }
+
 }

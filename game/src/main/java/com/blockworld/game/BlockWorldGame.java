@@ -104,6 +104,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private long pendingNetworkSeed;
     private boolean pendingNetworkActiveBiomes;
     private boolean pendingNetworkExtendedBiomes;
+    private boolean pendingNetworkEnchantedBiomes;
     private int pendingNetworkRadius;
     private int pendingNetworkBlockCount;
     private final Map<Long, com.blockworld.core.WorldCreature> pendingNetworkCreatures = new HashMap<>();
@@ -1007,11 +1008,12 @@ public final class BlockWorldGame extends SimpleApplication {
         long seed = world.getSeed();
         boolean active = world.hasActiveBiomes();
         boolean extended = world.hasExtendedBiomes();
+        boolean enchanted = world.hasEnchantedBiomes();
         int radius = world.getWorldRadius();
         statusMessage = "Передача мира на сервер (" + blocks.size() + " блоков)...";
         Thread sender = new Thread(() -> {
             try {
-                multiplayerClient.sendWorldSnapshot(seed, active, extended, radius, blocks, creatures);
+                multiplayerClient.sendWorldSnapshot(seed, active, extended, enchanted, radius, blocks, creatures);
                 GameLog.info("Отправлен снимок сетевого мира: seed=" + seed + ", blocks=" + blocks.size());
             } catch (IOException | RuntimeException error) {
                 GameLog.error("Не удалось передать снимок мира на сервер", error);
@@ -1428,6 +1430,7 @@ public final class BlockWorldGame extends SimpleApplication {
                         pendingNetworkSeed = Long.parseLong(parts[1]);
                         pendingNetworkActiveBiomes = Boolean.parseBoolean(parts[2]);
                         pendingNetworkExtendedBiomes = Boolean.parseBoolean(parts[3]);
+                        pendingNetworkEnchantedBiomes = false;
                         pendingNetworkRadius = Integer.parseInt(parts[4]);
                         pendingNetworkBlockCount = Integer.parseInt(parts[5]);
                         if (pendingNetworkBlockCount < 0 || pendingNetworkBlockCount > 1_000_000) {
@@ -1436,6 +1439,13 @@ public final class BlockWorldGame extends SimpleApplication {
                         }
                         pendingNetworkWorld = new HashMap<>(Math.max(16, pendingNetworkBlockCount));
                     }
+                }
+                case "WORLD_ENCHANTED" -> {
+                    if (parts.length != 2 || pendingNetworkWorld == null
+                            || !(parts[1].equals("true") || parts[1].equals("false"))) {
+                        throw new IllegalArgumentException("Неверные данные зачарованного биома в сетевом мире");
+                    }
+                    pendingNetworkEnchantedBiomes = Boolean.parseBoolean(parts[1]);
                 }
                 case "WORLD_BLOCK" -> {
                     if (parts.length == 5 && pendingNetworkWorld != null
@@ -1450,8 +1460,7 @@ public final class BlockWorldGame extends SimpleApplication {
                     if (pendingNetworkWorld != null
                             && pendingNetworkWorld.size() == pendingNetworkBlockCount && world != null) {
                         world.replaceBlockSnapshot(pendingNetworkSeed, pendingNetworkActiveBiomes,
-                                pendingNetworkExtendedBiomes,
-                                com.blockworld.core.BiomeGenerator.supportsEnchantedGrove(version.id()),
+                                pendingNetworkExtendedBiomes, pendingNetworkEnchantedBiomes,
                                 pendingNetworkRadius, pendingNetworkWorld);
                         farmGrowth.keySet().removeIf(position -> world.getBlock(position) != BlockType.WHEAT_CROP);
                         world.replaceCreatureSnapshot(new ArrayList<>(pendingNetworkCreatures.values()));

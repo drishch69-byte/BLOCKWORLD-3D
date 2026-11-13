@@ -255,15 +255,23 @@ public final class MultiplayerClient implements AutoCloseable {
     /** Sends the host's complete current world. Call from a background thread. */
     public synchronized void sendWorldSnapshot(long seed, boolean activeBiomes, boolean extendedBiomes,
                                                 int worldRadius, Map<BlockPos, BlockType> blocks) throws IOException {
-        sendWorldSnapshot(seed, activeBiomes, extendedBiomes, worldRadius, blocks, java.util.List.of());
+        sendWorldSnapshot(seed, activeBiomes, extendedBiomes, false, worldRadius, blocks, java.util.List.of());
     }
 
     public synchronized void sendWorldSnapshot(long seed, boolean activeBiomes, boolean extendedBiomes,
                                                 int worldRadius, Map<BlockPos, BlockType> blocks,
                                                 java.util.List<WorldCreature> creatures) throws IOException {
+        sendWorldSnapshot(seed, activeBiomes, extendedBiomes, false, worldRadius, blocks, creatures);
+    }
+
+    public synchronized void sendWorldSnapshot(long seed, boolean activeBiomes, boolean extendedBiomes,
+                                                boolean enchantedBiomes, int worldRadius,
+                                                Map<BlockPos, BlockType> blocks,
+                                                java.util.List<WorldCreature> creatures) throws IOException {
         if (blocks == null || blocks.size() > 1_000_000) throw new IllegalArgumentException("World snapshot exceeds limits");
         if (creatures == null || creatures.size() > 256) throw new IllegalArgumentException("Creature snapshot exceeds limits");
         sendLine("WORLD_BEGIN " + seed + " " + activeBiomes + " " + extendedBiomes + " " + worldRadius + " " + blocks.size());
+        sendLine("WORLD_ENCHANTED " + enchantedBiomes);
         for (Map.Entry<BlockPos, BlockType> entry : blocks.entrySet()) {
             BlockPos p = entry.getKey();
             sendLine("WORLD_BLOCK " + p.x() + " " + p.y() + " " + p.z() + " " + entry.getValue().name());
