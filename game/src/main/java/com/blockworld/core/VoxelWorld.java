@@ -825,6 +825,7 @@ public final class VoxelWorld {
         int radiusX = biome == CaveBiomeType.UNDERGROUND_LAKE ? 5 + random.nextInt(3) : 4 + random.nextInt(2);
         int radiusY = 2 + random.nextInt(2);
         int radiusZ = biome == CaveBiomeType.UNDERGROUND_LAKE ? 5 + random.nextInt(3) : 4 + random.nextInt(2);
+        List<BlockPos> fernCandidates = new ArrayList<>();
         for (int dx = -radiusX; dx <= radiusX; dx++) {
             for (int dy = -radiusY; dy <= radiusY; dy++) {
                 for (int dz = -radiusZ; dz <= radiusZ; dz++) {
@@ -848,7 +849,7 @@ public final class VoxelWorld {
                                 } else {
                                     addBlock(position, BlockType.CAVE_MOSS);
                                     if (detail > 0.68f && !blocks.containsKey(position.add(0, 1, 0))) {
-                                        addBlock(position.add(0, 1, 0), BlockType.CAVE_FERN);
+                                        fernCandidates.add(position.add(0, 1, 0));
                                     }
                                 }
                             }
@@ -866,6 +867,10 @@ public final class VoxelWorld {
                     }
                 }
             }
+        }
+        // Place sprouts after carving so later carve cells cannot erase them.
+        for (BlockPos fern : fernCandidates) {
+            if (!blocks.containsKey(fern)) addBlock(fern, BlockType.CAVE_FERN);
         }
     }
 
