@@ -1705,7 +1705,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 hit.position().x() + .5f, hit.position().y() + .5f, hit.position().z() + .5f)) <= 3.4f;
         if (!blockBlocksAttack && creatureManager != null) {
             String combatMessage = creatureManager.attackAlongRay(attackOrigin, cam.getDirection(),
-                    3.4f, .82f, CombatRules.meleeDamage(craftedItems), world);
+                    3.4f, .82f, CombatRules.unarmedContactDamage(), world);
             if (combatMessage != null) {
                 statusMessage = combatMessage;
                 updateHud();

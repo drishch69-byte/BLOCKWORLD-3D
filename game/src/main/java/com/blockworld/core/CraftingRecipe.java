@@ -54,12 +54,6 @@ public record CraftingRecipe(int number, String name, Map<BlockType, Integer> bl
         java.util.List<CraftingRecipe> recipes = new java.util.ArrayList<>(advancedRecipes());
         recipes.add(new CraftingRecipe(16, "Удочка", Map.of(),
                 Map.of(ItemType.PLANKS, 2, ItemType.STICKS, 3), ItemType.FISHING_ROD, 1));
-        recipes.add(new CraftingRecipe(17, "Деревянный меч", Map.of(),
-                Map.of(ItemType.PLANKS, 2, ItemType.STICKS, 1), ItemType.WOODEN_SWORD, 1));
-        recipes.add(new CraftingRecipe(18, "Каменный меч", Map.of(BlockType.STONE, 2),
-                Map.of(ItemType.STICKS, 1), ItemType.STONE_SWORD, 1));
-        recipes.add(new CraftingRecipe(19, "Железный меч", Map.of(),
-                Map.of(ItemType.IRON_INGOT, 2, ItemType.STICKS, 1), ItemType.IRON_SWORD, 1));
         return java.util.List.copyOf(recipes);
     }
 

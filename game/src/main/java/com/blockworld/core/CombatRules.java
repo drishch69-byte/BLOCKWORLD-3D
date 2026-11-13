@@ -1,19 +1,13 @@
 package com.blockworld.core;
 
-import java.util.Map;
 import java.util.Set;
 
 /** Server-friendly melee and armor rules for fictional game combat. */
 public final class CombatRules {
     private CombatRules() { }
 
-    public static float meleeDamage(Map<ItemType, Integer> items) {
-        if (items == null) return 2.5f;
-        if (items.getOrDefault(ItemType.IRON_SWORD, 0) > 0) return 8f;
-        if (items.getOrDefault(ItemType.STONE_SWORD, 0) > 0) return 6f;
-        if (items.getOrDefault(ItemType.WOODEN_SWORD, 0) > 0) return 4f;
-        return 2.5f;
-    }
+    /** A simple non-weapon contact action used by the sandbox interaction system. */
+    public static float unarmedContactDamage() { return 2.5f; }
 
     public static float applyArmor(float damage, Set<ArmorSlot> armor) {
         if (!Float.isFinite(damage) || damage <= 0f) return 0f;

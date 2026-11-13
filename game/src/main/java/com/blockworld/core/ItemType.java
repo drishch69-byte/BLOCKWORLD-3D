@@ -24,10 +24,7 @@ public enum ItemType {
     EMERALD("emerald", "Изумруд"),
     FISHING_ROD("fishing_rod", "Удочка"),
     RAW_FISH("raw_fish", "Сырая рыба"),
-    COOKED_FISH("cooked_fish", "Жареная рыба"),
-    WOODEN_SWORD("wooden_sword", "Деревянный меч"),
-    STONE_SWORD("stone_sword", "Каменный меч"),
-    IRON_SWORD("iron_sword", "Железный меч");
+    COOKED_FISH("cooked_fish", "Жареная рыба");
 
     private final String id;
     private final String displayName;

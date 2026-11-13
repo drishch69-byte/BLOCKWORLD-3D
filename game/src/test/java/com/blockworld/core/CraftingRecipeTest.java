@@ -68,12 +68,9 @@ class CraftingRecipeTest {
     }
 
 
-    @Test void releaseCatalogAppendsSwordRecipesWithoutChangingEarlierEntries() {
+    @Test void releaseCatalogAppendsFishingRodWithoutChangingEarlierEntries() {
         var recipes = CraftingRecipe.release100Recipes();
-        assertEquals(19, recipes.size());
+        assertEquals(16, recipes.size());
         assertEquals(ItemType.FISHING_ROD, recipes.get(15).result());
-        assertEquals(ItemType.WOODEN_SWORD, recipes.get(16).result());
-        assertEquals(ItemType.STONE_SWORD, recipes.get(17).result());
-        assertEquals(ItemType.IRON_SWORD, recipes.get(18).result());
     }
 }

@@ -1,16 +1,12 @@
 package com.blockworld.core;
 
 import org.junit.jupiter.api.Test;
-import java.util.Map;
 import java.util.Set;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CombatRulesTest {
-    @Test void swordDamageUsesBestAvailableSword() {
-        assertEquals(2.5f, CombatRules.meleeDamage(Map.of()), .001f);
-        assertEquals(4f, CombatRules.meleeDamage(Map.of(ItemType.WOODEN_SWORD, 1)), .001f);
-        assertEquals(6f, CombatRules.meleeDamage(Map.of(ItemType.WOODEN_SWORD, 1, ItemType.STONE_SWORD, 1)), .001f);
-        assertEquals(8f, CombatRules.meleeDamage(Map.of(ItemType.IRON_SWORD, 1)), .001f);
+    @Test void contactActionUsesFixedNonWeaponGameValue() {
+        assertEquals(2.5f, CombatRules.unarmedContactDamage(), .001f);
     }
 
     @Test void armorReducesGameDamageAndInvalidDamageIsIgnored() {

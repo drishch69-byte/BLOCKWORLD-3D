@@ -12,11 +12,11 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 **1.8.0 — Village Defense & Combat**
 
-- Wooden, stone and iron swords; melee attacks against nearby creatures.
+- Non-weapon close-range interactions with nearby creatures.
 - Zombies, skeletons and spiders; iron golem and villager guard protect village residents.
 - Farmer, blacksmith, librarian and guard villager professions.
 - Fifteen named flowers, tall and short grass, and ferns in seeded meadows.
-- Rain and nearby farmers boost wheat growth; PvP command is checked by the LAN server.
+- Rain and nearby farmers boost wheat growth; the LAN server validates close-range player interactions.
 
 **Earlier: 1.2.0 — Exploration Update**
 
