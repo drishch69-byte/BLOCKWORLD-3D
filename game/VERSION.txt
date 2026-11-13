@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.8
-Codename: Ancient Temples & Relics
+Version: 1.9.9
+Codename: Enchanted Grove & Artifact Collection
 Status: Feature Release

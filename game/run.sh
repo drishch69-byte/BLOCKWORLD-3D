@@ -7,7 +7,7 @@ MAVEN_OPTS="${MAVEN_OPTS:-} -XX:ErrorFile=.logs/hs_err_pid%p.log -XX:+HeapDumpOn
 export MAVEN_OPTS
 {
   echo "============================================================"
-  echo "Minecraft 3D 1.9.8 - ANCIENT TEMPLES AND RELICS"
+  echo "Minecraft 3D 1.9.9 - ENCHANTED GROVE AND ARTIFACT COLLECTION"
   date
   echo "Project: $PWD"
   echo "============================================================"

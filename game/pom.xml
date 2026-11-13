@@ -6,7 +6,7 @@
 
     <groupId>com.blockworld</groupId>
     <artifactId>blockworld-3d</artifactId>
-    <version>1.9.8</version>
+    <version>1.9.9</version>
     <name>Minecraft 3D — Unofficial Fan Project</name>
     <description>A Java voxel sandbox with streamed chunks, seven biomes, crystal geodes, mineshafts, ruins, watchtowers, treasure chests, a compass map, farming, trading, fishing, expanded wildlife, villages, mods, PNG texture packs, and preview multiplayer world replication, creature synchronization, and persistent hosted worlds, personal server profiles, persistent dog follow/stay commands, server-validated crafting and trading, multiplayer accounts, shared chests, player-to-player trading, survival stat synchronization, melee combat, hostile creatures, village guardians, flower meadows, and enhanced farming.</description>
 
