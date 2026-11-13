@@ -18,8 +18,8 @@ class WorldBackupManagerTest {
     @Test
     void restoreCreatesSafetyBackupAndRestoresSelectedCopy() throws IOException {
         Path world = tempDir.resolve("World.bwworld");
-        String oldState = "BLOCKWORLD_WORLD\\nformat=1\\ngameVersion=0.1.0\\nseed=1\\n--blocks--\\n0,0,0,grass\\n";
-        String newState = "BLOCKWORLD_WORLD\\nformat=1\\ngameVersion=0.1.0\\nseed=2\\n--blocks--\\n1,0,0,dirt\\n";
+        String oldState = "BLOCKWORLD_WORLD\nformat=1\ngameVersion=0.1.0\nseed=1\n--blocks--\n0,0,0,grass\n";
+        String newState = "BLOCKWORLD_WORLD\nformat=1\ngameVersion=0.1.0\nseed=2\n--blocks--\n1,0,0,dirt\n";
         Files.writeString(world, oldState);
         Path originalBackup = WorldBackupManager.create(world);
         Files.writeString(world, newState);
@@ -35,8 +35,8 @@ class WorldBackupManagerTest {
     void refusesBackupFromAnotherWorld() throws IOException {
         Path worldA = tempDir.resolve("A.bwworld");
         Path worldB = tempDir.resolve("B.bwworld");
-        Files.writeString(worldA, "BLOCKWORLD_WORLD\\nformat=1\\ngameVersion=0.1.0\\n--blocks--\\nA");
-        Files.writeString(worldB, "BLOCKWORLD_WORLD\\nformat=1\\ngameVersion=0.1.0\\n--blocks--\\nB");
+        Files.writeString(worldA, "BLOCKWORLD_WORLD\nformat=1\ngameVersion=0.1.0\n--blocks--\nA");
+        Files.writeString(worldB, "BLOCKWORLD_WORLD\nformat=1\ngameVersion=0.1.0\n--blocks--\nB");
         Path backupB = WorldBackupManager.create(worldB);
 
         assertThrows(IOException.class, () -> WorldBackupManager.restore(worldA, backupB));
@@ -46,7 +46,7 @@ class WorldBackupManagerTest {
     @Test
     void refusesMalformedBackupWithoutChangingCurrentWorld() throws IOException {
         Path world = tempDir.resolve("Safe.bwworld");
-        Files.writeString(world, "BLOCKWORLD_WORLD\\nformat=1\\ngameVersion=0.1.0\\n--blocks--\\ncurrent");
+        Files.writeString(world, "BLOCKWORLD_WORLD\nformat=1\ngameVersion=0.1.0\n--blocks--\ncurrent");
         Path malformed = tempDir.resolve("Safe.bwworld.backup-manual");
         Files.writeString(malformed, "not-a-save");
 
