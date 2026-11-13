@@ -2,6 +2,7 @@ package com.blockworld.ui;
 
 import com.blockworld.core.GamePaths;
 import com.blockworld.core.GameLog;
+import com.blockworld.core.LogTailReader;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.VersionManager;
 import com.blockworld.core.WorldCatalog;
@@ -547,15 +548,12 @@ public final class Launcher {
         GameSettings current = GameSettings.load();
         Path logFile = Path.of(".logs", "latest-run.log");
         String log;
+        int maxChars = 28_000;
         try {
-            log = Files.isRegularFile(logFile) ? Files.readString(logFile, java.nio.charset.StandardCharsets.UTF_8)
+            log = Files.isRegularFile(logFile) ? LogTailReader.readTail(logFile, maxChars)
                     : "Журнал ещё не создан. Запусти игру для сбора диагностических записей.";
         } catch (IOException error) {
             log = "Не удалось прочитать журнал: " + error.getMessage();
-        }
-        int maxChars = 28_000;
-        if (log.length() > maxChars) {
-            log = "[Показан конец журнала; начало опущено]\n" + log.substring(log.length() - maxChars);
         }
         long freeMiB = Runtime.getRuntime().freeMemory() / (1024L * 1024L);
         long totalMiB = Runtime.getRuntime().totalMemory() / (1024L * 1024L);
