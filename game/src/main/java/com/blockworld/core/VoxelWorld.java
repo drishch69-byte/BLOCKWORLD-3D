@@ -792,9 +792,13 @@ public final class VoxelWorld {
                         }
                     } else if (blocks.get(position) == BlockType.STONE) {
                         float mineral = coordinateRandom(position.x(), position.y(), position.z());
-                        if (mineral < 0.10f) addBlock(position, BlockType.AMETHYST_ORE);
-                        else if (mineral < 0.14f) addBlock(position, BlockType.RUBY_ORE);
-                        else if (mineral < 0.20f) addBlock(position, BlockType.SAPPHIRE_ORE);
+                        BlockType deposit = mineral < 0.10f ? BlockType.AMETHYST_ORE
+                                : mineral < 0.14f ? BlockType.RUBY_ORE
+                                : mineral < 0.20f ? BlockType.SAPPHIRE_ORE : null;
+                        if (deposit != null) {
+                            removeBlock(position);
+                            addBlock(position, deposit);
+                        }
                     }
                 }
             }
@@ -856,13 +860,18 @@ public final class VoxelWorld {
                         }
                     } else if (blocks.get(position) == BlockType.STONE) {
                         float mineral = coordinateRandom(position.x(), position.y(), position.z());
+                        BlockType decoration = null;
                         if (biome == CaveBiomeType.CRYSTAL_GROTTO) {
-                            if (mineral < 0.24f) addBlock(position, BlockType.GLOWING_CRYSTAL);
-                            else if (mineral < 0.34f) addBlock(position, BlockType.AMETHYST_ORE);
+                            if (mineral < 0.24f) decoration = BlockType.GLOWING_CRYSTAL;
+                            else if (mineral < 0.34f) decoration = BlockType.AMETHYST_ORE;
                         } else if (biome == CaveBiomeType.MOSS_CAVERN && mineral < 0.10f) {
-                            addBlock(position, BlockType.CAVE_MOSS);
+                            decoration = BlockType.CAVE_MOSS;
                         } else if (biome == CaveBiomeType.UNDERGROUND_LAKE && mineral < 0.06f) {
-                            addBlock(position, BlockType.GLOWING_CRYSTAL);
+                            decoration = BlockType.GLOWING_CRYSTAL;
+                        }
+                        if (decoration != null) {
+                            removeBlock(position);
+                            addBlock(position, decoration);
                         }
                     }
                 }
