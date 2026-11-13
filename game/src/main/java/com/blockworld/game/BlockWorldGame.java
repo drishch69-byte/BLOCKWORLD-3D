@@ -917,7 +917,7 @@ public final class BlockWorldGame extends SimpleApplication {
                     } else {
                         pendingNetworkWorld = null;
                         statusMessage = "Не удалось синхронизировать мир: неполный снимок.";
-                        GameLog.error("Получен неполный снимок сетевого мира.");
+                        GameLog.error("Получен неполный снимок сетевого мира.", new IllegalStateException("Incomplete multiplayer world snapshot"));
                     }
                 }
                 case "WORLD_ACCEPTED" -> {

@@ -341,7 +341,7 @@ public final class MultiplayerServer implements AutoCloseable {
                 String line;
                 while ((line = readBoundedLine(in, MAX_PROTOCOL_LINE)) != null) {
                     try { process(line); }
-                    catch (IllegalArgumentException ignored) { send("ERROR Invalid packet"); }
+                    catch (IllegalArgumentException malformedPacket) { send("ERROR Invalid packet"); }
                 }
             } catch (IOException | IllegalArgumentException ignored) {
                 // Disconnected or malformed clients are isolated.
