@@ -645,10 +645,10 @@ public final class Launcher {
             if (multiplayerClient != null) multiplayerClient.close();
             if (multiplayerServer != null) multiplayerServer.close();
             SwingUtilities.invokeLater(() -> {
-                refreshWorldList(worldFile);
+                refreshWorldList(null);
                 frame.setVisible(true);
                 frame.toFront();
-                status.setText("Мир «" + worldName + "» закрыт. Он доступен и в других версиях.");
+                status.setText("Мир «" + worldName + "» закрыт. Список миров обновлён.");
             });
         };
 

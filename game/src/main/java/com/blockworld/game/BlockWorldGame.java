@@ -28,6 +28,7 @@ import com.blockworld.core.GameSettings;
 import com.blockworld.core.GamePaths;
 import com.blockworld.core.WorldCatalog;
 import com.blockworld.core.WorldBackupManager;
+import com.blockworld.core.WorldFavorites;
 import com.blockworld.core.ResourcePackManager;
 import com.blockworld.core.ModLoader;
 import com.blockworld.api.ModContext;
@@ -474,6 +475,13 @@ public final class BlockWorldGame extends SimpleApplication {
                         }
                     }
                     saveFile = recoveredSave;
+                    if (WorldFavorites.isFavorite(originalSave)) {
+                        try {
+                            WorldFavorites.setFavorite(recoveredSave, true);
+                        } catch (IOException favoriteError) {
+                            GameLog.error("Не удалось перенести отметку избранного на восстановленный мир", favoriteError);
+                        }
+                    }
                     statusMessage = recoveryReason + ". Исходный файл сохранён отдельно: "
                             + backupName + ". Для нового мира создан отдельный файл: "
                             + recoveredSave.getFileName() + ".";
