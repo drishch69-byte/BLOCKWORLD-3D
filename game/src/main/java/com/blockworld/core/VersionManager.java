@@ -38,7 +38,8 @@ public final class VersionManager {
             new GameVersion("1.9.2", "Classic Hotbar Controls", "Переключение слотов панели быстрого доступа колёсиком мыши", 144, true, true, true, true, true),
             new GameVersion("1.9.3", "Inventory Tabs Update", "Вкладки ресурсов и экипировки в инвентаре, переключение клавишами 1–2 и стрелками", 144, true, true, true, true, true),
             new GameVersion("1.9.4", "Mining Feedback Update", "Добыча блоков удержанием ЛКМ, индикатор прогресса и скорость с учётом подходящего инструмента", 144, true, true, true, true, true),
-            new GameVersion("1.9.5", "Crystal Caverns & Gem Veins", "Большие подземные пещеры, кристальные камеры, рубиновая и сапфировая руда и новые пиксельные текстуры", 144, true, true, true, true, true)
+            new GameVersion("1.9.5", "Crystal Caverns & Gem Veins", "Большие подземные пещеры, кристальные камеры, рубиновая и сапфировая руда и новые пиксельные текстуры", 144, true, true, true, true, true),
+            new GameVersion("1.9.6", "Cave Biomes & Glowflora", "Кристальные гроты, мшистые пещеры, подземные озёра, светящиеся кристаллы и пещерные растения", 144, true, true, true, true, true)
     );
 
     private VersionManager() {

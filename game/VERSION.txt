@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.5
-Codename: Crystal Caverns & Gem Veins
+Version: 1.9.6
+Codename: Cave Biomes & Glowflora
 Status: Feature Release
