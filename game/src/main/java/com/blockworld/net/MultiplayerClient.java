@@ -1,42 +1,54 @@
 package com.blockworld.net;
 
+import com.blockworld.core.BlockPos;
+import com.blockworld.core.BlockType;
+
 import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 
-/** TCP lobby client for the multiplayer preview. */
+/** TCP multiplayer client supporting lobby chat, player presence, and world block replication. */
 public final class MultiplayerClient implements AutoCloseable {
     private static final int MAX_PROTOCOL_LINE = 2048;
     private final Socket socket = new Socket();
+    private final Object eventLock = new Object();
+    private final ConcurrentLinkedQueue<String> pendingEvents = new ConcurrentLinkedQueue<>();
+    private volatile Consumer<String> eventListener;
     private BufferedReader in;
     private PrintWriter out;
     private volatile boolean connected;
+    private volatile int playerId;
+    private volatile int hostPlayerId;
 
     public void connect(String host, int port, String password, String playerName,
-                        Consumer<String> messages) throws IOException {
+                        Consumer<String> chatMessages) throws IOException {
         if (connected) throw new IllegalStateException("Already connected");
         if (socket.isClosed()) throw new IOException("Client is already closed");
         if (host == null || host.isBlank() || host.length() > 253) throw new IllegalArgumentException("Invalid host");
         if (port < 1 || port > 65535) throw new IllegalArgumentException("Invalid port");
-        Consumer<String> sink = messages == null ? ignored -> { } : messages;
+        Consumer<String> chats = chatMessages == null ? ignored -> { } : chatMessages;
         try {
             socket.connect(new InetSocketAddress(host.trim(), port), 5000);
             socket.setSoTimeout(5000);
             in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
             out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
-            String encoded = Base64.getEncoder().encodeToString(
-                    (password == null ? "" : password).getBytes(StandardCharsets.UTF_8));
-            String name = (playerName == null ? "Player" : playerName)
-                    .replaceAll("[^A-Za-zА-Яа-я0-9_-]", "");
-            if (name.isBlank()) name = "Player";
-            out.println("AUTH " + encoded + " " + name.substring(0, Math.min(20, name.length())));
-            String response = readBoundedLine(in, 128);
+            String encodedPassword = encode(password == null ? "" : password);
+            String safeName = playerName == null || playerName.isBlank() ? "Player" : playerName.strip();
+            if (safeName.length() > 20) safeName = safeName.substring(0, 20);
+            out.println("AUTH " + encodedPassword + " " + encode(safeName));
+            String response = readBoundedLine(in, 256);
             if (response == null || !response.startsWith("WELCOME ")) {
                 throw new IOException(response != null && response.startsWith("ERROR ")
                         ? response.substring(6) : "Server did not respond");
             }
+            String[] welcome = response.split(" ");
+            if (welcome.length < 3) throw new IOException("Invalid server handshake");
+            playerId = Integer.parseInt(welcome[1]);
+            hostPlayerId = Integer.parseInt(welcome[2]);
             socket.setSoTimeout(0);
             connected = true;
             Thread reader = new Thread(() -> {
@@ -44,15 +56,15 @@ public final class MultiplayerClient implements AutoCloseable {
                     String line;
                     while ((line = readBoundedLine(in, MAX_PROTOCOL_LINE)) != null) {
                         if (line.startsWith("CHAT ")) {
-                            String message = new String(Base64.getDecoder().decode(line.substring(5)), StandardCharsets.UTF_8);
-                            try { sink.accept(message); } catch (RuntimeException ignored) { }
+                            try { chats.accept(decode(line.substring(5))); } catch (RuntimeException ignored) { }
+                        } else {
+                            dispatchEvent(line);
                         }
                     }
-                } catch (IOException | IllegalArgumentException error) {
-                    if (connected) {
-                        try { sink.accept("Соединение с сервером потеряно"); } catch (RuntimeException ignored) { }
-                    }
+                } catch (IOException | IllegalArgumentException ignored) {
+                    // The final block below reports a single disconnection event.
                 } finally {
+                    if (connected) dispatchEvent("DISCONNECTED");
                     connected = false;
                 }
             }, "BlockWorld-Multiplayer-Reader");
@@ -62,6 +74,80 @@ public final class MultiplayerClient implements AutoCloseable {
             close();
             throw error;
         }
+    }
+
+    public int playerId() { return playerId; }
+    public boolean isHost() { return playerId > 0 && playerId == hostPlayerId; }
+    public boolean isConnected() { return connected && !socket.isClosed(); }
+
+    public void setEventListener(Consumer<String> listener) {
+        synchronized (eventLock) {
+            eventListener = listener;
+            if (listener != null) {
+                String queued;
+                while ((queued = pendingEvents.poll()) != null) safeAccept(listener, queued);
+            }
+        }
+    }
+
+    private void dispatchEvent(String event) {
+        synchronized (eventLock) {
+            Consumer<String> listener = eventListener;
+            if (listener == null) pendingEvents.add(event);
+            else safeAccept(listener, event);
+        }
+    }
+
+    private static void safeAccept(Consumer<String> listener, String event) {
+        try { listener.accept(event); } catch (RuntimeException ignored) { }
+    }
+
+    public synchronized void sendChat(String message) throws IOException {
+        String safe = message == null ? "" : message.strip();
+        if (safe.isEmpty()) return;
+        if (safe.length() > 240) safe = safe.substring(0, 240);
+        sendLine("CHAT " + encode(safe));
+    }
+
+    public synchronized void sendPosition(float x, float y, float z, float yaw, boolean moving) throws IOException {
+        if (!Float.isFinite(x) || !Float.isFinite(y) || !Float.isFinite(z) || !Float.isFinite(yaw)) return;
+        sendLine("POS " + x + " " + y + " " + z + " " + yaw + " " + moving);
+    }
+
+    public synchronized void sendBlockAdd(BlockPos pos, BlockType type) throws IOException {
+        if (pos == null || type == null) throw new IllegalArgumentException("Block position and type are required");
+        sendLine("BLOCK_ADD " + pos.x() + " " + pos.y() + " " + pos.z() + " " + type.name());
+    }
+
+    public synchronized void sendBlockRemove(BlockPos pos) throws IOException {
+        if (pos == null) throw new IllegalArgumentException("Block position is required");
+        sendLine("BLOCK_REMOVE " + pos.x() + " " + pos.y() + " " + pos.z());
+    }
+
+    /** Sends the host's complete current world. Call from a background thread. */
+    public synchronized void sendWorldSnapshot(long seed, boolean activeBiomes, boolean extendedBiomes,
+                                                int worldRadius, Map<BlockPos, BlockType> blocks) throws IOException {
+        if (blocks == null || blocks.size() > 1_000_000) throw new IllegalArgumentException("World snapshot exceeds limits");
+        sendLine("WORLD_BEGIN " + seed + " " + activeBiomes + " " + extendedBiomes + " " + worldRadius + " " + blocks.size());
+        for (Map.Entry<BlockPos, BlockType> entry : blocks.entrySet()) {
+            BlockPos p = entry.getKey();
+            sendLine("WORLD_BLOCK " + p.x() + " " + p.y() + " " + p.z() + " " + entry.getValue().name());
+        }
+        sendLine("WORLD_END");
+    }
+
+    private void sendLine(String line) throws IOException {
+        if (!isConnected() || out == null) throw new IOException("Нет подключения к серверу");
+        out.println(line);
+        if (out.checkError()) throw new IOException("Не удалось отправить данные на сервер");
+    }
+
+    private static String encode(String value) {
+        return Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String decode(String value) {
+        return new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
     }
 
     private static String readBoundedLine(BufferedReader reader, int limit) throws IOException {
@@ -79,18 +165,7 @@ public final class MultiplayerClient implements AutoCloseable {
         }
     }
 
-    public boolean isConnected() { return connected && !socket.isClosed(); }
-
-    public synchronized void sendChat(String message) throws IOException {
-        if (!isConnected()) throw new IOException("Нет подключения к серверу");
-        String safe = message == null ? "" : message.strip();
-        if (safe.isEmpty()) return;
-        if (safe.length() > 240) safe = safe.substring(0, 240);
-        out.println("CHAT " + Base64.getEncoder().encodeToString(safe.getBytes(StandardCharsets.UTF_8)));
-        if (out.checkError()) throw new IOException("Не удалось отправить сообщение");
-    }
-
-    @Override public synchronized void close() {
+    @Override public void close() {
         connected = false;
         try { socket.close(); } catch (IOException ignored) { }
     }

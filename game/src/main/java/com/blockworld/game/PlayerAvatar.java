@@ -1,6 +1,7 @@
 package com.blockworld.game;
 
 import com.jme3.asset.AssetManager;
+import com.jme3.font.BitmapText;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Quaternion;
@@ -21,6 +22,7 @@ final class PlayerAvatar {
     private final Geometry rightLeg;
     private final Geometry leftShoe;
     private final Geometry rightShoe;
+    private BitmapText displayName;
     private int styleIndex;
     private float clock;
 
@@ -55,6 +57,17 @@ final class PlayerAvatar {
     }
 
     String styleName() { return STYLE_NAMES[styleIndex]; }
+
+    void setDisplayName(AssetManager assets, String name) {
+        if (displayName == null) {
+            displayName = new BitmapText(assets.loadFont("Interface/Fonts/Default.fnt"));
+            displayName.setSize(0.55f);
+            displayName.setColor(ColorRGBA.White);
+            displayName.setLocalTranslation(-0.9f, 2.35f, 0.02f);
+            root.attachChild(displayName);
+        }
+        displayName.setText(name == null ? "Player" : name);
+    }
 
     private void applyStyle() {
         ColorRGBA skinColor = new ColorRGBA(0.87f, 0.65f, 0.48f, 1f);

@@ -28,6 +28,7 @@ import com.blockworld.core.ResourcePackManager;
 import com.blockworld.core.ModLoader;
 import com.blockworld.api.ModContext;
 import com.blockworld.core.GameLog;
+import com.blockworld.net.MultiplayerClient;
 import com.blockworld.core.VoxelWorld;
 import com.jme3.app.SimpleApplication;
 import com.jme3.collision.CollisionResult;
@@ -67,6 +68,7 @@ import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
@@ -84,6 +86,18 @@ public final class BlockWorldGame extends SimpleApplication {
     private final boolean createNewWorld;
     private final Runnable onGameExit;
     private final GameSettings gameSettings;
+    private final MultiplayerClient multiplayerClient;
+    private final ConcurrentLinkedQueue<String> multiplayerInbox = new ConcurrentLinkedQueue<>();
+    private final Map<Integer, RemotePlayerState> remotePlayers = new HashMap<>();
+    private Map<BlockPos, BlockType> pendingNetworkWorld;
+    private long pendingNetworkSeed;
+    private boolean pendingNetworkActiveBiomes;
+    private boolean pendingNetworkExtendedBiomes;
+    private int pendingNetworkRadius;
+    private int pendingNetworkBlockCount;
+    private boolean multiplayerSnapshotStarted;
+    private boolean multiplayerSyncReady;
+    private float multiplayerPositionClock;
     private final Map<BlockType, Integer> inventory = new EnumMap<>(BlockType.class);
     private final Map<ItemType, Integer> craftedItems = new EnumMap<>(ItemType.class);
     private final Set<ArmorSlot> equippedArmor = EnumSet.noneOf(ArmorSlot.class);
@@ -167,11 +181,16 @@ public final class BlockWorldGame extends SimpleApplication {
     private float chunkWaitClock;
 
     public BlockWorldGame(GameVersion version, Path saveFile, boolean createNewWorld, Runnable onGameExit) {
-        this(version, saveFile, createNewWorld, onGameExit, GameSettings.load());
+        this(version, saveFile, createNewWorld, onGameExit, GameSettings.load(), null);
     }
 
     public BlockWorldGame(GameVersion version, Path saveFile, boolean createNewWorld,
                           Runnable onGameExit, GameSettings gameSettings) {
+        this(version, saveFile, createNewWorld, onGameExit, gameSettings, null);
+    }
+
+    public BlockWorldGame(GameVersion version, Path saveFile, boolean createNewWorld,
+                          Runnable onGameExit, GameSettings gameSettings, MultiplayerClient multiplayerClient) {
         this.version = version;
         this.equipmentEnabled = supportsEquipment(version);
         this.agricultureEnabled = supportsAgriculture(version);
@@ -184,6 +203,8 @@ public final class BlockWorldGame extends SimpleApplication {
         this.createNewWorld = createNewWorld;
         this.onGameExit = onGameExit;
         this.gameSettings = gameSettings == null ? GameSettings.DEFAULT : gameSettings;
+        this.multiplayerClient = multiplayerClient;
+        if (multiplayerClient != null) multiplayerClient.setEventListener(multiplayerInbox::add);
     }
 
     private static boolean supportsEquipment(GameVersion version) {
@@ -623,6 +644,7 @@ public final class BlockWorldGame extends SimpleApplication {
         }
         try {
             updateFrame(tpf);
+            updateMultiplayer(tpf);
         } catch (RuntimeException error) {
             runtimeFault = true;
             runtimeFaultMessage = error.getClass().getSimpleName() + ": "
@@ -739,6 +761,247 @@ public final class BlockWorldGame extends SimpleApplication {
         if (hudRefreshClock >= 0.25f) {
             hudRefreshClock = 0f;
             updateHud();
+        }
+    }
+
+    private void updateMultiplayer(float tpf) {
+        if (multiplayerClient == null) return;
+
+        String event;
+        int processed = 0;
+        while (processed < 5000 && (event = multiplayerInbox.poll()) != null) {
+            processMultiplayerEvent(event);
+            processed++;
+        }
+
+        if (worldReady && !multiplayerSnapshotStarted && multiplayerClient.isHost()) {
+            multiplayerSnapshotStarted = true;
+            uploadInitialWorldSnapshot();
+        }
+
+        if (worldReady && multiplayerSyncReady && multiplayerClient.isConnected()) {
+            multiplayerPositionClock += Math.max(0f, tpf);
+            if (multiplayerPositionClock >= 0.10f) {
+                multiplayerPositionClock = 0f;
+                Vector3f position = version.survival() ? playerEyePosition : cam.getLocation();
+                try {
+                    multiplayerClient.sendPosition(position.x, position.y, position.z, yaw,
+                            moveForward || moveBackward || moveLeft || moveRight);
+                } catch (IOException error) {
+                    multiplayerSyncReady = false;
+                    statusMessage = "Сетевая связь потеряна: " + error.getMessage();
+                    GameLog.error("Не удалось отправить координаты игрока", error);
+                }
+            }
+        }
+
+        for (RemotePlayerState remote : remotePlayers.values()) {
+            if (remote.hasPosition && remote.avatar != null) {
+                remote.avatar.update(remote.position, remote.yaw, remote.moving, tpf);
+            }
+        }
+    }
+
+    private void uploadInitialWorldSnapshot() {
+        Map<BlockPos, BlockType> blocks = world.snapshotBlocks();
+        long seed = world.getSeed();
+        boolean active = world.hasActiveBiomes();
+        boolean extended = world.hasExtendedBiomes();
+        int radius = world.getWorldRadius();
+        statusMessage = "Передача мира на сервер (" + blocks.size() + " блоков)...";
+        Thread sender = new Thread(() -> {
+            try {
+                multiplayerClient.sendWorldSnapshot(seed, active, extended, radius, blocks);
+                GameLog.info("Отправлен снимок сетевого мира: seed=" + seed + ", blocks=" + blocks.size());
+            } catch (IOException | RuntimeException error) {
+                GameLog.error("Не удалось передать снимок мира на сервер", error);
+                multiplayerInbox.add("NETWORK_ERROR " + error.getMessage());
+            }
+        }, "BlockWorld-World-Snapshot-Sender");
+        sender.setDaemon(true);
+        sender.start();
+    }
+
+    private void processMultiplayerEvent(String event) {
+        if (event == null || event.isBlank()) return;
+        try {
+            String[] parts = event.split(" ");
+            switch (parts[0]) {
+                case "PLAYER_JOIN" -> {
+                    if (parts.length >= 3) {
+                        int id = Integer.parseInt(parts[1]);
+                        if (id != multiplayerClient.playerId()) {
+                            String name = new String(java.util.Base64.getDecoder().decode(parts[2]),
+                                    java.nio.charset.StandardCharsets.UTF_8);
+                            RemotePlayerState remote = remotePlayers.computeIfAbsent(id,
+                                    ignored -> createRemotePlayer(name));
+                            remote.name = name;
+                            if (remote.avatar != null) remote.avatar.setDisplayName(assetManager, name);
+                        }
+                    }
+                }
+                case "PLAYER_POS" -> {
+                    if (parts.length == 7) {
+                        int id = Integer.parseInt(parts[1]);
+                        if (id != multiplayerClient.playerId()) {
+                            RemotePlayerState remote = remotePlayers.computeIfAbsent(id,
+                                    ignored -> createRemotePlayer("Игрок " + id));
+                            float x = Float.parseFloat(parts[2]);
+                            float y = Float.parseFloat(parts[3]);
+                            float z = Float.parseFloat(parts[4]);
+                            float rotation = Float.parseFloat(parts[5]);
+                            if (Float.isFinite(x) && Float.isFinite(y) && Float.isFinite(z)
+                                    && Float.isFinite(rotation) && Math.abs(x) < 100_000
+                                    && Math.abs(z) < 100_000 && y > -512 && y < 2048) {
+                                remote.position.set(x, y, z);
+                                remote.yaw = rotation;
+                                remote.moving = Boolean.parseBoolean(parts[6]);
+                                remote.hasPosition = true;
+                            }
+                        }
+                    }
+                }
+                case "PLAYER_LEAVE" -> {
+                    if (parts.length == 2) {
+                        int id = Integer.parseInt(parts[1]);
+                        RemotePlayerState remote = remotePlayers.remove(id);
+                        if (remote != null && remote.avatar != null) remote.avatar.detach();
+                    }
+                }
+                case "WORLD_BEGIN" -> {
+                    if (parts.length == 6) {
+                        pendingNetworkSeed = Long.parseLong(parts[1]);
+                        pendingNetworkActiveBiomes = Boolean.parseBoolean(parts[2]);
+                        pendingNetworkExtendedBiomes = Boolean.parseBoolean(parts[3]);
+                        pendingNetworkRadius = Integer.parseInt(parts[4]);
+                        pendingNetworkBlockCount = Integer.parseInt(parts[5]);
+                        if (pendingNetworkBlockCount < 0 || pendingNetworkBlockCount > 1_000_000) {
+                            pendingNetworkWorld = null;
+                            throw new IllegalArgumentException("Снимок мира слишком большой");
+                        }
+                        pendingNetworkWorld = new HashMap<>(Math.max(16, pendingNetworkBlockCount));
+                    }
+                }
+                case "WORLD_BLOCK" -> {
+                    if (parts.length == 5 && pendingNetworkWorld != null
+                            && pendingNetworkWorld.size() < pendingNetworkBlockCount) {
+                        BlockPos pos = new BlockPos(Integer.parseInt(parts[1]),
+                                Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+                        BlockType type = BlockType.valueOf(parts[4]);
+                        pendingNetworkWorld.put(pos, type);
+                    }
+                }
+                case "WORLD_END" -> {
+                    if (pendingNetworkWorld != null
+                            && pendingNetworkWorld.size() == pendingNetworkBlockCount && world != null) {
+                        world.replaceBlockSnapshot(pendingNetworkSeed, pendingNetworkActiveBiomes,
+                                pendingNetworkExtendedBiomes, pendingNetworkRadius, pendingNetworkWorld);
+                        farmGrowth.keySet().removeIf(position -> world.getBlock(position) != BlockType.WHEAT_CROP);
+                        if (creatureManager != null) creatureManager.sync(world);
+                        pendingNetworkWorld = null;
+                        multiplayerSyncReady = true;
+                        Vector3f spawn = world.getSuggestedSpawn();
+                        if (version.survival()) {
+                            playerEyePosition = spawn.clone();
+                            cam.setLocation(spawn.clone());
+                            onGround = true;
+                            verticalVelocity = 0f;
+                        } else {
+                            cam.setLocation(spawn.add(0f, 16f, 26f));
+                            cam.lookAt(spawn, Vector3f.UNIT_Y);
+                        }
+                        GameLog.info("Получен снимок общего мира: seed=" + pendingNetworkSeed
+                                + ", blocks=" + pendingNetworkBlockCount);
+                        statusMessage = "Мир сервера синхронизирован. Игроки и блоки в сети.";
+                        updateHud();
+                    } else {
+                        pendingNetworkWorld = null;
+                        statusMessage = "Не удалось синхронизировать мир: неполный снимок.";
+                        GameLog.error("Получен неполный снимок сетевого мира.");
+                    }
+                }
+                case "WORLD_ACCEPTED" -> {
+                    multiplayerSyncReady = true;
+                    statusMessage = "Мир отправлен серверу. Сетевая игра активна.";
+                    updateHud();
+                }
+                case "BLOCK_ADD" -> {
+                    if (parts.length == 5 && world != null && worldReady) {
+                        BlockPos pos = new BlockPos(Integer.parseInt(parts[1]),
+                                Integer.parseInt(parts[2]), Integer.parseInt(parts[3]));
+                        BlockType type = BlockType.valueOf(parts[4]);
+                        BlockType current = world.getBlock(pos);
+                        if (current != type) {
+                            if (current != null) world.removeBlock(pos);
+                            world.addBlock(pos, type);
+                        }
+                    }
+                }
+                case "BLOCK_REMOVE" -> {
+                    if (parts.length == 4 && world != null && worldReady) {
+                        world.removeBlock(new BlockPos(Integer.parseInt(parts[1]),
+                                Integer.parseInt(parts[2]), Integer.parseInt(parts[3])));
+                    }
+                }
+                case "DISCONNECTED" -> {
+                    multiplayerSyncReady = false;
+                    for (RemotePlayerState remote : remotePlayers.values()) {
+                        if (remote.avatar != null) remote.avatar.detach();
+                    }
+                    remotePlayers.clear();
+                    statusMessage = "Соединение с сервером потеряно. Игра продолжится локально.";
+                    updateHud();
+                }
+                case "NETWORK_ERROR" -> {
+                    multiplayerSyncReady = false;
+                    statusMessage = "Ошибка сетевой передачи: " + event.substring("NETWORK_ERROR ".length());
+                    updateHud();
+                }
+                default -> { }
+            }
+        } catch (RuntimeException error) {
+            GameLog.error("Некорректное сетевое событие: " + event, error);
+        }
+    }
+
+    private RemotePlayerState createRemotePlayer(String name) {
+        PlayerAvatar avatar = new PlayerAvatar(assetManager);
+        avatar.setDisplayName(assetManager, name);
+        avatar.attach(rootNode);
+        return new RemotePlayerState(name, avatar);
+    }
+
+    private void sendMultiplayerBlockAdd(BlockPos pos, BlockType type) {
+        if (multiplayerClient == null || !multiplayerSyncReady) return;
+        try {
+            multiplayerClient.sendBlockAdd(pos, type);
+        } catch (IOException error) {
+            statusMessage = "Не удалось отправить блок на сервер.";
+            GameLog.error("Ошибка синхронизации установки блока", error);
+        }
+    }
+
+    private void sendMultiplayerBlockRemove(BlockPos pos) {
+        if (multiplayerClient == null || !multiplayerSyncReady) return;
+        try {
+            multiplayerClient.sendBlockRemove(pos);
+        } catch (IOException error) {
+            statusMessage = "Не удалось отправить изменение блока на сервер.";
+            GameLog.error("Ошибка синхронизации разрушения блока", error);
+        }
+    }
+
+    private static final class RemotePlayerState {
+        String name;
+        final PlayerAvatar avatar;
+        final Vector3f position = new Vector3f();
+        float yaw;
+        boolean moving;
+        boolean hasPosition;
+
+        RemotePlayerState(String name, PlayerAvatar avatar) {
+            this.name = name;
+            this.avatar = avatar;
         }
     }
 
@@ -984,6 +1247,12 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void breakTargetBlock() {
+        if (multiplayerClient != null && multiplayerClient.isConnected() && !multiplayerSyncReady) {
+            statusMessage = "Подожди завершения синхронизации общего мира.";
+            updateHud();
+            return;
+        }
+
         if (!worldReady) {
             statusMessage = "Мир ещё загружается.";
             updateHud();
@@ -1005,6 +1274,7 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         if (world.removeBlock(pos)) {
+            sendMultiplayerBlockRemove(pos);
             if (agricultureEnabled && removed == BlockType.WHEAT_CROP) {
                 farmGrowth.remove(pos);
                 saveFarmQuietly();
@@ -1043,6 +1313,12 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void placeTargetBlock() {
+        if (multiplayerClient != null && multiplayerClient.isConnected() && !multiplayerSyncReady) {
+            statusMessage = "Подожди завершения синхронизации общего мира.";
+            updateHud();
+            return;
+        }
+
         if (!worldReady) {
             statusMessage = "Мир ещё загружается.";
             updateHud();
@@ -1062,6 +1338,7 @@ public final class BlockWorldGame extends SimpleApplication {
         } else if (version.survival() && available <= 0) {
             statusMessage = "В инвентаре нет блока «" + selectedBlock.displayName() + "».";
         } else if (world.addBlock(target, selectedBlock)) {
+            sendMultiplayerBlockAdd(target, selectedBlock);
             if (version.survival()) {
                 inventory.put(selectedBlock, available - 1);
                 savePlayerDataQuietly();
@@ -1074,6 +1351,12 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void interactCreature() {
+        if (multiplayerClient != null && multiplayerClient.isConnected() && !multiplayerSyncReady) {
+            statusMessage = "Подожди завершения синхронизации общего мира.";
+            updateHud();
+            return;
+        }
+
         if (!worldReady) return;
         if (tradeOpen) {
             tradeOpen = false;
@@ -1088,6 +1371,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (!version.survival()) {
                 statusMessage = "Сундук хранит находки. Открой его в режиме выживания.";
             } else if (world.removeBlock(hit.position())) {
+                sendMultiplayerBlockRemove(hit.position());
                 Map<ItemType, Integer> loot = TreasureLoot.roll(world.getSeed(), hit.position());
                 loot.forEach((item, count) -> craftedItems.merge(item, count, Integer::sum));
                 String found = loot.entrySet().stream()
@@ -1226,6 +1510,12 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void useSelectedUtility() {
+        if (multiplayerClient != null && multiplayerClient.isConnected() && !multiplayerSyncReady) {
+            statusMessage = "Подожди завершения синхронизации общего мира.";
+            updateHud();
+            return;
+        }
+
         if (!agricultureEnabled || !version.survival() || !worldReady || inventoryOpen || craftingOpen || furnaceOpen) return;
         BlockHit hit = getTargetBlock();
         if (hit == null) {
@@ -1242,6 +1532,7 @@ public final class BlockWorldGame extends SimpleApplication {
             } else if (world.contains(crop)) {
                 statusMessage = "Над грядкой уже что-то растёт или стоит блок.";
             } else if (world.addBlock(crop, BlockType.WHEAT_CROP)) {
+                sendMultiplayerBlockAdd(crop, BlockType.WHEAT_CROP);
                 craftedItems.merge(ItemType.WHEAT_SEEDS, -1, Integer::sum);
                 farmGrowth.put(crop, 0f);
                 savePlayerDataQuietly();
@@ -1253,6 +1544,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (!FarmRules.isMature(progress)) {
                 statusMessage = "Пшеница ещё растёт: " + Math.round(progress) + "/" + Math.round(FarmRules.MATURATION_SECONDS) + " секунд.";
             } else if (world.removeBlock(position)) {
+                sendMultiplayerBlockRemove(position);
                 farmGrowth.remove(position);
                 craftedItems.merge(ItemType.WHEAT, 1, Integer::sum);
                 craftedItems.merge(ItemType.WHEAT_SEEDS, FarmRules.harvestSeeds(2), Integer::sum);
@@ -1263,6 +1555,8 @@ public final class BlockWorldGame extends SimpleApplication {
             }
         } else if ((target == BlockType.GRASS || target == BlockType.DIRT) && selectedTool == ToolType.WOODEN_HOE) {
             if (world.removeBlock(position) && world.addBlock(position, BlockType.FARMLAND)) {
+                sendMultiplayerBlockRemove(position);
+                sendMultiplayerBlockAdd(position, BlockType.FARMLAND);
                 statusMessage = "Грядка создана. Наведи прицел на неё и нажми G, чтобы посадить семена.";
             }
         } else if (craftedItems.getOrDefault(ItemType.FURNACE, 0) > 0) {
@@ -1271,6 +1565,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (cam.getLocation().distance(center) < 1.45f) {
                 statusMessage = "Слишком близко: нельзя поставить печь внутри игрока.";
             } else if (world.addBlock(place, BlockType.FURNACE)) {
+                sendMultiplayerBlockAdd(place, BlockType.FURNACE);
                 craftedItems.merge(ItemType.FURNACE, -1, Integer::sum);
                 savePlayerDataQuietly();
                 statusMessage = "Печь установлена. Наведи на неё прицел и нажми F.";
@@ -1703,6 +1998,11 @@ public final class BlockWorldGame extends SimpleApplication {
             }
         } finally {
             try {
+                if (multiplayerClient != null) multiplayerClient.close();
+                for (RemotePlayerState remote : remotePlayers.values()) {
+                    if (remote.avatar != null) remote.avatar.detach();
+                }
+                remotePlayers.clear();
                 if (modLoader != null) modLoader.close();
                 super.destroy();
             } finally {

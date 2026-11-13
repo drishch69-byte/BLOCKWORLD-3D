@@ -6,9 +6,9 @@
 
     <groupId>com.blockworld</groupId>
     <artifactId>blockworld-3d</artifactId>
-    <version>1.2.0</version>
+    <version>1.4.0</version>
     <name>BlockWorld 3D</name>
-    <description>A Java voxel sandbox with streamed chunks, seven biomes, crystal geodes, mineshafts, ruins, watchtowers, treasure chests, a compass map, farming, trading, fishing, expanded wildlife, villages, mods, and PNG texture packs.</description>
+    <description>A Java voxel sandbox with streamed chunks, seven biomes, crystal geodes, mineshafts, ruins, watchtowers, treasure chests, a compass map, farming, trading, fishing, expanded wildlife, villages, mods, PNG texture packs, and preview multiplayer world replication.</description>
 
     <properties>
         <maven.compiler.release>17</maven.compiler.release>

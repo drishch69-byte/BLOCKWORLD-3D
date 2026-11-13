@@ -126,7 +126,42 @@ public final class VoxelWorld {
     public int getRenderDistanceChunks() { return renderDistanceChunks; }
     public long getSeed() { return seed; }
     public int getWorldRadius() { return worldRadius; }
+    public boolean hasActiveBiomes() { return activeBiomes; }
     public boolean hasExtendedBiomes() { return extendedBiomes; }
+    public Map<BlockPos, BlockType> snapshotBlocks() { return Map.copyOf(blocks); }
+
+    /** Replace block data with an authoritative multiplayer snapshot. Call on the render thread. */
+    public void replaceBlockSnapshot(long worldSeed, boolean hasBiomes, boolean hasExtendedBiomes,
+                                     int snapshotRadius, Map<BlockPos, BlockType> snapshot) {
+        Objects.requireNonNull(snapshot, "snapshot");
+        if (snapshot.size() > MAX_SAVED_BLOCKS) throw new IllegalArgumentException("World snapshot exceeds block limit");
+        node.detachAllChildren();
+        chunkGeometries.clear();
+        triangleHits.clear();
+        pendingChunks.clear();
+        desiredChunks.clear();
+        chunkBlocks.clear();
+        blocks.clear();
+        creatures.clear();
+        preservedUnknownIds.clear();
+        columnHeights.clear();
+        hasBounds = false;
+        lastStreamCenter = null;
+        lastMeshError = "";
+        seed = worldSeed;
+        activeBiomes = hasBiomes;
+        extendedBiomes = hasExtendedBiomes;
+        worldRadius = Math.max(0, Math.min(100_000, snapshotRadius));
+        bulkUpdate = true;
+        try {
+            for (Map.Entry<BlockPos, BlockType> entry : snapshot.entrySet()) {
+                addBlock(entry.getKey(), entry.getValue());
+            }
+        } finally {
+            bulkUpdate = false;
+        }
+        landmarks = activeBiomes ? WorldNavigation.allMarkers(seed, worldRadius) : List.of();
+    }
     public long countBlocks(BlockType type) {
         Objects.requireNonNull(type, "type");
         return blocks.values().stream().filter(type::equals).count();

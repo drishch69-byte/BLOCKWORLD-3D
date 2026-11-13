@@ -282,51 +282,65 @@ public final class Launcher {
     }
 
     private void launchGame(Path worldFile, String worldName, boolean createNewWorld) {
+        launchGame(worldFile, worldName, createNewWorld, null, null);
+    }
+
+    private void launchGame(Path worldFile, String worldName, boolean createNewWorld,
+                            MultiplayerClient multiplayerClient, MultiplayerServer multiplayerServer) {
         GameVersion selected = (GameVersion) versionSelector.getSelectedItem();
         GameVersion versionToLaunch = selected == null ? VersionManager.getDefaultVersion() : selected;
 
         status.setText("Запуск " + versionToLaunch.id() + " — мир «" + worldName + "»...");
         GameLog.info("Запрошен запуск профиля " + versionToLaunch.id() + " для мира «" + worldName
-                + "»; файл=" + worldFile.toAbsolutePath());
+                + "»; файл=" + worldFile.toAbsolutePath()
+                + (multiplayerClient == null ? "" : "; multiplayer playerId=" + multiplayerClient.playerId()));
         frame.setVisible(false);
 
-        Runnable onGameExit = () -> SwingUtilities.invokeLater(() -> {
-            refreshWorldList(worldFile);
-            frame.setVisible(true);
-            frame.toFront();
-            status.setText("Мир «" + worldName + "» закрыт. Он доступен и в других версиях.");
-        });
+        Runnable onGameExit = () -> {
+            if (multiplayerClient != null) multiplayerClient.close();
+            if (multiplayerServer != null) multiplayerServer.close();
+            SwingUtilities.invokeLater(() -> {
+                refreshWorldList(worldFile);
+                frame.setVisible(true);
+                frame.toFront();
+                status.setText("Мир «" + worldName + "» закрыт. Он доступен и в других версиях.");
+            });
+        };
 
         Thread gameThread = new Thread(() -> {
             try {
-                new BlockWorldGame(versionToLaunch, worldFile, createNewWorld, onGameExit, GameSettings.load()).launch();
+                new BlockWorldGame(versionToLaunch, worldFile, createNewWorld, onGameExit,
+                        GameSettings.load(), multiplayerClient).launch();
             } catch (Throwable error) {
+                if (multiplayerClient != null) multiplayerClient.close();
+                if (multiplayerServer != null) multiplayerServer.close();
                 GameLog.error("Ошибка запуска игрового окна (включая системные/native ошибки)", error);
                 SwingUtilities.invokeLater(() -> {
                     frame.setVisible(true);
                     frame.toFront();
                     status.setText("Игра завершилась с ошибкой. Журнал: .logs\\latest-run.log");
                     JOptionPane.showMessageDialog(frame,
-                            "Не удалось запустить BlockWorld:\n" + formatThrowable(error)
-                                    + "\n\nПроверь Java 17+, драйвер видеокарты и журнал .logs\\latest-run.log.",
+                            "Не удалось запустить BlockWorld:\\n" + formatThrowable(error)
+                                    + "\\n\\nПроверь Java 17+, драйвер видеокарты и журнал .logs\\latest-run.log.",
                             "Ошибка запуска", JOptionPane.ERROR_MESSAGE);
                 });
             }
         }, "BlockWorld-Game-Thread");
         gameThread.setDaemon(false);
         gameThread.setUncaughtExceptionHandler((thread, error) -> {
+            if (multiplayerClient != null) multiplayerClient.close();
+            if (multiplayerServer != null) multiplayerServer.close();
             GameLog.error("Авария потока запуска игры " + thread.getName(), error);
             SwingUtilities.invokeLater(() -> {
                 frame.setVisible(true);
                 frame.toFront();
                 status.setText("Поток игры аварийно завершился. См. .logs\\latest-run.log и hs_err_pid*.log.");
                 JOptionPane.showMessageDialog(frame,
-                        "Поток запуска игры завершился с ошибкой:\n" + formatThrowable(error)
-                                + "\n\nПроверь .logs\\latest-run.log и .logs\\hs_err_pid*.log.",
-                        "BLOCKWORLD 3D — авария запуска", JOptionPane.ERROR_MESSAGE);
+                        "Поток запуска игры завершился с ошибкой:\\n" + formatThrowable(error)
+                                + "\\n\\nПроверь .logs\\latest-run.log и .logs\\hs_err_pid*.log.",
+                        "Ошибка запуска", JOptionPane.ERROR_MESSAGE);
             });
         });
-        GameLog.info("Поток запуска игры создан; id=" + gameThread.getId());
         gameThread.start();
     }
 
@@ -468,7 +482,7 @@ public final class Launcher {
     private void showMultiplayerDialog() {
         Object[] options = {"Создать LAN-сервер", "Подключиться", "Отмена"};
         int choice = JOptionPane.showOptionDialog(frame,
-                "Сетевая комната: сервер и чат. Синхронизация игрового мира будет добавлена отдельно.",
+                "Совместный мир: персонажи, перемещение и блоки синхронизируются через сервер. Инвентарь и существа пока локальные.",
                 "BLOCKWORLD 3D — Multiplayer", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
         if (choice == 0) hostMultiplayerServer();
@@ -544,6 +558,9 @@ public final class Launcher {
         JTextField message = new JTextField();
         JButton send = new JButton("ОТПРАВИТЬ");
         send.setEnabled(false);
+        JButton play = new JButton("ЗАПУСТИТЬ ВЫБРАННЫЙ МИР");
+        play.setEnabled(false);
+        boolean[] handedOffToGame = {false};
 
         Runnable sendMessage = () -> {
             try {
@@ -557,38 +574,58 @@ public final class Launcher {
         send.addActionListener(event -> sendMessage.run());
         message.addActionListener(event -> sendMessage.run());
 
+        JPanel compose = new JPanel(new BorderLayout(6, 6));
+        compose.add(message, BorderLayout.CENTER);
+        compose.add(send, BorderLayout.EAST);
         JPanel bottom = new JPanel(new BorderLayout(6, 6));
-        bottom.add(message, BorderLayout.CENTER);
-        bottom.add(send, BorderLayout.EAST);
+        bottom.add(compose, BorderLayout.CENTER);
+        bottom.add(play, BorderLayout.SOUTH);
         dialog.add(info, BorderLayout.NORTH);
         dialog.add(new JScrollPane(chat), BorderLayout.CENTER);
         dialog.add(bottom, BorderLayout.SOUTH);
-        dialog.setSize(650, 420);
+        dialog.setSize(680, 440);
         dialog.setLocationRelativeTo(frame);
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosed(java.awt.event.WindowEvent event) {
-                client.close();
-                if (server != null) server.close();
+                if (!handedOffToGame[0]) {
+                    client.close();
+                    if (server != null) server.close();
+                }
             }
         });
-        dialog.setVisible(true);
 
+        play.addActionListener(event -> {
+            WorldEntry selected = (WorldEntry) worldSelector.getSelectedItem();
+            if (selected == null) {
+                JOptionPane.showMessageDialog(dialog,
+                        "Сначала создай или выбери мир в лаунчере, затем запускай сетевую игру.",
+                        "Нет выбранного мира", JOptionPane.INFORMATION_MESSAGE);
+                return;
+            }
+            handedOffToGame[0] = true;
+            dialog.dispose();
+            launchGame(selected.file(), selected.name(), false, client, server);
+        });
+
+        dialog.setVisible(true);
         Thread connector = new Thread(() -> {
             try {
-                client.connect(host, port, password, nickname, line -> SwingUtilities.invokeLater(() -> {
+                client.connect(host, port, password, nickname, text -> SwingUtilities.invokeLater(() -> {
                     if (dialog.isDisplayable()) {
-                        chat.append(line + System.lineSeparator());
+                        chat.append(text + System.lineSeparator());
                         chat.setCaretPosition(chat.getDocument().getLength());
                     }
                 }));
                 SwingUtilities.invokeLater(() -> {
                     if (dialog.isDisplayable()) {
                         info.setText("Подключено к " + host + ":" + port
-                                + ". Это тестовая комната: игровой мир пока не синхронизируется.");
+                                + ". Нажми кнопку ниже, чтобы войти в общий мир.");
                         send.setEnabled(true);
+                        play.setEnabled(true);
                         message.requestFocusInWindow();
                     } else {
                         client.close();
+                        if (server != null) server.close();
                     }
                 });
             } catch (Exception error) {
@@ -598,6 +635,7 @@ public final class Launcher {
                         chat.append("Ошибка подключения: " + error.getMessage() + System.lineSeparator());
                         info.setText("Не удалось подключиться. Проверь адрес, порт и пароль.");
                         send.setEnabled(false);
+                        play.setEnabled(false);
                     }
                 });
             }
