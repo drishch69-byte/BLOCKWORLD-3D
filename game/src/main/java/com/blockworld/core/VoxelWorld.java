@@ -421,8 +421,17 @@ public final class VoxelWorld {
             int localZ = pos.z() - baseZ;
             for (Face face : FACES) {
                 BlockPos neighbor = pos.add(face.nx, face.ny, face.nz);
-                if (blocks.containsKey(neighbor)
-                        && desiredChunks.contains(ChunkPos.fromBlock(neighbor.x(), neighbor.z()))) continue;
+                if (blocks.containsKey(neighbor)) {
+                    boolean neighborChunkDesired = true;
+                    if (face.nx != 0 && ((face.nx > 0 && localX == ChunkPos.SIZE - 1)
+                            || (face.nx < 0 && localX == 0))) {
+                        neighborChunkDesired = desiredChunks.contains(new ChunkPos(chunk.x() + face.nx, chunk.z()));
+                    } else if (face.nz != 0 && ((face.nz > 0 && localZ == ChunkPos.SIZE - 1)
+                            || (face.nz < 0 && localZ == 0))) {
+                        neighborChunkDesired = desiredChunks.contains(new ChunkPos(chunk.x(), chunk.z() + face.nz));
+                    }
+                    if (neighborChunkDesired) continue;
+                }
                 int firstVertex = positions.size() / 3;
                 int faceVariant = face.ny > 0 ? 0 : face.ny < 0 ? 2 : 1;
                 int tileIndex = ResourcePackManager.textureTileIndex(type, faceVariant);

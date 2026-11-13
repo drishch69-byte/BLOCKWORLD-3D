@@ -30,6 +30,26 @@ class VoxelWorldChunkTest {
     }
 
     @Test
+    void cullsSharedFaceBetweenAdjacentChunksWhenBothAreInRenderRange() {
+        AssetManager assets = new DesktopAssetManager(true);
+        VoxelWorld world = new VoxelWorld(assets);
+        assertTrue(world.addBlock(new BlockPos(15, 0, 0), BlockType.STONE));
+        assertTrue(world.addBlock(new BlockPos(16, 0, 0), BlockType.STONE));
+
+        world.setRenderDistanceChunks(2);
+        world.updateStreaming(new Vector3f(15f, 4f, 0f), 4);
+
+        assertEquals(2, world.getRenderedChunkCount());
+        int totalVertices = 0;
+        for (int i = 0; i < world.getNode().getQuantity(); i++) {
+            Geometry geometry = (Geometry) world.getNode().getChild(i);
+            totalVertices += geometry.getMesh().getVertexCount();
+        }
+        // Ten visible faces total: the two blocks do not render their shared border face.
+        assertEquals(40, totalVertices);
+    }
+
+    @Test
     void buildsOneCombinedMeshAndMapsItsTriangleBackToTheBlockFace() {
         AssetManager assets = new DesktopAssetManager(true);
         VoxelWorld world = new VoxelWorld(assets);
