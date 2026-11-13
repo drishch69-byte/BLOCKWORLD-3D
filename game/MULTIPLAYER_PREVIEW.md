@@ -1,32 +1,31 @@
-# BLOCKWORLD 3D — Multiplayer Server Save & Creature Sync Preview
+# BLOCKWORLD 3D — Multiplayer Server Profiles & Crafting Preview
 
-The launcher can host a password-protected LAN world or join one by address and port. The selected host world is saved separately from the ordinary single-player save.
+The launcher can host a password-protected LAN world or join one by address and port. Hosted block worlds and personal player profiles are stored separately for each selected world.
 
 ## Included
-- Block-style player avatars with names and position updates
-- Shared block placement and removal
-- A host-authoritative creature simulation; creature states and movement animations are relayed to other players
-- Complete world transfer for joining players, including block data, seed, biome flags, radius, and creature list
-- Server-side persistence of blocks and creatures
-- Host migration when the original host disconnects
-- A separate server-world file for each selected world
+- Block-style player avatars, position updates, shared block placement/removal, and host-controlled creature movement
+- Server persistence for world blocks and creature states
+- Personal server profiles for block inventory, crafted items, and equipped armor
+- Profile restoration when a player reconnects with the same nickname
+- Server-validated crafting recipes and village-trader exchanges
+- Inventory updates uploaded after mining, block placement, smelting, fishing, eating, and armor changes
+- Duplicate active nicknames are rejected to prevent two connected players from writing the same profile at once
 
-## Server world files
-The server stores hosted copies under:
+## Storage
+Hosted world files are stored under:
 
 `~/.blockworld3d/servers/`
 
-Each world gets a separate `.bwserver` file based on its world filename. The server writes block edits immediately, periodically stores creature positions, and flushes the latest world when the server closes. On the next host session, the saved server world is restored and sent to the joining host.
+Player profiles for a hosted world are stored alongside that world's server file in a folder ending with `.bwserver.players/`. Each sanitized nickname has a separate `.profile` file. Writes use a temporary file and atomic replacement where supported.
 
-## How to play
-1. Select a world in the launcher.
-2. Choose **СЕТЕВАЯ ИГРА → Создать LAN-сервер**.
-3. Connect as host and choose **ЗАПУСТИТЬ ВЫБРАННЫЙ МИР**.
-4. Friends on the same trusted network use **Подключиться**, enter the host's local network address, port, and password, then launch the multiplayer world.
-5. The server sends the current world snapshot to every new player. Block changes and host-controlled creature states are relayed while playing.
+## How profiles work
+1. On first connection, the server reports that the nickname has no profile. The client uploads its current local inventory and armor.
+2. On later connections, the server sends the saved profile to that nickname. The client applies it and refreshes its local sidecar cache.
+3. When a player crafts an item or trades with a village trader, the client sends a request, not a claimed result. The server checks the saved inventory, applies the recipe, saves the new profile, and returns the updated data.
+4. Normal inventory changes are uploaded as a complete personal profile snapshot. While the profile is loading or a server transaction is pending, inventory-changing actions are paused.
 
-## Personal inventories and current limitations
-Inventory, armor, crafting results, health, hunger, farming timers, and achievements remain personal to each player and are saved in the local `.player.properties` and other sidecar files for that world. They are not yet synchronized to a central server or transferred between different computers. Crafting is not a shared transaction system. Creature updates are sent four times per second; interpolation and prediction are still basic. This is an early multiplayer preview, not a complete dedicated-server release.
+## Crafting and trading
+The server supports the starter, advanced, and release 1.0 recipe catalogues plus the four village-trader offers. Recipes are checked against the server-held player profile. Crafting and villager trades are server-authoritative in this preview. Direct player-to-player item exchange, shared chests, central health/hunger, and inventory drops on death are not implemented yet.
 
-## Network safety
-The TCP protocol is not encrypted. Use trusted local networks only, choose a password, and do not publish public IP addresses or passwords. Do not expose the preview server to the public internet.
+## Nicknames and network safety
+Player profiles are keyed by nickname, not by a separately authenticated user account. The shared server password controls entry to the room, but anyone who knows it could reconnect using an unoccupied nickname belonging to another player. Use unique nicknames, never reuse account passwords, and only host on a trusted LAN. The TCP protocol is not encrypted; do not expose the preview server to the public internet or share its address and password publicly.

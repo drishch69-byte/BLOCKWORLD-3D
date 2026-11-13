@@ -2,6 +2,8 @@ package com.blockworld.net;
 
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.ArmorSlot;
+import com.blockworld.core.ItemType;
 import com.blockworld.core.WorldCreature;
 
 import java.io.*;
@@ -39,7 +41,9 @@ public final class MultiplayerClient implements AutoCloseable {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
             out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
             String encodedPassword = encode(password == null ? "" : password);
-            String safeName = playerName == null || playerName.isBlank() ? "Player" : playerName.strip();
+            String safeName = playerName == null ? "Player"
+                    : playerName.replaceAll("[^A-Za-zА-Яа-я0-9_-]", "").strip();
+            if (safeName.isBlank()) safeName = "Player";
             if (safeName.length() > 20) safeName = safeName.substring(0, 20);
             out.println("AUTH " + encodedPassword + " " + encode(safeName));
             String response = readBoundedLine(in, 256);
@@ -130,6 +134,40 @@ public final class MultiplayerClient implements AutoCloseable {
     public synchronized void sendBlockRemove(BlockPos pos) throws IOException {
         if (pos == null) throw new IllegalArgumentException("Block position is required");
         sendLine("BLOCK_REMOVE " + pos.x() + " " + pos.y() + " " + pos.z());
+    }
+
+    /** Uploads a player's own inventory to the server profile store. */
+    public synchronized void sendPlayerProfile(Map<BlockType, Integer> blocks,
+                                                Map<ItemType, Integer> items,
+                                                java.util.Set<ArmorSlot> armor) throws IOException {
+        sendLine("PROFILE_UPLOAD_BEGIN " + BlockType.values().length + " " + ItemType.values().length
+                + " " + (armor == null ? 0 : armor.size()));
+        for (BlockType type : BlockType.values()) {
+            int count = blocks == null ? 0 : blocks.getOrDefault(type, 0);
+            if (count < 0 || count > 1_000_000) throw new IllegalArgumentException("Invalid block stack");
+            sendLine("PROFILE_UPLOAD_BLOCK " + type.name() + " " + count);
+        }
+        for (ItemType type : ItemType.values()) {
+            int count = items == null ? 0 : items.getOrDefault(type, 0);
+            if (count < 0 || count > 1_000_000) throw new IllegalArgumentException("Invalid item stack");
+            sendLine("PROFILE_UPLOAD_ITEM " + type.name() + " " + count);
+        }
+        if (armor != null) {
+            for (ArmorSlot slot : armor) sendLine("PROFILE_UPLOAD_ARMOR " + slot.name());
+        }
+        sendLine("PROFILE_UPLOAD_END");
+    }
+
+    public synchronized void sendCraftRequest(String catalog, int recipeNumber) throws IOException {
+        if (!java.util.List.of("starter", "advanced", "release100").contains(catalog))
+            throw new IllegalArgumentException("Unknown crafting catalog");
+        if (recipeNumber < 1 || recipeNumber > 16) throw new IllegalArgumentException("Invalid recipe number");
+        sendLine("CRAFT_REQUEST " + catalog + " " + recipeNumber);
+    }
+
+    public synchronized void sendTradeRequest(int offerNumber) throws IOException {
+        if (offerNumber < 1 || offerNumber > 4) throw new IllegalArgumentException("Invalid trade offer");
+        sendLine("TRADE_REQUEST " + offerNumber);
     }
 
     /** Sends the host's complete current world. Call from a background thread. */

@@ -101,6 +101,19 @@ public final class BlockWorldGame extends SimpleApplication {
     private boolean multiplayerSnapshotStarted;
     private boolean multiplayerSyncReady;
     private float multiplayerPositionClock;
+    private boolean multiplayerWorldReady;
+    private boolean multiplayerProfileReady;
+    private boolean multiplayerProfileInitialized;
+    private EnumMap<BlockType, Integer> pendingProfileBlocks;
+    private EnumMap<ItemType, Integer> pendingProfileItems;
+    private EnumSet<ArmorSlot> pendingProfileArmor;
+    private int expectedProfileBlocks;
+    private int expectedProfileItems;
+    private int expectedProfileArmor;
+    private int receivedProfileBlocks;
+    private int receivedProfileItems;
+    private boolean multiplayerCraftPending;
+    private boolean multiplayerTradePending;
     private final Map<BlockType, Integer> inventory = new EnumMap<>(BlockType.class);
     private final Map<ItemType, Integer> craftedItems = new EnumMap<>(ItemType.class);
     private final Set<ArmorSlot> equippedArmor = EnumSet.noneOf(ArmorSlot.class);
@@ -851,6 +864,54 @@ public final class BlockWorldGame extends SimpleApplication {
         sender.start();
     }
 
+    private void refreshMultiplayerReadiness() {
+        multiplayerSyncReady = multiplayerClient != null && multiplayerClient.isConnected()
+                && multiplayerWorldReady && multiplayerProfileReady;
+        if (multiplayerSyncReady) {
+            statusMessage = "Сеть готова: общий мир и личный инвентарь синхронизированы.";
+            updateHud();
+        }
+    }
+
+    private void sendMultiplayerProfileSnapshot() {
+        if (multiplayerClient == null || !multiplayerClient.isConnected()) return;
+        try {
+            multiplayerClient.sendPlayerProfile(inventory, craftedItems, equippedArmor);
+        } catch (IOException | IllegalArgumentException error) {
+            statusMessage = "Не удалось передать инвентарь серверу: " + error.getMessage();
+            GameLog.error("Не удалось отправить серверный профиль игрока", error);
+            updateHud();
+        }
+    }
+
+    private void applyMultiplayerProfile() {
+        if (pendingProfileBlocks == null || pendingProfileItems == null || pendingProfileArmor == null
+                || receivedProfileBlocks != expectedProfileBlocks
+                || receivedProfileItems != expectedProfileItems
+                || pendingProfileArmor.size() != expectedProfileArmor
+                || expectedProfileBlocks != BlockType.values().length
+                || expectedProfileItems != ItemType.values().length) {
+            throw new IllegalArgumentException("Неполный профиль игрока");
+        }
+        inventory.clear();
+        inventory.putAll(pendingProfileBlocks);
+        craftedItems.clear();
+        craftedItems.putAll(pendingProfileItems);
+        equippedArmor.clear();
+        equippedArmor.addAll(pendingProfileArmor);
+        pendingProfileBlocks = null;
+        pendingProfileItems = null;
+        pendingProfileArmor = null;
+        multiplayerProfileReady = true;
+        try {
+            if (version.survival()) PlayerDataStore.save(saveFile, inventory, craftedItems, equippedArmor);
+        } catch (IOException error) {
+            GameLog.error("Не удалось обновить локальный кэш серверного инвентаря", error);
+        }
+        refreshMultiplayerReadiness();
+        updateInventoryUi();
+    }
+
     private void processMultiplayerEvent(String event) {
         if (event == null || event.isBlank()) return;
         try {
@@ -954,6 +1015,97 @@ public final class BlockWorldGame extends SimpleApplication {
                     statusMessage = "Не удалось сохранить общий мир на сервере. Проверь папку servers.";
                     updateHud();
                 }
+                case "PROFILE_EMPTY" -> {
+                    if (!multiplayerProfileInitialized) {
+                        multiplayerProfileInitialized = true;
+                        statusMessage = "Новый профиль игрока. Сохраняю стартовый инвентарь на сервере...";
+                        sendMultiplayerProfileSnapshot();
+                        updateHud();
+                    }
+                }
+                case "PROFILE_BEGIN" -> {
+                    if (parts.length == 4) {
+                        expectedProfileBlocks = Integer.parseInt(parts[1]);
+                        expectedProfileItems = Integer.parseInt(parts[2]);
+                        expectedProfileArmor = Integer.parseInt(parts[3]);
+                        if (expectedProfileBlocks != BlockType.values().length
+                                || expectedProfileItems != ItemType.values().length
+                                || expectedProfileArmor < 0 || expectedProfileArmor > ArmorSlot.values().length)
+                            throw new IllegalArgumentException("Неверный размер профиля игрока");
+                        pendingProfileBlocks = new EnumMap<>(BlockType.class);
+                        pendingProfileItems = new EnumMap<>(ItemType.class);
+                        pendingProfileArmor = EnumSet.noneOf(ArmorSlot.class);
+                        receivedProfileBlocks = 0;
+                        receivedProfileItems = 0;
+                        multiplayerProfileInitialized = true;
+                    }
+                }
+                case "PROFILE_BLOCK" -> {
+                    if (parts.length == 3 && pendingProfileBlocks != null) {
+                        BlockType type = BlockType.valueOf(parts[1]);
+                        int count = Integer.parseInt(parts[2]);
+                        if (count < 0 || count > 1_000_000 || pendingProfileBlocks.put(type, count) != null)
+                            throw new IllegalArgumentException("Неверное количество блока в профиле");
+                        receivedProfileBlocks++;
+                    }
+                }
+                case "PROFILE_ITEM" -> {
+                    if (parts.length == 3 && pendingProfileItems != null) {
+                        ItemType type = ItemType.valueOf(parts[1]);
+                        int count = Integer.parseInt(parts[2]);
+                        if (count < 0 || count > 1_000_000 || pendingProfileItems.put(type, count) != null)
+                            throw new IllegalArgumentException("Неверное количество предмета в профиле");
+                        receivedProfileItems++;
+                    }
+                }
+                case "PROFILE_ARMOR" -> {
+                    if (parts.length == 2 && pendingProfileArmor != null
+                            && !pendingProfileArmor.add(ArmorSlot.valueOf(parts[1])))
+                        throw new IllegalArgumentException("Повтор слота брони в профиле");
+                }
+                case "PROFILE_END" -> applyMultiplayerProfile();
+                case "PROFILE_SAVED" -> {
+                    multiplayerProfileReady = true;
+                    refreshMultiplayerReadiness();
+                }
+                case "PROFILE_ERROR" -> {
+                    multiplayerProfileReady = false;
+                    multiplayerSyncReady = false;
+                    multiplayerCraftPending = false;
+                    multiplayerTradePending = false;
+                    statusMessage = "Ошибка серверного профиля. Проверь имя игрока и сохранение сервера.";
+                    updateHud();
+                }
+                case "CRAFT_RESULT" -> {
+                    if (parts.length == 3) {
+                        multiplayerCraftPending = false;
+                        int number = Integer.parseInt(parts[1]);
+                        boolean success = Boolean.parseBoolean(parts[2]);
+                        CraftingRecipe recipe = craftingRecipes.stream().filter(entry -> entry.number() == number)
+                                .findFirst().orElse(null);
+                        statusMessage = success && recipe != null
+                                ? "Сервер создал: " + recipe.result().displayName() + " ×" + recipe.resultCount() + "."
+                                : "Сервер отклонил крафт: не хватает ресурсов или рецепт недоступен.";
+                        if (success && release100Enabled) unlockAchievement(Achievement.FIRST_CRAFT);
+                        updateInventoryUi();
+                        updateHud();
+                    }
+                }
+                case "TRADE_RESULT" -> {
+                    if (parts.length == 3) {
+                        multiplayerTradePending = false;
+                        int number = Integer.parseInt(parts[1]);
+                        boolean success = Boolean.parseBoolean(parts[2]);
+                        TradeRecipe offer = tradeRecipes.stream().filter(entry -> entry.number() == number)
+                                .findFirst().orElse(null);
+                        statusMessage = success && offer != null
+                                ? "Сервер завершил обмен: " + offer.description() + "."
+                                : "Сервер отклонил обмен: не хватает предметов.";
+                        if (success) unlockAchievement(Achievement.FIRST_TRADE);
+                        updateInventoryUi();
+                        updateHud();
+                    }
+                }
                 case "WORLD_BEGIN" -> {
                     if (parts.length == 6) {
                         pendingNetworkSeed = Long.parseLong(parts[1]);
@@ -986,7 +1138,8 @@ public final class BlockWorldGame extends SimpleApplication {
                         world.replaceCreatureSnapshot(new ArrayList<>(pendingNetworkCreatures.values()));
                         if (creatureManager != null) creatureManager.sync(world);
                         pendingNetworkWorld = null;
-                        multiplayerSyncReady = true;
+                        multiplayerWorldReady = true;
+                        refreshMultiplayerReadiness();
                         Vector3f spawn = world.getSuggestedSpawn();
                         if (version.survival()) {
                             playerEyePosition = spawn.clone();
@@ -1008,8 +1161,9 @@ public final class BlockWorldGame extends SimpleApplication {
                     }
                 }
                 case "WORLD_ACCEPTED" -> {
-                    multiplayerSyncReady = true;
-                    statusMessage = "Мир отправлен серверу. Сетевая игра активна.";
+                    multiplayerWorldReady = true;
+                    refreshMultiplayerReadiness();
+                    statusMessage = "Мир отправлен серверу. Ожидаю синхронизацию личного профиля.";
                     updateHud();
                 }
                 case "BLOCK_ADD" -> {
@@ -1032,6 +1186,10 @@ public final class BlockWorldGame extends SimpleApplication {
                 }
                 case "DISCONNECTED" -> {
                     multiplayerSyncReady = false;
+                    multiplayerWorldReady = false;
+                    multiplayerProfileReady = false;
+                    multiplayerCraftPending = false;
+                    multiplayerTradePending = false;
                     for (RemotePlayerState remote : remotePlayers.values()) {
                         if (remote.avatar != null) remote.avatar.detach();
                     }
@@ -1334,7 +1492,8 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void breakTargetBlock() {
-        if (multiplayerClient != null && multiplayerClient.isConnected() && !multiplayerSyncReady) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
             statusMessage = "Подожди завершения синхронизации общего мира.";
             updateHud();
             return;
@@ -1400,7 +1559,8 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void placeTargetBlock() {
-        if (multiplayerClient != null && multiplayerClient.isConnected() && !multiplayerSyncReady) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
             statusMessage = "Подожди завершения синхронизации общего мира.";
             updateHud();
             return;
@@ -1438,7 +1598,8 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void interactCreature() {
-        if (multiplayerClient != null && multiplayerClient.isConnected() && !multiplayerSyncReady) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
             statusMessage = "Подожди завершения синхронизации общего мира.";
             updateHud();
             return;
@@ -1520,6 +1681,22 @@ public final class BlockWorldGame extends SimpleApplication {
     private void tradeWithVillager(int index) {
         if (!tradeOpen || !release100Enabled || index < 0 || index >= tradeRecipes.size()) return;
         TradeRecipe offer = tradeRecipes.get(index);
+        if (multiplayerClient != null && multiplayerClient.isConnected()) {
+            if (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending) {
+                statusMessage = "Подожди синхронизации инвентаря или завершения предыдущей операции.";
+            } else {
+                try {
+                    multiplayerClient.sendTradeRequest(offer.number());
+                    multiplayerTradePending = true;
+                    statusMessage = "Сервер проверяет предметы и выполняет обмен...";
+                } catch (IOException | IllegalArgumentException error) {
+                    statusMessage = "Не удалось отправить запрос обмена: " + error.getMessage();
+                }
+            }
+            updateInventoryUi();
+            updateHud();
+            return;
+        }
         if (offer.trade(craftedItems)) {
             statusMessage = "Сделка завершена: " + offer.description() + ". Получено "
                     + offer.result().displayName() + " ×" + offer.resultCount() + ".";
@@ -1534,6 +1711,12 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void castFishingRod() {
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
+            statusMessage = "Подожди синхронизации личного инвентаря.";
+            updateHud();
+            return;
+        }
         if (!release100Enabled || !version.survival() || !worldReady || inventoryOpen || craftingOpen
                 || furnaceOpen || tradeOpen || achievementsOpen) return;
         if (craftedItems.getOrDefault(ItemType.FISHING_ROD, 0) <= 0) {
@@ -1669,6 +1852,12 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void smeltInFurnace(int index) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
+            statusMessage = "Подожди синхронизации личного инвентаря.";
+            updateHud();
+            return;
+        }
         if (!furnaceOpen || !agricultureEnabled || index < 0 || index >= FurnaceRecipe.values().length) return;
         FurnaceRecipe recipe = FurnaceRecipe.values()[index];
         if (recipe.smelt(inventory, craftedItems)) {
@@ -1730,6 +1919,12 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void toggleArmor(ArmorSlot slot) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
+            statusMessage = "Подожди синхронизации личного инвентаря.";
+            updateHud();
+            return;
+        }
         if (!version.survival() || !equipmentEnabled) return;
         if (!inventoryOpen) {
             statusMessage = "Открой инвентарь клавишей I, чтобы надеть или снять экипировку.";
@@ -1756,6 +1951,9 @@ public final class BlockWorldGame extends SimpleApplication {
         if (!version.survival()) return;
         try { PlayerDataStore.save(saveFile, inventory, craftedItems, equippedArmor); }
         catch (IOException ex) { GameLog.error("Не удалось сохранить данные игрока", ex); }
+        if (multiplayerClient != null && multiplayerClient.isConnected() && multiplayerProfileReady) {
+            sendMultiplayerProfileSnapshot();
+        }
     }
 
     private void changeCraftPage(int delta) {
@@ -1905,6 +2103,23 @@ public final class BlockWorldGame extends SimpleApplication {
         index = craftingPage * 9 + index;
         if (!craftingOpen || index < 0 || index >= craftingRecipes.size()) return;
         CraftingRecipe recipe = craftingRecipes.get(index);
+        if (multiplayerClient != null && multiplayerClient.isConnected()) {
+            if (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending) {
+                statusMessage = "Подожди синхронизации инвентаря или завершения предыдущей операции.";
+            } else {
+                try {
+                    String catalog = release100Enabled ? "release100" : agricultureEnabled ? "advanced" : "starter";
+                    multiplayerClient.sendCraftRequest(catalog, recipe.number());
+                    multiplayerCraftPending = true;
+                    statusMessage = "Сервер проверяет ресурсы и выполняет крафт...";
+                } catch (IOException | IllegalArgumentException error) {
+                    statusMessage = "Не удалось отправить запрос крафта: " + error.getMessage();
+                }
+            }
+            updateInventoryUi();
+            updateHud();
+            return;
+        }
         if (recipe.craft(inventory, craftedItems)) {
             statusMessage = "Создано: " + recipe.result().displayName() + " × " + recipe.resultCount() + ".";
             if (release100Enabled) unlockAchievement(Achievement.FIRST_CRAFT);
@@ -1918,6 +2133,12 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void eatFood() {
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
+            statusMessage = "Подожди синхронизации личного инвентаря.";
+            updateHud();
+            return;
+        }
         if (!version.survival()) return;
         if (hunger >= 20f) {
             statusMessage = "Голод уже восстановлен.";

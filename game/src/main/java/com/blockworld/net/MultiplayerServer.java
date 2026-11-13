@@ -2,6 +2,10 @@ package com.blockworld.net;
 
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.ArmorSlot;
+import com.blockworld.core.CraftingRecipe;
+import com.blockworld.core.ItemType;
+import com.blockworld.core.TradeRecipe;
 import com.blockworld.core.WorldCreature;
 import java.nio.file.Path;
 
@@ -25,6 +29,7 @@ public final class MultiplayerServer implements AutoCloseable {
     private final Object membershipLock = new Object();
     private final Object worldLock = new Object();
     private final MultiplayerWorldStore worldStore;
+    private final MultiplayerPlayerStore playerStore;
     private final AtomicInteger nextPlayerId = new AtomicInteger(0);
     private final Map<BlockPos, BlockType> worldBlocks = new HashMap<>();
     private final Map<Long, WorldCreature> worldCreatures = new HashMap<>();
@@ -49,6 +54,7 @@ public final class MultiplayerServer implements AutoCloseable {
         if (maxPlayers < 1 || maxPlayers > 32) throw new IllegalArgumentException("maxPlayers must be 1..32");
         this.maxPlayers = maxPlayers;
         this.worldStore = worldFile == null ? null : new MultiplayerWorldStore(worldFile);
+        this.playerStore = worldFile == null ? null : new MultiplayerPlayerStore(worldFile);
     }
 
     public synchronized int start(int port) throws IOException {
@@ -114,6 +120,113 @@ public final class MultiplayerServer implements AutoCloseable {
         } catch (IOException error) {
             System.err.println("BLOCKWORLD 3D: failed to save hosted multiplayer world: " + error.getMessage());
             for (ClientHandler client : clients) client.send("WORLD_SAVE_ERROR");
+        }
+    }
+
+    private void sendProfile(ClientHandler target, MultiplayerPlayerStore.Snapshot profile) {
+        List<String> lines = new ArrayList<>();
+        lines.add("PROFILE_BEGIN " + BlockType.values().length + " " + ItemType.values().length
+                + " " + profile.armor().size());
+        for (BlockType type : BlockType.values()) {
+            lines.add("PROFILE_BLOCK " + type.name() + " " + profile.blocks().getOrDefault(type, 0));
+        }
+        for (ItemType type : ItemType.values()) {
+            lines.add("PROFILE_ITEM " + type.name() + " " + profile.items().getOrDefault(type, 0));
+        }
+        for (ArmorSlot slot : profile.armor()) lines.add("PROFILE_ARMOR " + slot.name());
+        lines.add("PROFILE_END");
+        target.sendBatch(lines);
+    }
+
+    private void loadPlayerProfile(ClientHandler target) {
+        try {
+            Optional<MultiplayerPlayerStore.Snapshot> stored = playerStore == null
+                    ? Optional.empty() : playerStore.load(target.name);
+            if (stored.isPresent()) {
+                target.profile = stored.get();
+                sendProfile(target, target.profile);
+            } else {
+                target.send("PROFILE_EMPTY");
+            }
+        } catch (IOException error) {
+            target.send("PROFILE_ERROR");
+        }
+    }
+
+    private void persistPlayerProfile(ClientHandler target, MultiplayerPlayerStore.Snapshot profile) {
+        try {
+            if (playerStore != null) playerStore.save(target.name, profile);
+            target.profile = profile;
+            target.send("PROFILE_SAVED");
+        } catch (IOException error) {
+            target.send("PROFILE_ERROR");
+        }
+    }
+
+    private void processCraftRequest(ClientHandler target, String[] parts) {
+        if (parts.length != 3 || target.profile == null) {
+            target.send("CRAFT_RESULT 0 false");
+            return;
+        }
+        try {
+            String catalog = parts[1];
+            int number = Integer.parseInt(parts[2]);
+            List<CraftingRecipe> recipes = switch (catalog) {
+                case "starter" -> CraftingRecipe.starterRecipes();
+                case "advanced" -> CraftingRecipe.advancedRecipes();
+                case "release100" -> CraftingRecipe.release100Recipes();
+                default -> List.of();
+            };
+            CraftingRecipe recipe = recipes.stream().filter(entry -> entry.number() == number).findFirst().orElse(null);
+            if (recipe == null) {
+                target.send("CRAFT_RESULT " + number + " false");
+                return;
+            }
+            EnumMap<BlockType, Integer> blocks = target.profile.mutableBlocks();
+            EnumMap<ItemType, Integer> items = target.profile.mutableItems();
+            if (!recipe.craft(blocks, items)) {
+                target.send("CRAFT_RESULT " + number + " false");
+                return;
+            }
+            MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
+                    blocks, items, target.profile.armor());
+            if (playerStore != null) playerStore.save(target.name, updated);
+            target.profile = updated;
+            sendProfile(target, updated);
+            target.send("CRAFT_RESULT " + number + " true");
+        } catch (IOException | IllegalArgumentException error) {
+            target.send("PROFILE_ERROR");
+            target.send("CRAFT_RESULT 0 false");
+        }
+    }
+
+    private void processTradeRequest(ClientHandler target, String[] parts) {
+        if (parts.length != 2 || target.profile == null) {
+            target.send("TRADE_RESULT 0 false");
+            return;
+        }
+        try {
+            int number = Integer.parseInt(parts[1]);
+            TradeRecipe offer = TradeRecipe.villageOffers().stream()
+                    .filter(entry -> entry.number() == number).findFirst().orElse(null);
+            if (offer == null) {
+                target.send("TRADE_RESULT " + number + " false");
+                return;
+            }
+            EnumMap<ItemType, Integer> items = target.profile.mutableItems();
+            if (!offer.trade(items)) {
+                target.send("TRADE_RESULT " + number + " false");
+                return;
+            }
+            MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
+                    target.profile.blocks(), items, target.profile.armor());
+            if (playerStore != null) playerStore.save(target.name, updated);
+            target.profile = updated;
+            sendProfile(target, updated);
+            target.send("TRADE_RESULT " + number + " true");
+        } catch (IOException | IllegalArgumentException error) {
+            target.send("PROFILE_ERROR");
+            target.send("TRADE_RESULT 0 false");
         }
     }
 
@@ -270,6 +383,15 @@ public final class MultiplayerServer implements AutoCloseable {
         private boolean pendingActiveBiomes;
         private boolean pendingExtendedBiomes;
         private int pendingWorldRadius;
+        private MultiplayerPlayerStore.Snapshot profile;
+        private EnumMap<BlockType, Integer> pendingProfileBlocks;
+        private EnumMap<ItemType, Integer> pendingProfileItems;
+        private EnumSet<ArmorSlot> pendingProfileArmor;
+        private int expectedProfileBlocks;
+        private int expectedProfileItems;
+        private int expectedProfileArmor;
+        private int receivedProfileBlocks;
+        private int receivedProfileItems;
 
         ClientHandler(Socket peer) { this.peer = peer; }
 
@@ -281,6 +403,17 @@ public final class MultiplayerServer implements AutoCloseable {
                     if (writer.checkError()) {
                         try { peer.close(); } catch (IOException ignored) { }
                     }
+                }
+            }
+        }
+
+        void sendBatch(List<String> lines) {
+            synchronized (sendLock) {
+                PrintWriter writer = out;
+                if (writer == null) return;
+                for (String line : lines) writer.println(line);
+                if (writer.checkError()) {
+                    try { peer.close(); } catch (IOException ignored) { }
                 }
             }
         }
@@ -392,8 +525,88 @@ public final class MultiplayerServer implements AutoCloseable {
             }
         }
 
+        private void beginProfileUpload(String line) {
+            String[] p = line.split(" ");
+            if (p.length != 4) throw new IllegalArgumentException("Invalid profile header");
+            expectedProfileBlocks = Integer.parseInt(p[1]);
+            expectedProfileItems = Integer.parseInt(p[2]);
+            expectedProfileArmor = Integer.parseInt(p[3]);
+            if (expectedProfileBlocks != BlockType.values().length
+                    || expectedProfileItems != ItemType.values().length
+                    || expectedProfileArmor < 0 || expectedProfileArmor > ArmorSlot.values().length) {
+                throw new IllegalArgumentException("Invalid profile counts");
+            }
+            pendingProfileBlocks = new EnumMap<>(BlockType.class);
+            pendingProfileItems = new EnumMap<>(ItemType.class);
+            pendingProfileArmor = EnumSet.noneOf(ArmorSlot.class);
+            receivedProfileBlocks = 0;
+            receivedProfileItems = 0;
+        }
+
+        private void acceptProfileBlock(String line) {
+            if (pendingProfileBlocks == null) return;
+            String[] p = line.split(" ");
+            if (p.length != 3 || receivedProfileBlocks >= expectedProfileBlocks) throw new IllegalArgumentException("Invalid profile block");
+            BlockType type = BlockType.valueOf(p[1]);
+            int count = parseProfileCount(p[2]);
+            if (pendingProfileBlocks.put(type, count) != null) throw new IllegalArgumentException("Duplicate profile block");
+            receivedProfileBlocks++;
+        }
+
+        private void acceptProfileItem(String line) {
+            if (pendingProfileItems == null) return;
+            String[] p = line.split(" ");
+            if (p.length != 3 || receivedProfileItems >= expectedProfileItems) throw new IllegalArgumentException("Invalid profile item");
+            ItemType type = ItemType.valueOf(p[1]);
+            int count = parseProfileCount(p[2]);
+            if (pendingProfileItems.put(type, count) != null) throw new IllegalArgumentException("Duplicate profile item");
+            receivedProfileItems++;
+        }
+
+        private void acceptProfileArmor(String line) {
+            if (pendingProfileArmor == null) return;
+            String[] p = line.split(" ");
+            if (p.length != 2 || pendingProfileArmor.size() >= expectedProfileArmor) throw new IllegalArgumentException("Invalid profile armor");
+            if (!pendingProfileArmor.add(ArmorSlot.valueOf(p[1]))) throw new IllegalArgumentException("Duplicate armor slot");
+        }
+
+        private void finishProfileUpload() {
+            if (pendingProfileBlocks == null || pendingProfileItems == null || pendingProfileArmor == null
+                    || receivedProfileBlocks != expectedProfileBlocks
+                    || receivedProfileItems != expectedProfileItems
+                    || pendingProfileArmor.size() != expectedProfileArmor) {
+                throw new IllegalArgumentException("Incomplete player profile");
+            }
+            MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
+                    pendingProfileBlocks, pendingProfileItems, pendingProfileArmor);
+            pendingProfileBlocks = null;
+            pendingProfileItems = null;
+            pendingProfileArmor = null;
+            persistPlayerProfile(this, updated);
+        }
+
+        private int parseProfileCount(String value) {
+            int count = Integer.parseInt(value);
+            if (count < 0 || count > 1_000_000) throw new IllegalArgumentException("Profile stack out of range");
+            return count;
+        }
+
         private void process(String line) {
-            if (line.startsWith("CHAT ")) {
+            if (line.startsWith("PROFILE_UPLOAD_BEGIN ")) {
+                beginProfileUpload(line);
+            } else if (line.startsWith("PROFILE_UPLOAD_BLOCK ")) {
+                acceptProfileBlock(line);
+            } else if (line.startsWith("PROFILE_UPLOAD_ITEM ")) {
+                acceptProfileItem(line);
+            } else if (line.startsWith("PROFILE_UPLOAD_ARMOR ")) {
+                acceptProfileArmor(line);
+            } else if (line.equals("PROFILE_UPLOAD_END")) {
+                finishProfileUpload();
+            } else if (line.startsWith("CRAFT_REQUEST ")) {
+                processCraftRequest(this, line.split(" "));
+            } else if (line.startsWith("TRADE_REQUEST ")) {
+                processTradeRequest(this, line.split(" "));
+            } else if (line.startsWith("CHAT ")) {
                 String message = decode(line.substring(5));
                 if (message.length() > 240) message = message.substring(0, 240);
                 if (!message.isBlank()) broadcastChat(name + ": " + message);
@@ -447,6 +660,10 @@ public final class MultiplayerServer implements AutoCloseable {
                 synchronized (membershipLock) {
                     if (!running) { send("ERROR Сервер остановлен"); return; }
                     if (clients.size() >= maxPlayers) { send("ERROR Сервер заполнен"); return; }
+                    if (clients.stream().anyMatch(client -> client.name.equalsIgnoreCase(name))) {
+                        send("ERROR Этот ник уже используется. Выбери другой ник.");
+                        return;
+                    }
                     if (hostPlayerId != 0 && (!worldReady || snapshotInProgress)) {
                         send("ERROR Мир ещё загружается. Попробуй подключиться позже.");
                         return;
@@ -466,6 +683,7 @@ public final class MultiplayerServer implements AutoCloseable {
                     joined = true;
                     broadcastExcept(this, playerJoinLine(new PlayerState(id, name)));
                     sendSnapshotTo(this);
+                    loadPlayerProfile(this);
                 }
 
                 peer.setSoTimeout(0);
@@ -497,7 +715,7 @@ public final class MultiplayerServer implements AutoCloseable {
 
     private static String sanitizeName(String value) {
         if (value == null) return "Player";
-        String clean = value.replaceAll("[\\p{Cntrl}]", "").strip();
+        String clean = value.replaceAll("[^A-Za-zА-Яа-я0-9_-]", "").strip();
         if (clean.isBlank()) return "Player";
         return clean.substring(0, Math.min(20, clean.length()));
     }

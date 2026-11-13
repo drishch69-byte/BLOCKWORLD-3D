@@ -3,6 +3,7 @@ package com.blockworld.net;
 import org.junit.jupiter.api.Test;
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.ItemType;
 import com.blockworld.core.CreatureType;
 import com.blockworld.core.WorldCreature;
 import java.io.IOException;
@@ -12,6 +13,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Map;
 import java.util.List;
 import java.nio.file.Path;
+import java.util.EnumMap;
 import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -217,6 +219,80 @@ class MultiplayerNetworkTest {
             host.close();
             assertTrue(promoted.await(3, TimeUnit.SECONDS));
             assertTrue(guest.isHost());
+        }
+    }
+
+    @Test void serverCraftsAndTradesFromPersistentPersonalInventory(@TempDir Path directory) throws Exception {
+        Path worldFile = directory.resolve("hosted.bwserver");
+        try (MultiplayerServer server = new MultiplayerServer("profile-pass", 4, worldFile);
+             MultiplayerClient player = new MultiplayerClient()) {
+            int port = server.start(0);
+            var events = new CopyOnWriteArrayList<String>();
+            CountDownLatch profileEmpty = new CountDownLatch(1);
+            CountDownLatch profileSaved = new CountDownLatch(1);
+            CountDownLatch crafted = new CountDownLatch(1);
+            CountDownLatch traded = new CountDownLatch(1);
+            player.setEventListener(event -> {
+                events.add(event);
+                if (event.equals("PROFILE_EMPTY")) profileEmpty.countDown();
+                if (event.equals("PROFILE_SAVED")) profileSaved.countDown();
+                if (event.equals("CRAFT_RESULT 1 true")) crafted.countDown();
+                if (event.equals("TRADE_RESULT 1 true")) traded.countDown();
+            });
+            player.connect("127.0.0.1", port, "profile-pass", "Alice", ignored -> { });
+            assertTrue(profileEmpty.await(3, TimeUnit.SECONDS));
+
+            EnumMap<BlockType, Integer> blocks = new EnumMap<>(BlockType.class);
+            blocks.put(BlockType.WOOD, 2);
+            EnumMap<ItemType, Integer> items = new EnumMap<>(ItemType.class);
+            items.put(ItemType.WHEAT, 4);
+            player.sendPlayerProfile(blocks, items, java.util.Set.of());
+            assertTrue(profileSaved.await(3, TimeUnit.SECONDS));
+
+            player.sendCraftRequest("starter", 1);
+            assertTrue(crafted.await(3, TimeUnit.SECONDS));
+            player.sendTradeRequest(1);
+            assertTrue(traded.await(3, TimeUnit.SECONDS));
+
+            MultiplayerPlayerStore store = new MultiplayerPlayerStore(worldFile);
+            var saved = store.load("Alice").orElseThrow();
+            assertEquals(0, saved.blocks().get(BlockType.WOOD));
+            assertEquals(4, saved.items().get(ItemType.PLANKS));
+            assertEquals(0, saved.items().get(ItemType.WHEAT));
+            assertEquals(1, saved.items().get(ItemType.EMERALD));
+        }
+
+        MultiplayerPlayerStore store = new MultiplayerPlayerStore(worldFile);
+        var alice = store.load("Alice").orElseThrow();
+        assertEquals(4, alice.items().get(ItemType.PLANKS));
+        assertEquals(1, alice.items().get(ItemType.EMERALD));
+    }
+
+    @Test void reconnectReceivesTheSavedPersonalProfile(@TempDir Path directory) throws Exception {
+        Path worldFile = directory.resolve("profile-world.bwserver");
+        MultiplayerPlayerStore store = new MultiplayerPlayerStore(worldFile);
+        EnumMap<BlockType, Integer> blocks = new EnumMap<>(BlockType.class);
+        blocks.put(BlockType.STONE, 17);
+        EnumMap<ItemType, Integer> items = new EnumMap<>(ItemType.class);
+        items.put(ItemType.BREAD, 5);
+        store.save("Builder", new MultiplayerPlayerStore.Snapshot(blocks, items,
+                java.util.EnumSet.of(com.blockworld.core.ArmorSlot.HELMET)));
+
+        try (MultiplayerServer server = new MultiplayerServer("restore-profile", 2, worldFile);
+             MultiplayerClient client = new MultiplayerClient()) {
+            int port = server.start(0);
+            var events = new CopyOnWriteArrayList<String>();
+            CountDownLatch profileReceived = new CountDownLatch(1);
+            client.setEventListener(event -> {
+                events.add(event);
+                if (event.equals("PROFILE_END")) profileReceived.countDown();
+            });
+            client.connect("127.0.0.1", port, "restore-profile", "Builder", ignored -> { });
+            assertTrue(profileReceived.await(3, TimeUnit.SECONDS));
+            assertTrue(events.contains("PROFILE_BLOCK STONE 17"));
+            assertTrue(events.contains("PROFILE_ITEM BREAD 5"));
+            assertTrue(events.contains("PROFILE_ARMOR HELMET"));
+            assertFalse(events.contains("PROFILE_EMPTY"));
         }
     }
 
