@@ -2,6 +2,12 @@
 
 This is a quick reference for the current gameplay systems. Some actions depend on having the required item and selecting a compatible version profile.
 
+## Crystal Caverns & Gem Veins (1.9.5)
+
+- Explore the deeper cave rooms and look for amethyst-lined walls and small underground pools.
+- Ruby ore appears in deeper layers; sapphire ore can be found a little higher. Both are rare and need an iron-tier pickaxe.
+- The new deposits are generated in newly created 1.9.5 worlds; existing worlds are not regenerated automatically.
+
 ## Survival loop
 
 1. Explore the world and gather wood, stone, ores, and food.
@@ -17,7 +23,7 @@ This is a quick reference for the current gameplay systems. Some actions depend 
 
 | Key | Action |
 | --- | --- |
-| Hold left mouse button | Mine the targeted block in survival mode; releasing cancels progress |
+| Hold left mouse button | Mine the targeted block in survival mode (1.9.4+); releasing cancels progress |
 | I | Inventory |
 | C | Crafting |
 | M | Achievements |

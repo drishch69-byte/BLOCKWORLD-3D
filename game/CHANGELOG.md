@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.5 — Crystal Caverns & Gem Veins
+- Added seed-stable underground cavern rooms with crystal-lined walls and scattered water pools.
+- Added ruby and sapphire ores to deep layers in the new profile; quantized coordinate rolls create short veins instead of isolated specks.
+- Added new 16×16 pixel-art textures and stable texture-atlas slots for both ores.
+- Added iron-tier mining requirements, mining timings, and focused JUnit coverage for ore selection, generated deposits, save/load, and default textures.
+- Kept previous version ore rolls, existing block IDs, old world generation, and world save format 2 unchanged.
+
 ## 1.9.4 — Mining Feedback Update
 - Survival mining now requires holding the left mouse button; releasing it or changing the targeted block cancels progress.
 - Added a live mining progress indicator below the crosshair.
