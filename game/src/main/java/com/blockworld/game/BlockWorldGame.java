@@ -8,6 +8,7 @@ import com.blockworld.core.ToolType;
 import com.blockworld.core.ArmorSlot;
 import com.blockworld.core.ArmorProtection;
 import com.blockworld.core.CraftingRecipe;
+import com.blockworld.core.CombatRules;
 import com.blockworld.core.FarmDataStore;
 import com.blockworld.core.FarmRules;
 import com.blockworld.core.FoodRules;
@@ -138,6 +139,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private VoxelWorld world;
     private ModLoader modLoader;
     private CreatureManager creatureManager;
+    private NatureDecorationManager natureDecorations;
     private PlayerAvatar playerAvatar;
     private boolean thirdPersonView;
     private Vector3f playerEyePosition = new Vector3f(0f, 12f, 8f);
@@ -316,6 +318,7 @@ public final class BlockWorldGame extends SimpleApplication {
         }
         world = new VoxelWorld(assetManager, palette, textureAtlas);
         creatureManager = new CreatureManager(assetManager);
+        natureDecorations = new NatureDecorationManager(assetManager);
         playerAvatar = new PlayerAvatar(assetManager);
         if (release100Enabled) {
             gameSounds = new GameSounds(assetManager, rootNode);
@@ -708,7 +711,10 @@ public final class BlockWorldGame extends SimpleApplication {
                 rootNode.attachChild(world.getNode());
                 creatureManager.sync(world);
                 rootNode.attachChild(creatureManager.getNode());
-                GameLog.info("Существа присоединены к сцене: " + creatureManager.size());
+                natureDecorations.rebuild(world);
+                rootNode.attachChild(natureDecorations.getNode());
+                GameLog.info("Существа присоединены к сцене: " + creatureManager.size()
+                        + "; растений на лугах: " + natureDecorations.size());
                 worldNodeAttached = true;
                 spawnPosition = world.getSuggestedSpawn();
                 if (version.survival()) playerEyePosition = spawnPosition.clone();
@@ -781,6 +787,14 @@ public final class BlockWorldGame extends SimpleApplication {
         if (worldReady && creatureManager != null && world != null
                 && (multiplayerClient == null || !multiplayerClient.isConnected() || multiplayerClient.isHost())) {
             creatureManager.update(tpf, version.survival() ? playerEyePosition : cam.getLocation(), world);
+            float incomingDamage = creatureManager.consumePlayerDamage();
+            if (version.survival() && incomingDamage > 0f) {
+                float appliedDamage = CombatRules.applyArmor(incomingDamage, equippedArmor);
+                health = Math.max(0f, health - appliedDamage);
+                statusMessage = String.format(java.util.Locale.ROOT,
+                        "Монстр атаковал! Урон %.1f; здоровье %.0f/20.", appliedDamage, health);
+                savePlayerDataQuietly();
+            }
         } else if (worldReady && creatureManager != null && multiplayerClient != null
                 && multiplayerClient.isConnected()) {
             creatureManager.updateNetworkAnimations(tpf);
@@ -1686,8 +1700,20 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         BlockHit hit = getTargetBlock();
+        Vector3f attackOrigin = cam.getLocation();
+        boolean blockBlocksAttack = hit != null && attackOrigin.distance(new Vector3f(
+                hit.position().x() + .5f, hit.position().y() + .5f, hit.position().z() + .5f)) <= 3.4f;
+        if (!blockBlocksAttack && creatureManager != null) {
+            String combatMessage = creatureManager.attackAlongRay(attackOrigin, cam.getDirection(),
+                    3.4f, .82f, CombatRules.meleeDamage(craftedItems), world);
+            if (combatMessage != null) {
+                statusMessage = combatMessage;
+                updateHud();
+                return;
+            }
+        }
         if (hit == null) {
-            statusMessage = "Рядом нет блока.";
+            statusMessage = "Рядом нет блока или противника.";
             updateHud();
             return;
         }
@@ -1856,7 +1882,7 @@ public final class BlockWorldGame extends SimpleApplication {
         com.blockworld.core.WorldCreature creature = creatureManager.nearest(version.survival() ? playerEyePosition : cam.getLocation(), 3.2f);
         if (creature == null) {
             statusMessage = "Рядом нет существ или печей. Подойди ближе и нажми F.";
-        } else if (creature.type() == com.blockworld.core.CreatureType.VILLAGER && release100Enabled && version.survival()) {
+        } else if (creature.type().isVillager() && release100Enabled && version.survival()) {
             inventoryOpen = false;
             craftingOpen = false;
             furnaceOpen = false;
@@ -1864,8 +1890,8 @@ public final class BlockWorldGame extends SimpleApplication {
             tradeOpen = true;
             showInventoryOverlay(true);
             statusMessage = "Житель открыл торговлю. Нажми 1–4 для обмена; F — закрыть.";
-        } else if (creature.type() == com.blockworld.core.CreatureType.VILLAGER) {
-            statusMessage = "Житель: Добро пожаловать в нашу деревню! Загляни в дом.";
+        } else if (creature.type().isVillager()) {
+            statusMessage = creature.type().displayName() + ": Добро пожаловать в нашу деревню!";
         } else if (creature.type() == com.blockworld.core.CreatureType.SLIME) {
             statusMessage = "Слайм подпрыгивает рядом. Он не нападает.";
         } else {
@@ -2079,7 +2105,11 @@ public final class BlockWorldGame extends SimpleApplication {
                 continue;
             }
             float previous = entry.getValue();
-            float next = FarmRules.advance(previous, tpf);
+            Vector3f cropCenter = new Vector3f(entry.getKey().x() + .5f,
+                    entry.getKey().y(), entry.getKey().z() + .5f);
+            boolean farmerNearby = creatureManager != null
+                    && creatureManager.hasFarmerNear(cropCenter, 8f);
+            float next = FarmRules.advance(previous, tpf, raining, farmerNearby);
             entry.setValue(next);
             if (!FarmRules.isMature(previous) && FarmRules.isMature(next)) maturityChanged = true;
         }
