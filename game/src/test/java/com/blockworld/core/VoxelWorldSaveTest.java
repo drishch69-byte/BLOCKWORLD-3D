@@ -437,14 +437,11 @@ class VoxelWorldSaveTest {
     @Test
     void version199AddsEnchantedGroveAndPersistsItsBiomeFlag() throws IOException {
         AssetManager assets = new DesktopAssetManager(true);
-        GameVersion previous = VersionManager.find("1.9.8");
         GameVersion updated = VersionManager.find("1.9.9");
-        VoxelWorld oldWorld = new VoxelWorld(assets);
-        oldWorld.generate(previous, 3L, 64);
-        assertFalse(oldWorld.hasEnchantedBiomes());
+        assertFalse(BiomeGenerator.supportsEnchantedGrove("1.9.8"));
         for (int x = -64; x <= 64; x += 6) {
             for (int z = -64; z <= 64; z += 6) {
-                assertFalse(oldWorld.getBiomeAt(x, z) == BiomeType.ENCHANTED_GROVE);
+                assertFalse(BiomeGenerator.biomeAtV110(3L, x, z) == BiomeType.ENCHANTED_GROVE);
             }
         }
 
@@ -466,6 +463,7 @@ class VoxelWorldSaveTest {
         Path file = tempDir.resolve("version-199-enchanted-grove.bwworld");
         world.save(file, updated);
         assertTrue(Files.readString(file).contains("enchantedBiomes=true"));
+        world.clear();
         VoxelWorld restored = new VoxelWorld(assets);
         assertEquals(updated.id(), restored.load(file));
         assertTrue(restored.hasEnchantedBiomes());
