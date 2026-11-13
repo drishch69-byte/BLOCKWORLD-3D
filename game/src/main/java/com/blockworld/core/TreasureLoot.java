@@ -26,6 +26,24 @@ public final class TreasureLoot {
         return Collections.unmodifiableMap(loot);
     }
 
+    /** Deterministic artifact reward table for newly generated 1.9.8 temples. */
+    public static Map<ItemType, Integer> rollAncientCache(long seed, BlockPos cache) {
+        if (cache == null) throw new IllegalArgumentException("Позиция древнего тайника обязательна");
+        long mixedSeed = seed
+                ^ ((long) cache.x() * 0x9E3779B97F4A7C15L)
+                ^ ((long) cache.y() * 0xC2B2AE3D27D4EB4FL)
+                ^ ((long) cache.z() * 0x165667B19E3779F9L)
+                ^ 0x3C6EF372FE94F82BL;
+        Random random = new Random(mixedSeed);
+        EnumMap<ItemType, Integer> loot = new EnumMap<>(ItemType.class);
+        loot.put(ItemType.ANCIENT_RELIC, 1);
+        loot.put(random.nextBoolean() ? ItemType.SUN_SIGIL : ItemType.MOON_SIGIL, 1);
+        loot.put(ItemType.EMERALD, 3 + random.nextInt(4));
+        if (random.nextBoolean()) loot.put(ItemType.IRON_INGOT, 5 + random.nextInt(3));
+        else loot.put(ItemType.COPPER_INGOT, 5 + random.nextInt(4));
+        return Collections.unmodifiableMap(loot);
+    }
+
     public static Map<ItemType, Integer> roll(long seed, BlockPos chest) {
         if (chest == null) throw new IllegalArgumentException("Позиция сундука обязательна");
         long mixedSeed = seed

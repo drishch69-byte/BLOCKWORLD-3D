@@ -15,7 +15,7 @@ public final class MiningRules {
             case LEAVES, WHEAT_CROP, CAVE_FERN -> 0.25f;
             case GRASS, DIRT, SAND, SNOW, FARMLAND, WATER, LAVA -> 0.45f;
             case WOOD, PODZOL, MUD, CAVE_MOSS -> 0.85f;
-            case STONE, SANDSTONE, FURNACE, TREASURE_CHEST, CRYSTAL_CACHE -> 1.25f;
+            case STONE, SANDSTONE, FURNACE, TREASURE_CHEST, CRYSTAL_CACHE, ANCIENT_CACHE -> 1.25f;
             case COAL_ORE, IRON_ORE, GOLD_ORE, COPPER_ORE, EMERALD_ORE, AMETHYST_ORE,
                     RUBY_ORE, SAPPHIRE_ORE, GLOWING_CRYSTAL -> 2.0f;
         };

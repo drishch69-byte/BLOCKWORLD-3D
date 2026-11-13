@@ -2078,9 +2078,10 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         BlockHit hit = getTargetBlock();
+        BlockType chestType = hit == null ? null : world.getBlock(hit.position());
         if (explorationEnabled && hit != null
-                && (world.getBlock(hit.position()) == BlockType.TREASURE_CHEST
-                    || world.getBlock(hit.position()) == BlockType.CRYSTAL_CACHE)) {
+                && (chestType == BlockType.TREASURE_CHEST || chestType == BlockType.CRYSTAL_CACHE
+                    || chestType == BlockType.ANCIENT_CACHE)) {
             if (!version.survival()) {
                 statusMessage = "Сундук хранит находки. Открой его в режиме выживания.";
             } else if (multiplayerClient != null && multiplayerClient.isConnected()) {
@@ -2092,9 +2093,11 @@ public final class BlockWorldGame extends SimpleApplication {
                 }
             } else if (world.removeBlock(hit.position())) {
                 sendMultiplayerBlockRemove(hit.position());
-                Map<ItemType, Integer> loot = world.getBlock(hit.position()) == BlockType.CRYSTAL_CACHE
-                        ? TreasureLoot.rollCrystalCache(world.getSeed(), hit.position())
-                        : TreasureLoot.roll(world.getSeed(), hit.position());
+                Map<ItemType, Integer> loot = chestType == BlockType.ANCIENT_CACHE
+                        ? TreasureLoot.rollAncientCache(world.getSeed(), hit.position())
+                        : chestType == BlockType.CRYSTAL_CACHE
+                            ? TreasureLoot.rollCrystalCache(world.getSeed(), hit.position())
+                            : TreasureLoot.roll(world.getSeed(), hit.position());
                 loot.forEach((item, count) -> craftedItems.merge(item, count, Integer::sum));
                 String found = loot.entrySet().stream()
                         .map(entry -> entry.getKey().displayName() + " ×" + entry.getValue())

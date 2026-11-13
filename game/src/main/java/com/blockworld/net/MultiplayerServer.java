@@ -206,13 +206,16 @@ public final class MultiplayerServer implements AutoCloseable {
         }
         synchronized (worldLock) {
             BlockType chestType = worldBlocks.get(pos);
-            if (!worldReady || (chestType != BlockType.TREASURE_CHEST && chestType != BlockType.CRYSTAL_CACHE)) {
+            if (!worldReady || (chestType != BlockType.TREASURE_CHEST && chestType != BlockType.CRYSTAL_CACHE
+                    && chestType != BlockType.ANCIENT_CACHE)) {
                 target.send("CHEST_ERROR Сундук не найден в общем мире");
                 return;
             }
             if (!sharedChests.containsKey(pos)) {
-                Map<ItemType, Integer> loot = chestType == BlockType.CRYSTAL_CACHE
-                        ? TreasureLoot.rollCrystalCache(worldSeed, pos) : TreasureLoot.roll(worldSeed, pos);
+                Map<ItemType, Integer> loot = chestType == BlockType.ANCIENT_CACHE
+                        ? TreasureLoot.rollAncientCache(worldSeed, pos)
+                        : chestType == BlockType.CRYSTAL_CACHE
+                            ? TreasureLoot.rollCrystalCache(worldSeed, pos) : TreasureLoot.roll(worldSeed, pos);
                 EnumMap<ItemType, Integer> initialLoot = new EnumMap<>(ItemType.class);
                 initialLoot.putAll(loot);
                 sharedChests.put(pos, initialLoot);
@@ -238,8 +241,8 @@ public final class MultiplayerServer implements AutoCloseable {
             int count = boundedTradeCount(p[5]);
             synchronized (worldLock) {
                 BlockType chestType = worldBlocks.get(pos);
-                if (!worldReady || (chestType != BlockType.TREASURE_CHEST && chestType != BlockType.CRYSTAL_CACHE)
-                        || !sharedChests.containsKey(pos)) {
+                if (!worldReady || (chestType != BlockType.TREASURE_CHEST && chestType != BlockType.CRYSTAL_CACHE
+                        && chestType != BlockType.ANCIENT_CACHE) || !sharedChests.containsKey(pos)) {
                     target.send("CHEST_ERROR Сундук закрыт или не существует");
                     return;
                 }
@@ -617,7 +620,8 @@ public final class MultiplayerServer implements AutoCloseable {
                 if (!worldReady) return;
                 BlockType removed = worldBlocks.remove(pos);
                 if (removed == null) return;
-                if ((removed == BlockType.TREASURE_CHEST || removed == BlockType.CRYSTAL_CACHE)
+                if ((removed == BlockType.TREASURE_CHEST || removed == BlockType.CRYSTAL_CACHE
+                        || removed == BlockType.ANCIENT_CACHE)
                         && sharedChests.remove(pos) != null && chestStore != null) {
                     try { chestStore.save(sharedChests); }
                     catch (IOException error) {

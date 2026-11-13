@@ -341,6 +341,16 @@ public final class ResourcePackManager {
             for (int x = 0; x < BLOCK_TEXTURE_SIZE; x++) {
                 int noise = random.nextInt(31) - 15;
                 int detail = 0;
+                if (type == BlockType.ANCIENT_CACHE) {
+                    boolean rune = (x >= 5 && x <= 10 && y >= 5 && y <= 10)
+                            || (x == 7 && y >= 2 && y <= 13) || (y == 7 && x >= 2 && x <= 13);
+                    boolean trim = x == 2 || x == 13 || y == 2 || y == 13;
+                    int r = rune ? 40 + random.nextInt(45) : trim ? 190 + random.nextInt(45) : 112 + noise;
+                    int g = rune ? 180 + random.nextInt(55) : trim ? 143 + random.nextInt(45) : 84 + noise / 2;
+                    int b = rune ? 220 + random.nextInt(35) : trim ? 67 + random.nextInt(34) : 48 + noise / 2;
+                    image.setRGB(x, y, 0xFF000000 | (clamp255(r) << 16) | (clamp255(g) << 8) | clamp255(b));
+                    continue;
+                }
                 if (type == BlockType.CRYSTAL_CACHE) {
                     boolean trim = x == 2 || x == 13 || y == 3 || y == 12;
                     boolean gem = (x >= 6 && x <= 9 && y >= 6 && y <= 9)

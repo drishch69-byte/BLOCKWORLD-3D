@@ -20,7 +20,8 @@ public enum CreatureType {
     SKELETON("skeleton", "Скелет", 0.36f),
     SPIDER("spider", "Паук", 0.52f),
     RABBIT("rabbit", "Кролик", 0.72f),
-    CRYSTAL_SENTINEL("crystal_sentinel", "Кристальный страж", 0.42f);
+    CRYSTAL_SENTINEL("crystal_sentinel", "Кристальный страж", 0.42f),
+    TEMPLE_WARDEN("temple_warden", "Страж храма", 0.38f);
 
     private final String id;
     private final String displayName;
@@ -37,7 +38,8 @@ public enum CreatureType {
     public float moveSpeed() { return moveSpeed; }
 
     public boolean isHostile() {
-        return this == ZOMBIE || this == SKELETON || this == SPIDER || this == CRYSTAL_SENTINEL;
+        return this == ZOMBIE || this == SKELETON || this == SPIDER
+                || this == CRYSTAL_SENTINEL || this == TEMPLE_WARDEN;
     }
     public boolean isVillager() {
         return this == VILLAGER || this == VILLAGER_FARMER || this == VILLAGER_BLACKSMITH
@@ -48,6 +50,7 @@ public enum CreatureType {
         return switch (this) {
             case IRON_GOLEM -> 100f;
             case CRYSTAL_SENTINEL -> 70f;
+            case TEMPLE_WARDEN -> 95f;
             case ZOMBIE -> 16f;
             case SKELETON -> 14f;
             case SPIDER -> 12f;
@@ -61,6 +64,7 @@ public enum CreatureType {
             case SKELETON -> 2.0f;
             case SPIDER -> 1.5f;
             case CRYSTAL_SENTINEL -> 3.5f;
+            case TEMPLE_WARDEN -> 4.0f;
             default -> 0f;
         };
     }

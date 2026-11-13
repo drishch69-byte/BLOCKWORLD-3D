@@ -306,6 +306,7 @@ public final class CreatureManager {
             int blockX = (int) Math.floor(nextX);
             int blockZ = (int) Math.floor(nextZ);
             boolean caveSentinel = state.type() == CreatureType.CRYSTAL_SENTINEL;
+            boolean templeWarden = state.type() == CreatureType.TEMPLE_WARDEN;
             int surfaceY = caveSentinel
                     ? world.highestBlockYAtOrBelow(blockX, blockZ, (int) Math.floor(state.y() - 0.2f))
                     : world.highestBlockY(blockX, blockZ);
@@ -317,10 +318,12 @@ public final class CreatureManager {
                             || surface == BlockType.SAPPHIRE_ORE
                         : surface == BlockType.GRASS || surface == BlockType.DIRT
                             || surface == BlockType.SAND || surface == BlockType.PODZOL
-                            || surface == BlockType.MUD || surface == BlockType.SNOW;
+                            || surface == BlockType.MUD || surface == BlockType.SNOW
+                            || (templeWarden && surface == BlockType.SANDSTONE);
                 boolean clearAbove = !world.contains(new BlockPos(blockX, surfaceY + 1, blockZ))
                         && !world.contains(new BlockPos(blockX, surfaceY + 2, blockZ))
-                        && (!caveSentinel || !world.contains(new BlockPos(blockX, surfaceY + 3, blockZ)));
+                        && (!(caveSentinel || templeWarden)
+                            || !world.contains(new BlockPos(blockX, surfaceY + 3, blockZ)));
                 if (safeSurface && clearAbove) {
                     state = new WorldCreature(state.id(), state.type(), nextX, surfaceY + 1f, nextZ, visual.yaw);
                     visual.state = state;
@@ -453,6 +456,7 @@ public final class CreatureManager {
             case SKELETON -> buildSkeleton(root);
             case SPIDER -> buildSpider(root);
             case CRYSTAL_SENTINEL -> buildCrystalSentinel(root);
+            case TEMPLE_WARDEN -> buildTempleWarden(root);
         }
         Map<String, Geometry> animationParts = new HashMap<>();
         for (com.jme3.scene.Spatial child : root.getChildren()) {
@@ -583,6 +587,25 @@ public final class CreatureManager {
         addBox(root, "crystal-sentinel-leg-left", .21f, .36f, .21f, -.30f, .34f, .02f, stone);
         addBox(root, "crystal-sentinel-leg-right", .21f, .36f, .21f, .30f, .34f, .02f, stone);
         addBox(root, "crystal-sentinel-back-crystal", .12f, .30f, .12f, 0f, 1.68f, .37f, amethyst);
+    }
+
+    private void buildTempleWarden(Node root) {
+        ColorRGBA sandstone = color(.70f, .56f, .36f);
+        ColorRGBA bronze = color(.78f, .53f, .20f);
+        ColorRGBA rune = color(.20f, .78f, .92f);
+        addBox(root, "temple-warden-body", .58f, .65f, .42f, 0f, 1.02f, 0f, sandstone);
+        addBox(root, "temple-warden-chest", .28f, .30f, .08f, 0f, 1.13f, -.45f, bronze);
+        addBox(root, "temple-warden-head", .39f, .38f, .38f, 0f, 1.96f, -.02f, sandstone);
+        addBox(root, "temple-warden-brow", .43f, .10f, .09f, 0f, 2.15f, -.40f, bronze);
+        addBox(root, "temple-warden-eye-left", .06f, .06f, .03f, -.15f, 1.99f, -.41f, rune);
+        addBox(root, "temple-warden-eye-right", .06f, .06f, .03f, .15f, 1.99f, -.41f, rune);
+        addBox(root, "temple-warden-headdress", .50f, .11f, .46f, 0f, 2.36f, .02f, bronze);
+        addBox(root, "temple-warden-arm-left", .18f, .52f, .18f, -.72f, 1.02f, 0f, sandstone);
+        addBox(root, "temple-warden-arm-right", .18f, .52f, .18f, .72f, 1.02f, 0f, sandstone);
+        addBox(root, "temple-warden-rune-left", .09f, .23f, .07f, -.73f, 1.03f, -.18f, rune);
+        addBox(root, "temple-warden-rune-right", .09f, .23f, .07f, .73f, 1.03f, -.18f, rune);
+        addBox(root, "temple-warden-leg-left", .21f, .36f, .21f, -.29f, .34f, .02f, bronze);
+        addBox(root, "temple-warden-leg-right", .21f, .36f, .21f, .29f, .34f, .02f, bronze);
     }
 
     private void buildSpider(Node root) {

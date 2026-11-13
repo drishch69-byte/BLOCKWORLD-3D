@@ -636,6 +636,9 @@ public final class VoxelWorld {
             if (caveBiomesEnabled) {
                 addSubterraneanBiomes(random, radius, supportsCrystalBosses(version.id()));
             }
+            if (supportsAncientTemples(version.id())) {
+                addAncientTemples(radius);
+            }
             if (version.id().compareTo("0.8.0") >= 0) {
                 addVillageHouse(-34, 27);
                 addVillageHouse(29, 27);
@@ -937,6 +940,110 @@ public final class VoxelWorld {
             BlockPos branch = new BlockPos(x + dx, baseY + 1, z);
             removeBlock(branch);
             addBlock(branch, BlockType.GLOWING_CRYSTAL);
+        }
+    }
+
+    /** Creates two remote sandstone temples with artifact caches and their own wardens. */
+    private void addAncientTemples(int radius) {
+        int offset = Math.max(12, radius - 20);
+        addAncientTemple(offset, -offset, 2_100_001L);
+        addAncientTemple(-offset, offset, 2_100_002L);
+    }
+
+    private void addAncientTemple(int centerX, int centerZ, long guardianId) {
+        int baseY = Integer.MIN_VALUE;
+        for (int dx = -8; dx <= 8; dx++) {
+            for (int dz = -8; dz <= 8; dz++) {
+                baseY = Math.max(baseY, highestBlockY(centerX + dx, centerZ + dz));
+            }
+        }
+        if (baseY < -12) return;
+
+        // Level the footprint with sandstone and clear trees/terrain above the platform.
+        for (int dx = -8; dx <= 8; dx++) {
+            for (int dz = -8; dz <= 8; dz++) {
+                int x = centerX + dx;
+                int z = centerZ + dz;
+                int localTop = highestBlockY(x, z);
+                for (int y = localTop + 1; y < baseY; y++) {
+                    BlockPos fill = new BlockPos(x, y, z);
+                    removeBlock(fill);
+                    addBlock(fill, BlockType.SANDSTONE);
+                }
+                for (int y = baseY + 1; y <= baseY + 7; y++) {
+                    removeBlock(new BlockPos(x, y, z));
+                }
+                BlockPos floor = new BlockPos(x, baseY, z);
+                removeBlock(floor);
+                addBlock(floor, BlockType.SANDSTONE);
+            }
+        }
+
+        // Low outer walls; the south and north sides have wide entrances.
+        for (int y = 1; y <= 3; y++) {
+            for (int edge = -7; edge <= 7; edge++) {
+                boolean doorway = Math.abs(edge) <= 1;
+                if (!doorway) {
+                    addBlock(new BlockPos(centerX + edge, baseY + y, centerZ - 7), BlockType.SANDSTONE);
+                    addBlock(new BlockPos(centerX + edge, baseY + y, centerZ + 7), BlockType.SANDSTONE);
+                }
+                addBlock(new BlockPos(centerX - 7, baseY + y, centerZ + edge), BlockType.SANDSTONE);
+                addBlock(new BlockPos(centerX + 7, baseY + y, centerZ + edge), BlockType.SANDSTONE);
+            }
+        }
+
+        // Four tall corner pillars and a stepped roof ring leave the central arena open.
+        for (int dx : new int[]{-6, 6}) {
+            for (int dz : new int[]{-6, 6}) {
+                for (int y = 1; y <= 5; y++) {
+                    addBlock(new BlockPos(centerX + dx, baseY + y, centerZ + dz),
+                            y == 5 ? BlockType.GLOWING_CRYSTAL : BlockType.SANDSTONE);
+                }
+            }
+        }
+        for (int edge = -7; edge <= 7; edge++) {
+            if (Math.abs(edge) > 2) {
+                addBlock(new BlockPos(centerX + edge, baseY + 4, centerZ - 7), BlockType.SANDSTONE);
+                addBlock(new BlockPos(centerX + edge, baseY + 4, centerZ + 7), BlockType.SANDSTONE);
+                addBlock(new BlockPos(centerX - 7, baseY + 4, centerZ + edge), BlockType.SANDSTONE);
+                addBlock(new BlockPos(centerX + 7, baseY + 4, centerZ + edge), BlockType.SANDSTONE);
+            }
+        }
+        for (int dx : new int[]{-3, 3}) {
+            for (int dz : new int[]{-3, 3}) {
+                addBlock(new BlockPos(centerX + dx, baseY + 1, centerZ + dz), BlockType.AMETHYST_ORE);
+            }
+        }
+        // A rune pillar and artifact cache sit beside, not inside, the guardian's spawn tile.
+        addBlock(new BlockPos(centerX + 3, baseY + 1, centerZ - 2), BlockType.SANDSTONE);
+        addBlock(new BlockPos(centerX + 3, baseY + 2, centerZ - 2), BlockType.GLOWING_CRYSTAL);
+        BlockPos cache = new BlockPos(centerX - 3, baseY + 1, centerZ + 2);
+        removeBlock(cache);
+        addBlock(cache, BlockType.ANCIENT_CACHE);
+
+        // Short entrance steps make both temple faces accessible.
+        for (int step = 1; step <= 2; step++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                BlockPos stair = new BlockPos(centerX + dx, baseY, centerZ + 7 + step);
+                removeBlock(stair);
+                addBlock(stair, BlockType.SANDSTONE);
+            }
+        }
+
+        addCreature(new WorldCreature(guardianId, CreatureType.TEMPLE_WARDEN,
+                centerX + 0.5f, baseY + 1f, centerZ + 0.5f, 0f));
+    }
+
+    private static boolean supportsAncientTemples(String versionId) {
+        if (versionId == null) return false;
+        try {
+            String[] parts = versionId.split("\\.");
+            int major = Integer.parseInt(parts[0]);
+            int minor = Integer.parseInt(parts[1]);
+            int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
+            return major > 1 || (major == 1 && (minor > 9 || (minor == 9 && patch >= 8)));
+        } catch (RuntimeException ex) {
+            return false;
         }
     }
 
