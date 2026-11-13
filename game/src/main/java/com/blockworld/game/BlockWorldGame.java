@@ -2796,6 +2796,10 @@ public final class BlockWorldGame extends SimpleApplication {
                 ? "Биом: " + world.getBiomeAt(Math.round(hudWorldPosition.x), Math.round(hudWorldPosition.z)).displayName()
                     + (release100Enabled ? "    Достижения: " + achievements.unlockedCount() + "/" + achievements.totalCount() : "")
                 : "";
+        String caveBiomeLine = worldReady && world.hasCaveBiomes() && hudWorldPosition.y < -3f
+                ? "Подземный биом: " + world.getCaveBiomeAt(Math.round(hudWorldPosition.x),
+                        Math.round(hudWorldPosition.y), Math.round(hudWorldPosition.z)).displayName()
+                : "";
         String loading = worldReady ? "Мир загружен" : (worldDataReady ? loadingMessage : "Фоновая генерация/загрузка мира...");
         String performance = String.format(java.util.Locale.ROOT,
                 "FPS: %.0f    Меши чанков: %d    Чанки данных: %d    Очередь: %d    Дальность: %d    Блоки: %,d",
@@ -2808,6 +2812,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 + "\n" + needs
                 + (nature.isEmpty() ? "" : "\n" + nature)
                 + (biomeLine.isEmpty() ? "" : "\n" + biomeLine)
+                + (caveBiomeLine.isEmpty() ? "" : "\n" + caveBiomeLine)
                 + "\n" + performance + "    Моды: " + loadedModCount
                 + "    Существа: " + world.getCreatureCount()
                 + "\n" + spawn + "    Seed: " + world.getSeed() + "    Блок: " + selectedBlock.displayName()
