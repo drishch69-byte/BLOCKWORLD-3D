@@ -34,7 +34,7 @@
 - Added tests that verify every individual item icon is a valid 16×16 PNG.
 
 ## 1.0.0 — Trading, Fishing & Achievements
-- Added six original 16×16 PNG creature textures and connected them to cow, sheep, pig, chicken, villager, and slime models using nearest-neighbour filtering; color-only fallback remains available if a texture is missing.
+- Added three 16×16 PNG creature textures for the fox, turtle, and dog, bringing the roster to nine textured creature types; nearest-neighbour filtering and safe color fallback remain available.
 - Added an editable 64×64 player skin atlas and a 128×64 PNG atlas containing 23 crafted-item icons, with a stable `ItemType` mapping file.
 - Added automated resource tests for creature PNGs, the player skin, item atlas dimensions, and unique item tile mappings.
 - Added village trader interaction with four fixed, one-way exchange offers.

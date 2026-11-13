@@ -18,7 +18,9 @@ public final class AchievementTracker {
     public boolean isUnlocked(Achievement achievement) { return unlocked.contains(achievement); }
     public boolean discover(BiomeType biome) {
         if (biome == null) return false;
-        return discoveredBiomes.add(biome);
+        boolean added = discoveredBiomes.add(biome);
+        if (hasDiscoveredAllBiomes()) unlocked.add(Achievement.ALL_BIOMES);
+        return added;
     }
 
     public int unlockedCount() { return unlocked.size(); }
