@@ -16,7 +16,8 @@ public final class MiningRules {
             case GRASS, DIRT, SAND, SNOW, FARMLAND, WATER, LAVA -> 0.45f;
             case WOOD, PODZOL, MUD -> 0.85f;
             case STONE, SANDSTONE, FURNACE, TREASURE_CHEST -> 1.25f;
-            case COAL_ORE, IRON_ORE, GOLD_ORE, COPPER_ORE, EMERALD_ORE, AMETHYST_ORE -> 1.75f;
+            case COAL_ORE, IRON_ORE, GOLD_ORE, COPPER_ORE, EMERALD_ORE, AMETHYST_ORE,
+                    RUBY_ORE, SAPPHIRE_ORE -> 1.9f;
         };
         if (tool != null && tool.givesBonus(block)) baseDuration *= 0.55f;
         return Math.max(0.12f, baseDuration);

@@ -341,6 +341,31 @@ public final class ResourcePackManager {
             for (int x = 0; x < BLOCK_TEXTURE_SIZE; x++) {
                 int noise = random.nextInt(31) - 15;
                 int detail = 0;
+                if (type == BlockType.RUBY_ORE || type == BlockType.SAPPHIRE_ORE) {
+                    int pattern = Math.floorMod(x * 7 + y * 11 + seed, 17);
+                    boolean crystal = pattern < 5 || (x + 2 * y) % 13 == 0;
+                    int r;
+                    int g;
+                    int b;
+                    if (crystal && type == BlockType.RUBY_ORE) {
+                        r = clamp255(166 + random.nextInt(72) + noise / 3);
+                        g = clamp255(20 + random.nextInt(42) + noise / 4);
+                        b = clamp255(42 + random.nextInt(54) + noise / 4);
+                        if (pattern == 0) { r = 255; g = 144; b = 158; }
+                    } else if (crystal) {
+                        r = clamp255(24 + random.nextInt(42) + noise / 4);
+                        g = clamp255(105 + random.nextInt(70) + noise / 3);
+                        b = clamp255(170 + random.nextInt(76) + noise / 3);
+                        if (pattern == 0) { r = 178; g = 229; b = 255; }
+                    } else {
+                        int rock = clamp255(58 + random.nextInt(34) + noise / 2);
+                        r = rock;
+                        g = clamp255(rock + (type == BlockType.SAPPHIRE_ORE ? 7 : 0));
+                        b = clamp255(rock + (type == BlockType.SAPPHIRE_ORE ? 18 : 4));
+                    }
+                    image.setRGB(x, y, 0xFF000000 | (r << 16) | (g << 8) | b);
+                    continue;
+                }
                 if (type == BlockType.WOOD && (x % 5 == 0 || x % 5 == 1)) detail = -28;
                 if (type == BlockType.STONE && (x + y * 3) % 11 == 0) detail = 24;
                 if (type == BlockType.LEAVES && (x * 3 + y * 5) % 7 == 0) detail = 28;

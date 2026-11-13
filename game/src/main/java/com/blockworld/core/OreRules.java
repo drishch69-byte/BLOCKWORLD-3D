@@ -4,6 +4,16 @@ package com.blockworld.core;
 public final class OreRules {
     private OreRules() { }
 
+    /** New rare gem bands for version 1.9.5; all previous roll ranges stay intact. */
+    public static BlockType selectDeepCaves195(int y, float roll) {
+        if (!Float.isFinite(roll) || roll < 0f || roll >= 1f) {
+            throw new IllegalArgumentException("roll must be in [0,1)");
+        }
+        if (y <= -10 && roll >= 0.15f && roll < 0.18f) return BlockType.RUBY_ORE;
+        if (y <= -7 && roll >= 0.22f && roll < 0.26f) return BlockType.SAPPHIRE_ORE;
+        return selectRelease100(y, roll);
+    }
+
     public static BlockType selectRelease100(int y, float roll) {
         if (!Float.isFinite(roll) || roll < 0f || roll >= 1f) {
             throw new IllegalArgumentException("roll must be in [0,1)");

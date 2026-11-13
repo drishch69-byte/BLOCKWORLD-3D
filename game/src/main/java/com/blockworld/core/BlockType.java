@@ -25,7 +25,9 @@ public enum BlockType {
     AMETHYST_ORE("amethyst_ore", "Аметистовая жила", 0.58f, 0.34f, 0.82f),
     PODZOL("podzol", "Подзол", 0.39f, 0.27f, 0.17f),
     MUD("mud", "Болотная почва", 0.30f, 0.34f, 0.25f),
-    TREASURE_CHEST("treasure_chest", "Сундук с находками", 0.48f, 0.29f, 0.12f);
+    TREASURE_CHEST("treasure_chest", "Сундук с находками", 0.48f, 0.29f, 0.12f),
+    RUBY_ORE("ruby_ore", "Рубиновая руда", 0.72f, 0.14f, 0.25f),
+    SAPPHIRE_ORE("sapphire_ore", "Сапфировая руда", 0.14f, 0.42f, 0.78f);
 
     private final String id;
     private final String displayName;
@@ -74,6 +76,8 @@ public enum BlockType {
             case PODZOL -> 19;
             case MUD -> 20;
             case TREASURE_CHEST -> 21;
+            case RUBY_ORE -> 22;
+            case SAPPHIRE_ORE -> 23;
         };
     }
 
