@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.0 — Living World & Companions.**
+**A 3D voxel sandbox game built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.1 — World Creator & Seeds.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,7 +10,14 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.0 — Living World & Companions**
+**1.9.1 — World Creator & Seeds**
+
+- Create a new world with a name, selected size (small, normal, or large), and optional numeric seed.
+- Empty seed values create a random world; explicit seeds make terrain generation repeatable.
+- The chosen world radius is saved with the world so custom dimensions survive reloads.
+- Older worlds without the optional radius field continue using their original version defaults.
+
+**Previous: 1.9.0 — Living World & Companions**
 
 - Press **N** near a dog companion to switch between **Follow** and **Stay** commands.
 - Companion commands are saved in a separate pets.properties sidecar; the world file format and creature IDs remain unchanged.
@@ -45,7 +52,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.9.0)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.1)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

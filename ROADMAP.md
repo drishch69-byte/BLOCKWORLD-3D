@@ -9,6 +9,11 @@ This roadmap records implemented releases and future proposals. Versions 1.1.0, 
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
 
+## 1.9.1 — World Creator & Seeds (released)
+- Added small, normal, and large world-size choices in the new-world dialog.
+- Added optional numeric seeds for repeatable generation.
+- Saved the chosen world radius as optional metadata while preserving older saves.
+
 ## 1.9.0 — Living World & Companions (released)
 - Added Follow and Stay commands for the nearest dog companion using N.
 - Persisted pet commands separately from the world file and included them in world backups.

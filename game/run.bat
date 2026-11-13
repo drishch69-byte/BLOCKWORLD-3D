@@ -15,7 +15,7 @@ if defined MAVEN_OPTS (
 )
 
 > "%LOG_FILE%" echo ============================================================
->> "%LOG_FILE%" echo CUBEVERSE 3D 1.9.0 - LIVING WORLD AND COMPANIONS
+>> "%LOG_FILE%" echo CUBEVERSE 3D 1.9.1 - WORLD CREATOR AND SEEDS
 >> "%LOG_FILE%" echo Started: %DATE% %TIME%
 >> "%LOG_FILE%" echo Project: %CD%
 >> "%LOG_FILE%" echo JVM fatal reports: .logs\hs_err_pid*.log
@@ -23,7 +23,7 @@ if defined MAVEN_OPTS (
 >> "%LOG_FILE%" echo ============================================================
 
 echo ============================================================
-echo CUBEVERSE 3D 1.9.0 - LIVING WORLD AND COMPANIONS
+echo CUBEVERSE 3D 1.9.1 - WORLD CREATOR AND SEEDS
 echo Log: %LOG_FILE%
 echo ============================================================
 echo.

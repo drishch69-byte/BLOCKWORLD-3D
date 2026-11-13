@@ -41,6 +41,30 @@ class VoxelWorldSaveTest {
     }
 
     @Test
+    void persistsCustomWorldRadiusAndKeepsLegacyRadiusDefaults() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion version = VersionManager.find("0.3.0");
+        VoxelWorld source = new VoxelWorld(assets);
+        source.generate(version, 987654321L, 192);
+        assertEquals(192, source.getWorldRadius());
+
+        Path file = tempDir.resolve("custom-radius.bwworld");
+        source.save(file, version);
+        assertTrue(Files.readString(file).contains("worldRadius=192"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(version.id(), restored.load(file));
+        assertEquals(192, restored.getWorldRadius());
+        assertEquals(source.getBlockCount(), restored.getBlockCount());
+
+        Path legacy = tempDir.resolve("legacy-no-radius.bwworld");
+        Files.writeString(legacy, "BLOCKWORLD_WORLD\\nformat=2\\ngameVersion=0.3.0\\nseed=7\\n--blocks--\\n0,0,0,grass\\n");
+        VoxelWorld legacyWorld = new VoxelWorld(assets);
+        legacyWorld.load(legacy);
+        assertEquals(version.worldRadius(), legacyWorld.getWorldRadius());
+    }
+
+    @Test
     void creaturesUpdateGeneratesAndPersistsCreaturesWithoutBreakingBlockSaves() throws IOException {
         AssetManager assets = new DesktopAssetManager(true);
         GameVersion version = VersionManager.find("0.8.0");

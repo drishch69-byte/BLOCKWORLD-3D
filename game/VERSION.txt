@@ -1,4 +1,4 @@
 CUBEVERSE 3D
-Version: 1.9.0
-Codename: Living World & Companions
+Version: 1.9.1
+Codename: World Creator & Seeds
 Status: Feature Release

@@ -33,7 +33,8 @@ public final class VersionManager {
             new GameVersion("1.2.0", "Exploration Update", "Шахты, сторожевые башни, руины, лагеря, сундуки с добычей, карта и компас", 128, true, true, true, true, true),
             new GameVersion("1.8.0", "Village Defense & Combat Update", "Мечи, монстры, железный голем, профессии жителей, цветочные поля и улучшенное фермерство", 144, true, true, true, true, true),
             new GameVersion("1.8.1", "Rabbit & Wildlife Update", "Кролики, новая модель и PNG-текстура, прыжковая анимация и природные места обитания", 144, true, true, true, true, true),
-            new GameVersion("1.9.0", "Living World & Companions", "Команды следовать и оставаться для пса-компаньона с сохранением поведения", 144, true, true, true, true, true)
+            new GameVersion("1.9.0", "Living World & Companions", "Команды следовать и оставаться для пса-компаньона с сохранением поведения", 144, true, true, true, true, true),
+            new GameVersion("1.9.1", "World Creator & Seeds", "Выбор размера мира и seed при создании с сохранением параметров", 144, true, true, true, true, true)
     );
 
     private VersionManager() {

@@ -529,15 +529,24 @@ public final class VoxelWorld {
 
     public void generate(GameVersion version, long worldSeed) {
         Objects.requireNonNull(version, "version");
+        generate(version, worldSeed, version.worldRadius());
+    }
+
+    /** Generates a world using a radius selected in the launcher. */
+    public void generate(GameVersion version, long worldSeed, int requestedRadius) {
+        Objects.requireNonNull(version, "version");
+        if (requestedRadius < 1 || requestedRadius > 512) {
+            throw new IllegalArgumentException("World radius must be between 1 and 512 blocks.");
+        }
         clear();
         seed = worldSeed;
-        worldRadius = version.worldRadius();
+        worldRadius = requestedRadius;
         activeBiomes = supportsBiomes(version.id());
         extendedBiomes = supportsExtendedBiomes(version.id());
         bulkUpdate = true;
         try {
             Random random = new Random(seed);
-            int radius = version.worldRadius();
+            int radius = requestedRadius;
             int minY = version.caves() ? -12 : -2;
             for (int x = -radius; x <= radius; x++) {
                 for (int z = -radius; z <= radius; z++) {
@@ -1031,6 +1040,7 @@ public final class VoxelWorld {
             writer.write("format=" + VersionManager.WORLD_FORMAT); writer.newLine();
             writer.write("gameVersion=" + version.id()); writer.newLine();
             writer.write("seed=" + seed); writer.newLine();
+            writer.write("worldRadius=" + worldRadius); writer.newLine();
             writer.write("biomes=" + activeBiomes); writer.newLine();
             writer.write("extendedBiomes=" + extendedBiomes); writer.newLine();
             writer.write("--blocks--"); writer.newLine();
@@ -1088,6 +1098,7 @@ public final class VoxelWorld {
             String biomeProperty = "";
             String extendedBiomeProperty = "";
             String seedProperty = "20261112";
+            String worldRadiusProperty = "";
             boolean foundBlocks = false;
             String line;
             while ((line = reader.readLine()) != null) {
@@ -1102,6 +1113,7 @@ public final class VoxelWorld {
                 else if (value.startsWith("biomes=")) biomeProperty = value.substring(7).trim();
                 else if (value.startsWith("extendedBiomes=")) extendedBiomeProperty = value.substring(15).trim();
                 else if (value.startsWith("seed=")) seedProperty = value.substring(5).trim();
+                else if (value.startsWith("worldRadius=")) worldRadiusProperty = value.substring(12).trim();
             }
             if (!foundBlocks) throw new IOException("В файле отсутствует список блоков.");
             if (format > VersionManager.WORLD_FORMAT) {
@@ -1121,7 +1133,9 @@ public final class VoxelWorld {
             activeBiomes = loadedActiveBiomes;
             extendedBiomes = loadedExtendedBiomes;
             seed = loadedSeed;
-            worldRadius = VersionManager.find(savedVersion).worldRadius();
+            int defaultRadius = VersionManager.find(savedVersion).worldRadius();
+            int savedRadius = parseIntOr(worldRadiusProperty, defaultRadius);
+            worldRadius = savedRadius >= 1 && savedRadius <= 512 ? savedRadius : defaultRadius;
             bulkUpdate = true;
 
             int loadedBlocks = 0;

@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.1 — World Creator & Seeds
+- Added a world-creation dialog with a world name, three map sizes, and an optional numeric seed.
+- Added small, normal, and large generation radii; the selected size is used by terrain, structures, and map landmarks.
+- Persisted the actual world radius in save metadata so custom-sized worlds reopen at their original size.
+- Kept old saves compatible: files without the optional worldRadius property use their historical version radius.
+- Kept the world save format number and block/creature records unchanged.
+
 ## 1.9.0 — Living World & Companions
 - Renamed the player-facing game brand to CUBEVERSE 3D.
 - Kept Java package names, save headers, and the existing .blockworld3d data folder stable so earlier saves, mods, and settings remain compatible.

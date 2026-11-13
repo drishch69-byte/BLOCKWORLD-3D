@@ -9,6 +9,7 @@ import com.blockworld.core.WorldCatalog;
 import com.blockworld.core.WorldFavorites;
 import com.blockworld.core.WorldBackupManager;
 import com.blockworld.core.WorldEntry;
+import com.blockworld.core.WorldCreationOptions;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameSettings;
 import com.blockworld.core.ModManager;
@@ -204,6 +205,8 @@ public final class Launcher {
                 "0.8.5 Inventory & Crafting — инвентарь (I), мастерская (C), рецепты досок, палок, верстака и факелов.\n" +
                 "0.9.0 Tools & Equipment — кирки с уровнями добычи, лопата, четыре слота брони; T — выбрать инструмент, H/J/K/L — надеть или снять броню в инвентаре.\n" +
                 "1.0.0 Trading, Fishing & Achievements — торговля с жителями, рыбалка, медная и изумрудная руда, достижения и звуковые эффекты. F — открыть торговлю рядом с жителем, P — ловить рыбу при наведении на воду, M — достижения.\n" +
+                "1.9.1 World Creator & Seeds — размер мира и seed на экране создания нового мира.\\n" +
+                "1.9.0 Living World & Companions — команды следовать и оставаться для пса-компаньона.\\n" +
                 "1.8.1 Rabbit & Wildlife — кролики, новая модель и PNG-текстура, прыжковая анимация и появление на равнинах, в лесах, тайге и снежной тундре.\n\n" +
                 "ВАЖНО: список миров не зависит от выбранной версии. Один и тот же файл мира\n" +
                 "можно открыть в любом установленном профиле CUBEVERSE. Перед новым миром\n" +
@@ -602,36 +605,84 @@ public final class Launcher {
     }
 
     private void createWorld() {
-        String name = JOptionPane.showInputDialog(frame,
-                "Название нового мира (например, Мой_мир):", "Новый мир", JOptionPane.PLAIN_MESSAGE);
-        if (name == null) {
+        JTextField nameField = new JTextField("Мой мир", 20);
+        JComboBox<WorldCreationOptions.WorldSize> sizeField =
+                new JComboBox<>(WorldCreationOptions.WorldSize.values());
+        sizeField.setSelectedItem(WorldCreationOptions.WorldSize.NORMAL);
+        JTextField seedField = new JTextField(20);
+
+        JPanel fields = new JPanel(new GridLayout(0, 2, 8, 8));
+        fields.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        fields.add(new JLabel("Название мира:"));
+        fields.add(nameField);
+        fields.add(new JLabel("Размер мира:"));
+        fields.add(sizeField);
+        fields.add(new JLabel("Seed (необязательно):"));
+        fields.add(seedField);
+        fields.add(new JLabel("Пустое поле — случайный seed."));
+        fields.add(new JLabel("Большой мир генерируется дольше."));
+
+        int result = JOptionPane.showConfirmDialog(frame, fields,
+                "CUBEVERSE 3D — создание мира", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String name = nameField.getText().trim();
+        if (name.isEmpty()) {
+            JOptionPane.showMessageDialog(frame, "Введи название мира.",
+                    "Не указано название", JOptionPane.WARNING_MESSAGE);
             return;
         }
+
+        Long seed = null;
+        String seedText = seedField.getText().trim();
+        if (!seedText.isEmpty()) {
+            try {
+                seed = Long.parseLong(seedText);
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(frame,
+                        "Seed должен быть целым числом от -9223372036854775808 до 9223372036854775807.",
+                        "Некорректный seed", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+        }
+
+        WorldCreationOptions.WorldSize selectedSize =
+                (WorldCreationOptions.WorldSize) sizeField.getSelectedItem();
+        WorldCreationOptions options = new WorldCreationOptions(seed, selectedSize);
         try {
             Path file = WorldCatalog.pathForName(name);
-            String safeName = file.getFileName().toString().replaceFirst("(?i)\\.bwworld$", "");
+            String safeName = file.getFileName().toString().replaceFirst("(?i)\\\\.bwworld$", "");
             if (Files.exists(file)) {
                 int answer = JOptionPane.showConfirmDialog(frame,
                         "Мир «" + safeName + "» уже существует. Создать резервную копию и заменить его новым?",
                         "Мир уже существует", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-                if (answer != JOptionPane.YES_OPTION) {
-                    return;
-                }
+                if (answer != JOptionPane.YES_OPTION) return;
                 backupExistingWorld(file);
             }
-            launchGame(file, safeName, true);
+            launchGame(file, safeName, true, options);
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(frame, "Не удалось подготовить мир:\n" + ex.getMessage(),
+            JOptionPane.showMessageDialog(frame, "Не удалось подготовить мир:\\n" + ex.getMessage(),
                     "Ошибка", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void launchGame(Path worldFile, String worldName, boolean createNewWorld) {
-        launchGame(worldFile, worldName, createNewWorld, null, null);
+        launchGame(worldFile, worldName, createNewWorld, null, null, null);
+    }
+
+    private void launchGame(Path worldFile, String worldName, boolean createNewWorld,
+                            WorldCreationOptions worldCreationOptions) {
+        launchGame(worldFile, worldName, createNewWorld, null, null, worldCreationOptions);
     }
 
     private void launchGame(Path worldFile, String worldName, boolean createNewWorld,
                             MultiplayerClient multiplayerClient, MultiplayerServer multiplayerServer) {
+        launchGame(worldFile, worldName, createNewWorld, multiplayerClient, multiplayerServer, null);
+    }
+
+    private void launchGame(Path worldFile, String worldName, boolean createNewWorld,
+                            MultiplayerClient multiplayerClient, MultiplayerServer multiplayerServer,
+                            WorldCreationOptions worldCreationOptions) {
         GameVersion selected = (GameVersion) versionSelector.getSelectedItem();
         GameVersion versionToLaunch = selected == null ? VersionManager.getDefaultVersion() : selected;
 
@@ -655,7 +706,7 @@ public final class Launcher {
         Thread gameThread = new Thread(() -> {
             try {
                 new BlockWorldGame(versionToLaunch, worldFile, createNewWorld, onGameExit,
-                        GameSettings.load(), multiplayerClient).launch();
+                        GameSettings.load(), multiplayerClient, worldCreationOptions).launch();
             } catch (Throwable error) {
                 if (multiplayerClient != null) multiplayerClient.close();
                 if (multiplayerServer != null) multiplayerServer.close();

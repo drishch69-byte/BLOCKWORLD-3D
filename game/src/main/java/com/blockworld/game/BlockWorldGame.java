@@ -20,6 +20,7 @@ import com.blockworld.core.AchievementTracker;
 import com.blockworld.core.AchievementDataStore;
 import com.blockworld.core.BiomeType;
 import com.blockworld.core.WorldNavigation;
+import com.blockworld.core.WorldCreationOptions;
 import com.blockworld.core.TreasureLoot;
 import com.blockworld.core.PlayerDataStore;
 import com.blockworld.core.PetDataStore;
@@ -95,6 +96,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private final Runnable onGameExit;
     private final GameSettings gameSettings;
     private final MultiplayerClient multiplayerClient;
+    private final WorldCreationOptions worldCreationOptions;
     private final ConcurrentLinkedQueue<String> multiplayerInbox = new ConcurrentLinkedQueue<>();
     private final Map<Integer, RemotePlayerState> remotePlayers = new HashMap<>();
     private Map<BlockPos, BlockType> pendingNetworkWorld;
@@ -236,6 +238,12 @@ public final class BlockWorldGame extends SimpleApplication {
 
     public BlockWorldGame(GameVersion version, Path saveFile, boolean createNewWorld,
                           Runnable onGameExit, GameSettings gameSettings, MultiplayerClient multiplayerClient) {
+        this(version, saveFile, createNewWorld, onGameExit, gameSettings, multiplayerClient, null);
+    }
+
+    public BlockWorldGame(GameVersion version, Path saveFile, boolean createNewWorld,
+                          Runnable onGameExit, GameSettings gameSettings, MultiplayerClient multiplayerClient,
+                          WorldCreationOptions worldCreationOptions) {
         this.version = version;
         this.equipmentEnabled = supportsEquipment(version);
         this.agricultureEnabled = supportsAgriculture(version);
@@ -250,6 +258,7 @@ public final class BlockWorldGame extends SimpleApplication {
         this.onGameExit = onGameExit;
         this.gameSettings = gameSettings == null ? GameSettings.DEFAULT : gameSettings;
         this.multiplayerClient = multiplayerClient;
+        this.worldCreationOptions = worldCreationOptions;
         if (multiplayerClient != null) multiplayerClient.setEventListener(multiplayerInbox::add);
     }
 
@@ -497,8 +506,11 @@ public final class BlockWorldGame extends SimpleApplication {
                     GameLog.info("Повреждённый/пустой мир изолирован; создан путь восстановления "
                             + recoveredSave.toAbsolutePath());
                 }
-                long newSeed = ThreadLocalRandom.current().nextLong();
-                world.generate(version, newSeed);
+                long newSeed = worldCreationOptions != null && worldCreationOptions.seed() != null
+                        ? worldCreationOptions.seed() : ThreadLocalRandom.current().nextLong();
+                int generationRadius = worldCreationOptions == null
+                        ? version.worldRadius() : worldCreationOptions.worldRadius();
+                world.generate(version, newSeed, generationRadius);
                 if (release100Enabled) achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
                 farmGrowth.clear();
                 try {
