@@ -2,6 +2,14 @@
 
 This is a quick reference for the current gameplay systems. Some actions depend on having the required item and selecting a compatible version profile.
 
+## Enchanted Grove & Artifact Collection (1.9.9)
+
+- Search newly created 1.9.9 worlds for the rare **Зачарованная роща** biome. It has moss-covered ground, denser trees, scattered glow crystals and ferns.
+- The HUD displays the biome name when you enter it. Visiting it completes the new eight-biome exploration goal.
+- Open the two **Ancient Caches** in the sandstone temples. One temple guarantees the **Sun Sigil**, the other the **Moon Sigil**; both also contain an **Ancient Relic**.
+- Press **M** to review the three artifact milestones and the **Ancient Heritage** achievement for collecting the full set.
+- The enchanted biome is generated only in new 1.9.9 worlds. Existing 1.9.8 worlds keep their original terrain and exploration target.
+
 ## Ancient Temples & Relics (1.9.8)
 
 - In newly created 1.9.8 worlds, look for two sandstone **Ancient Temples** far from the starting area.
@@ -47,7 +55,7 @@ This is a quick reference for the current gameplay systems. Some actions depend 
 | Hold left mouse button | Mine the targeted block in survival mode (1.9.4+); releasing cancels progress |
 | I | Inventory |
 | C | Crafting |
-| M | Achievements |
+| M | Achievements and artifact collection progress |
 | T | Switch available tool |
 | P | Cast fishing rod while aiming at nearby water |
 | F | Interact with villagers or a furnace |

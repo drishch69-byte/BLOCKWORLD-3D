@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.9 — Enchanted Grove & Artifact Collection
+- Added a rare deterministic **Enchanted Grove** surface biome with moss-covered ground, denser tree growth and sparse glow-crystal/fern markers.
+- Added a separate 1.9.9 biome sampler and persisted `enchantedBiomes` metadata; existing 1.9.8 worlds retain their old biome layout and world save format 2.
+- Added artifact milestones for the Ancient Relic, Sun Sigil, Moon Sigil and completion of the full collection.
+- Guaranteed that the two opposite Ancient Temple caches provide one Sun Sigil and one Moon Sigil, while keeping their other deterministic rewards.
+- Updated the achievements screen to show the correct biome target for older five-biome, expanded seven-biome and enchanted eight-biome profiles plus artifact collection progress.
+- Added regression tests for biome gating/determinism, enchanted grove generation and save/load, profile selection, artifact milestones and guaranteed sigil pairing.
+
 ## 1.9.8 — Ancient Temples & Relics
 - Added two remote sandstone temples with leveled foundations, entrance steps, rune pillars and open central arenas.
 - Added two **Temple Wardens** with their own blocky model, 95 health, hostile behaviour and persistent creature records.

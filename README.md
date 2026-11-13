@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.8 — Ancient Temples & Relics.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.9 — Enchanted Grove & Artifact Collection.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,7 +10,16 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.8 — Ancient Temples & Relics**
+**1.9.9 — Enchanted Grove & Artifact Collection**
+
+- Added the rare **Enchanted Grove** surface biome with mossy ground, denser trees, glow crystals and ferns.
+- Added deterministic 1.9.9 biome sampling and a saved `enchantedBiomes` flag; 1.9.8 worlds keep their previous biome map.
+- Added artifact collection achievements for the Ancient Relic, Sun Sigil, Moon Sigil and completing the full set.
+- The two temple caches guarantee opposite sigils by temple side, making the collection completable in one world.
+- Added an eight-biome exploration target for 1.9.9 while retaining the older five- and seven-biome targets.
+- Kept world save format 2 and existing block, creature and item IDs unchanged.
+
+**Previous: 1.9.8 — Ancient Temples & Relics**
 
 - Added two remote **Ancient Temples** built from sandstone, rune pillars and open arena courtyards.
 - Added two **Temple Wardens**, each with a dedicated blocky model, 95 health and hostile movement around its temple.
@@ -100,7 +109,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.9.8)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.9)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

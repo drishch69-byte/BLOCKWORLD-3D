@@ -53,4 +53,15 @@ class TreasureLootTest {
         Map<ItemType, Integer> anotherPosition = TreasureLoot.roll(778899L, new BlockPos(19, -6, 42));
         assertTrue(!first.equals(anotherSeed) || !first.equals(anotherPosition));
     }
+
+    @Test
+    void oppositeAncientTempleCachesGuaranteeBothSigils() {
+        Map<ItemType, Integer> east = TreasureLoot.rollAncientCache(77L, new BlockPos(21, 4, -8));
+        Map<ItemType, Integer> west = TreasureLoot.rollAncientCache(77L, new BlockPos(-21, 4, 8));
+        assertEquals(1, east.getOrDefault(ItemType.SUN_SIGIL, 0));
+        assertEquals(0, east.getOrDefault(ItemType.MOON_SIGIL, 0));
+        assertEquals(1, west.getOrDefault(ItemType.MOON_SIGIL, 0));
+        assertEquals(0, west.getOrDefault(ItemType.SUN_SIGIL, 0));
+    }
+
 }

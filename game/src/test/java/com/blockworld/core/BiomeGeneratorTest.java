@@ -65,4 +65,19 @@ class BiomeGeneratorTest {
         }
         assertTrue(testedMountain, "Seed should expose at least one mountain area in the test region");
     }
+
+    @Test void enchantedGroveAppearsOnlyInTheNewSamplerAndIsDeterministic() {
+        EnumSet<BiomeType> found = EnumSet.noneOf(BiomeType.class);
+        for (int x = -180; x <= 180; x += 6) {
+            for (int z = -180; z <= 180; z += 6) {
+                BiomeType first = BiomeGenerator.biomeAtV199(20261113L, x, z);
+                assertEquals(first, BiomeGenerator.biomeAtV199(20261113L, x, z));
+                found.add(first);
+            }
+        }
+        assertTrue(found.contains(BiomeType.ENCHANTED_GROVE));
+        assertFalse(BiomeGenerator.supportsEnchantedGrove("1.9.8"));
+        assertTrue(BiomeGenerator.supportsEnchantedGrove("1.9.9"));
+    }
+
 }

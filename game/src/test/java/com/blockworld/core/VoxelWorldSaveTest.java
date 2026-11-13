@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.util.Map;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -429,6 +430,45 @@ class VoxelWorldSaveTest {
         assertEquals(2L, restored.getCreatures().stream()
                 .filter(creature -> creature.type() == CreatureType.TEMPLE_WARDEN).count());
         assertEquals(world.getBlockCount(), restored.getBlockCount());
+    }
+
+
+    @Test
+    void version199AddsEnchantedGroveAndPersistsItsBiomeFlag() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion previous = VersionManager.find("1.9.8");
+        GameVersion updated = VersionManager.find("1.9.9");
+        VoxelWorld oldWorld = new VoxelWorld(assets);
+        oldWorld.generate(previous, 20261113L);
+        assertFalse(oldWorld.hasEnchantedBiomes());
+        for (int x = -144; x <= 144; x += 6) {
+            for (int z = -144; z <= 144; z += 6) {
+                assertFalse(oldWorld.getBiomeAt(x, z) == BiomeType.ENCHANTED_GROVE);
+            }
+        }
+
+        VoxelWorld world = new VoxelWorld(assets);
+        world.generate(updated, 20261113L);
+        assertTrue(world.hasEnchantedBiomes());
+        BlockPos groveMarker = null;
+        for (Map.Entry<BlockPos, BlockType> entry : world.snapshotBlocks().entrySet()) {
+            BlockPos pos = entry.getKey();
+            if ((entry.getValue() == BlockType.CAVE_FERN || entry.getValue() == BlockType.GLOWING_CRYSTAL)
+                    && world.getBiomeAt(pos.x(), pos.z()) == BiomeType.ENCHANTED_GROVE
+                    && world.getBlock(pos.add(0, -1, 0)) == BlockType.CAVE_MOSS) {
+                groveMarker = pos;
+                break;
+            }
+        }
+        assertNotNull(groveMarker, "Expected a surface glowflora marker inside the enchanted grove");
+
+        Path file = tempDir.resolve("version-199-enchanted-grove.bwworld");
+        world.save(file, updated);
+        assertTrue(Files.readString(file).contains("enchantedBiomes=true"));
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(updated.id(), restored.load(file));
+        assertTrue(restored.hasEnchantedBiomes());
+        assertEquals(BiomeType.ENCHANTED_GROVE, restored.getBiomeAt(groveMarker.x(), groveMarker.z()));
     }
 
 }

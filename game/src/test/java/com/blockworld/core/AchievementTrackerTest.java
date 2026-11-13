@@ -36,4 +36,23 @@ class AchievementTrackerTest {
         restored.restore(tracker.unlocked(), tracker.discoveredBiomes());
         assertTrue(restored.hasDiscoveredAllBiomes());
     }
+
+    @Test
+    void enchantedBiomeIsRequiredOnlyForTheNewWorldProfile() {
+        AchievementTracker oldProfile = new AchievementTracker();
+        oldProfile.setExtendedBiomeSet(true);
+        assertEquals(7, oldProfile.requiredBiomeCount());
+        for (BiomeType biome : BiomeType.extendedSet()) oldProfile.discover(biome);
+        assertTrue(oldProfile.hasDiscoveredAllBiomes());
+
+        AchievementTracker newProfile = new AchievementTracker();
+        newProfile.setExtendedBiomeSet(true);
+        newProfile.setEnchantedBiomeSet(true);
+        assertEquals(8, newProfile.requiredBiomeCount());
+        for (BiomeType biome : BiomeType.extendedSet()) newProfile.discover(biome);
+        assertFalse(newProfile.hasDiscoveredAllBiomes());
+        newProfile.discover(BiomeType.ENCHANTED_GROVE);
+        assertTrue(newProfile.hasDiscoveredAllBiomes());
+    }
+
 }

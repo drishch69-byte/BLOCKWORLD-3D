@@ -42,7 +42,7 @@ public final class BiomeGenerator {
     public static boolean supportsEnchantedGrove(String versionId) {
         if (versionId == null) return false;
         try {
-            String[] parts = versionId.split("\\\\.");
+            String[] parts = versionId.split("\\.");
             int major = Integer.parseInt(parts[0]);
             int minor = Integer.parseInt(parts[1]);
             int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
