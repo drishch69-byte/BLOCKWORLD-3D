@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.0.1",
+  "defaultVersion": "1.0.2",
   "versions": [
     {
       "id": "0.1.0",
@@ -99,6 +99,11 @@
     {
       "id": "1.0.1",
       "name": "Visual Inventory Update",
+      "status": "previous"
+    },
+    {
+      "id": "1.0.2",
+      "name": "Third-Person Camera Update",
       "status": "current"
     }
   ]

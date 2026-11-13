@@ -101,6 +101,9 @@ public final class BlockWorldGame extends SimpleApplication {
     private VoxelWorld world;
     private ModLoader modLoader;
     private CreatureManager creatureManager;
+    private PlayerAvatar playerAvatar;
+    private boolean thirdPersonView;
+    private Vector3f playerEyePosition = new Vector3f(0f, 12f, 8f);
     private boolean modsWorldReady;
     private int loadedModCount;
     private BitmapText hud;
@@ -257,6 +260,7 @@ public final class BlockWorldGame extends SimpleApplication {
         }
         world = new VoxelWorld(assetManager, palette, textureAtlas);
         creatureManager = new CreatureManager(assetManager);
+        playerAvatar = new PlayerAvatar(assetManager);
         if (release100Enabled) {
             gameSounds = new GameSounds(assetManager, rootNode);
             GameLog.info("Звуковые эффекты 1.0.0 инициализированы (если доступно аудиоустройство).");
@@ -292,6 +296,7 @@ public final class BlockWorldGame extends SimpleApplication {
             flyCam.setEnabled(false);
             inputManager.setCursorVisible(false);
             cam.setLocation(new Vector3f(0f, 12f, 8f));
+            playerEyePosition = cam.getLocation().clone();
             cam.setRotation(new Quaternion().fromAngles(pitch, yaw, 0f));
         } else {
             cam.setLocation(new Vector3f(0f, 16f, 26f));
@@ -449,6 +454,7 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addMapping(BREAK, new MouseButtonTrigger(MouseInput.BUTTON_LEFT));
         inputManager.addMapping(PLACE, new MouseButtonTrigger(MouseInput.BUTTON_RIGHT));
         inputManager.addMapping(SAVE, new KeyTrigger(KeyInput.KEY_F6));
+        inputManager.addMapping("TOGGLE_CAMERA", new KeyTrigger(KeyInput.KEY_F5));
         inputManager.addMapping("SLOT_1", new KeyTrigger(KeyInput.KEY_1));
         inputManager.addMapping("SLOT_2", new KeyTrigger(KeyInput.KEY_2));
         inputManager.addMapping("SLOT_3", new KeyTrigger(KeyInput.KEY_3));
@@ -532,6 +538,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 case BREAK -> breakTargetBlock();
                 case PLACE -> placeTargetBlock();
                 case SAVE -> saveWorld();
+                case "TOGGLE_CAMERA" -> toggleCameraView();
                 case EAT -> eatFood();
                 case TALK -> interactCreature();
                 case "RENDER_DISTANCE" -> cycleRenderDistance();
@@ -570,7 +577,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 "SLOT_1", "SLOT_2", "SLOT_3", "SLOT_4", "SLOT_5",
                 "SLOT_6", "SLOT_7", "SLOT_8", "SLOT_9", "RENDER_DISTANCE", "TOGGLE_CULLING", "WEATHER", TALK,
                 "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
-                "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS");
+                "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA");
     }
 
     @Override
@@ -617,6 +624,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 GameLog.info("Существа присоединены к сцене: " + creatureManager.size());
                 worldNodeAttached = true;
                 spawnPosition = world.getSuggestedSpawn();
+                if (version.survival()) playerEyePosition = spawnPosition.clone();
                 createLoadingPad();
                 GameLog.info("Точка появления: " + spawnPosition + "; чанк="
                         + com.blockworld.core.ChunkPos.fromBlock(Math.round(spawnPosition.x), Math.round(spawnPosition.z)));
@@ -675,7 +683,7 @@ public final class BlockWorldGame extends SimpleApplication {
             biomeDiscoveryClock += Math.max(0f, tpf);
             if (biomeDiscoveryClock >= 2f) {
                 biomeDiscoveryClock = 0f;
-                BiomeType currentBiome = world.getBiomeAt(Math.round(cam.getLocation().x), Math.round(cam.getLocation().z));
+                BiomeType currentBiome = world.getBiomeAt(Math.round(version.survival() ? playerEyePosition.x : cam.getLocation().x), Math.round(version.survival() ? playerEyePosition.z : cam.getLocation().z));
                 if (achievements.discover(currentBiome)) {
                     if (achievements.hasDiscoveredAllBiomes()) unlockAchievement(Achievement.ALL_BIOMES);
                     else saveAchievementsQuietly();
@@ -684,12 +692,17 @@ public final class BlockWorldGame extends SimpleApplication {
         }
         if (worldReady && modLoader != null) modLoader.update(tpf);
         if (worldReady && creatureManager != null && world != null) {
-            creatureManager.update(tpf, cam.getLocation(), world);
+            creatureManager.update(tpf, version.survival() ? playerEyePosition : cam.getLocation(), world);
         }
 
         if (worldReady && version.survival() && world != null) {
             updateSurvivalMovement(tpf);
             updateSurvivalNeeds(tpf);
+            if (thirdPersonView && playerAvatar != null) {
+                playerAvatar.update(playerEyePosition, yaw,
+                        moveForward || moveBackward || moveLeft || moveRight, tpf);
+                updateThirdPersonCamera();
+            }
         }
 
         hudRefreshClock += tpf;
@@ -785,10 +798,8 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void updateSurvivalMovement(float tpf) {
         Vector3f direction = new Vector3f();
-        Vector3f forward = cam.getDirection().clone().setY(0f);
-        Vector3f left = cam.getLeft().clone().setY(0f);
-        if (forward.lengthSquared() > 0f) forward.normalizeLocal();
-        if (left.lengthSquared() > 0f) left.normalizeLocal();
+        Vector3f forward = PlayerCamera.forwardDirection(yaw);
+        Vector3f left = new Vector3f(-forward.z, 0f, forward.x);
         if (moveForward) direction.addLocal(forward);
         if (moveBackward) direction.subtractLocal(forward);
         if (moveLeft) direction.addLocal(left);
@@ -797,7 +808,7 @@ public final class BlockWorldGame extends SimpleApplication {
             direction.normalizeLocal().multLocal(5.2f * tpf);
         }
 
-        Vector3f location = cam.getLocation().clone();
+        Vector3f location = playerEyePosition.clone();
         location.addLocal(direction.x, 0f, direction.z);
         float minWorldX = world.getMinBlockX() + 1.5f;
         float maxWorldX = world.getMaxBlockX() - 1.5f;
@@ -823,7 +834,38 @@ public final class BlockWorldGame extends SimpleApplication {
         } else {
             onGround = false;
         }
-        cam.setLocation(location);
+        playerEyePosition.set(location);
+        if (!thirdPersonView) cam.setLocation(location);
+    }
+
+    private void toggleCameraView() {
+        if (!version.survival()) {
+            statusMessage = "Камера от третьего лица доступна в режиме выживания.";
+            updateHud();
+            return;
+        }
+        thirdPersonView = !thirdPersonView;
+        if (thirdPersonView) {
+            inputManager.setCursorVisible(false);
+            if (playerAvatar != null) {
+                playerAvatar.update(playerEyePosition, yaw, false, 0f);
+                playerAvatar.attach(rootNode);
+            }
+            updateThirdPersonCamera();
+            statusMessage = "Камера от третьего лица. F5 — вернуться к первому лицу.";
+        } else {
+            if (playerAvatar != null) playerAvatar.detach();
+            cam.setLocation(playerEyePosition.clone());
+            cam.setRotation(new Quaternion().fromAngles(pitch, yaw, 0f));
+            statusMessage = "Камера от первого лица. F5 — вид от третьего лица.";
+        }
+        updateHud();
+    }
+
+    private void updateThirdPersonCamera() {
+        if (!thirdPersonView || playerEyePosition == null) return;
+        cam.setLocation(PlayerCamera.orbitPosition(playerEyePosition, yaw, pitch));
+        cam.lookAt(PlayerCamera.lookTarget(playerEyePosition), Vector3f.UNIT_Y);
     }
 
     private void applyLandingImpact(float fallDistance) {
@@ -859,7 +901,8 @@ public final class BlockWorldGame extends SimpleApplication {
             spawnPosition = world.getSuggestedSpawn();
             fallStartY = spawnPosition.y;
             onGround = true;
-            cam.setLocation(spawnPosition.clone());
+            playerEyePosition.set(spawnPosition);
+            if (!thirdPersonView) cam.setLocation(spawnPosition.clone());
             statusMessage = "Ты возродился на точке появления. Часть прогресса персонажа пока не сохраняется.";
         }
     }
@@ -949,7 +992,7 @@ public final class BlockWorldGame extends SimpleApplication {
         BlockPos target = hit.adjacentPosition();
         Vector3f targetCenter = new Vector3f(target.x(), target.y(), target.z());
         int available = inventory.getOrDefault(selectedBlock, 0);
-        if (cam.getLocation().distance(targetCenter) < 1.45f) {
+        if ((version.survival() ? playerEyePosition : cam.getLocation()).distance(targetCenter) < 1.45f) {
             statusMessage = "Слишком близко: нельзя поставить блок внутри игрока.";
         } else if (version.survival() && available <= 0) {
             statusMessage = "В инвентаре нет блока «" + selectedBlock.displayName() + "».";
@@ -994,7 +1037,7 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         if (creatureManager == null) return;
-        com.blockworld.core.WorldCreature creature = creatureManager.nearest(cam.getLocation(), 3.2f);
+        com.blockworld.core.WorldCreature creature = creatureManager.nearest(version.survival() ? playerEyePosition : cam.getLocation(), 3.2f);
         if (creature == null) {
             statusMessage = "Рядом нет существ или печей. Подойди ближе и нажми F.";
         } else if (creature.type() == com.blockworld.core.CreatureType.VILLAGER && release100Enabled && version.survival()) {
@@ -1468,7 +1511,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (i < hotbar.size() - 1) bar.append("    ");
         }
         String controls = version.survival()
-                ? "WASD — ходьба    Мышь — обзор    ПРОБЕЛ — прыжок    E — еда    "
+                ? "WASD — ходьба    Мышь — обзор    F5 — камера    ПРОБЕЛ — прыжок    E — еда    "
                     + (equipmentEnabled ? "T — инструмент    " : "")
                     + "I — инвентарь    C — крафт    F — печь/общение"
                     + (agricultureEnabled ? "    G — ферма/печь" : "")

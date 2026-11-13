@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class VersionManagerTest {
     @Test
     void includesAllProfilesAndBiomesFarmingFurnaceUpdateAsDefault() {
-        assertEquals(20, VersionManager.getSupportedVersions().size());
-        assertEquals("1.0.1", VersionManager.getDefaultVersion().id());
+        assertEquals(21, VersionManager.getSupportedVersions().size());
+        assertEquals("1.0.2", VersionManager.getDefaultVersion().id());
         assertTrue(VersionManager.find("0.3.0").caves());
         assertTrue(VersionManager.find("0.3.0").ores());
         assertTrue(VersionManager.find("0.4.0").survival());
@@ -53,5 +53,8 @@ class VersionManagerTest {
         assertEquals("Visual Inventory Update", VersionManager.find("1.0.1").displayName());
         assertEquals(96, VersionManager.find("1.0.1").worldRadius());
         assertTrue(VersionManager.find("1.0.1").survival());
+        assertEquals("Third-Person Camera Update", VersionManager.find("1.0.2").displayName());
+        assertEquals(96, VersionManager.find("1.0.2").worldRadius());
+        assertTrue(VersionManager.find("1.0.2").survival());
     }
 }

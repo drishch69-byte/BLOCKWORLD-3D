@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2 — Third-Person Camera Update
+- Added F5 camera switching between first-person and third-person views for survival profiles.
+- Added a lightweight blocky player model with head, body, arms, legs, and simple facial details.
+- Added walking limb animation and yaw-aligned model orientation.
+- Separated the player's world position from the camera position so movement, creature spacing, block placement checks, and biome HUD data remain player-centered in third-person mode.
+- Added unit tests for camera orbit and movement direction; preserved earlier profiles and all world/player save formats.
+
 ## 1.0.1 — Visual Inventory Update
 - Added 23 separate 16×16 PNG item icons generated from the original item atlas.
 - Replaced the long crafted-item text list in inventory with a visual side panel showing each icon, localized item name, and current count.

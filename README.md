@@ -10,12 +10,12 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.0.1 — Visual Inventory Update**
+**1.0.2 — Third-Person Camera Update**
 
 - Five biomes: plains, forests, deserts, snowy tundra, and mountains.
 - Chunk-based voxel world, mining, and building.
 - Creatures, villagers, and trading, now with six original PNG creature textures.
-- A player portrait and 23 separate PNG item icons shown directly in the inventory and crafting workshop.
+- A third-person player camera and animated blocky explorer, plus the visual inventory introduced in 1.0.1.
 - Inventory, crafting, tools, and iron armor.
 - Farming, wheat, furnaces, smelting, and cooked food.
 - Fishing, copper and emerald ores, and achievements.
@@ -24,7 +24,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.0.1)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.0.2)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
