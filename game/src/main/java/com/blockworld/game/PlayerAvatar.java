@@ -51,10 +51,16 @@ final class PlayerAvatar {
     private static final String[] STYLE_NAMES = {"Исследователь", "Лесной", "Песчаный", "Кристальный"};
 
     int cycleStyle() {
-        styleIndex = (styleIndex + 1) % STYLE_NAMES.length;
+        return setStyle(styleIndex + 1);
+    }
+
+    int setStyle(int index) {
+        styleIndex = Math.max(0, Math.min(STYLE_NAMES.length - 1, index));
         applyStyle();
         return styleIndex;
     }
+
+    int styleIndex() { return styleIndex; }
 
     String styleName() { return STYLE_NAMES[styleIndex]; }
 

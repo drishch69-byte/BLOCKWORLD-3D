@@ -22,6 +22,7 @@ import com.blockworld.core.BiomeType;
 import com.blockworld.core.WorldNavigation;
 import com.blockworld.core.TreasureLoot;
 import com.blockworld.core.PlayerDataStore;
+import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
 import com.blockworld.core.GamePaths;
@@ -141,6 +142,9 @@ public final class BlockWorldGame extends SimpleApplication {
     private CreatureManager creatureManager;
     private NatureDecorationManager natureDecorations;
     private PlayerAvatar playerAvatar;
+    private PlayerProfileStore.Profile playerProfile = PlayerProfileStore.Profile.defaults();
+    private boolean profileSessionStarted;
+    private long profileCheckpointNanos;
     private boolean thirdPersonView;
     private Vector3f playerEyePosition = new Vector3f(0f, 12f, 8f);
     private boolean modsWorldReady;
@@ -293,6 +297,12 @@ public final class BlockWorldGame extends SimpleApplication {
     @Override
     public void simpleInitApp() {
         GameLog.info("jMonkeyEngine вызвал simpleInitApp(); контекст и рендер-поток созданы.");
+        try {
+            playerProfile = PlayerProfileStore.load();
+        } catch (IOException error) {
+            GameLog.error("Не удалось загрузить профиль игрока; применён стандартный профиль", error);
+            playerProfile = PlayerProfileStore.Profile.defaults();
+        }
         setDisplayFps(false);
         setDisplayStatView(false);
         // A wider FOV and a short near plane keep nearby terrain visible in first-person view.
@@ -323,6 +333,8 @@ public final class BlockWorldGame extends SimpleApplication {
         natureDecorations = new NatureDecorationManager(assetManager);
         natureDecorations.setDensity(gameSettings.vegetationDensity());
         playerAvatar = new PlayerAvatar(assetManager);
+        playerAvatar.setStyle(playerProfile.appearanceIndex());
+        playerAvatar.setDisplayName(assetManager, playerProfile.displayName());
         if (release100Enabled) {
             gameSounds = new GameSounds(assetManager, rootNode);
             GameLog.info("Звуковые эффекты 1.0.0 инициализированы (если доступно аудиоустройство).");
@@ -686,6 +698,7 @@ public final class BlockWorldGame extends SimpleApplication {
         try {
             updateFrame(tpf);
             updateMultiplayer(tpf);
+            checkpointPlayerProfile(false);
         } catch (RuntimeException error) {
             runtimeFault = true;
             runtimeFaultMessage = error.getClass().getSimpleName() + ": "
@@ -751,6 +764,7 @@ public final class BlockWorldGame extends SimpleApplication {
                     verticalVelocity = 0f;
                 }
                 worldReady = true;
+                beginPlayerProfileSession();
                 loadingMessage = "Мир загружен";
                 if (loadingPad != null) { loadingPad.removeFromParent(); loadingPad = null; }
                 statusMessage = "Чанк появления отрисован. Управление готово.";
@@ -1592,6 +1606,12 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         int style = playerAvatar.cycleStyle();
+        playerProfile = playerProfile.withAppearance(style);
+        try {
+            PlayerProfileStore.save(playerProfile);
+        } catch (IOException error) {
+            GameLog.error("Не удалось сохранить выбранный образ игрока", error);
+        }
         statusMessage = "Образ игрока: " + playerAvatar.styleName() + " (" + (style + 1) + "/4).";
         updateHud();
     }
@@ -2536,8 +2556,36 @@ public final class BlockWorldGame extends SimpleApplication {
                 "BLOCKWORLD 3D — ошибка графического движка", JOptionPane.ERROR_MESSAGE));
     }
 
+
+    private void beginPlayerProfileSession() {
+        if (profileSessionStarted) return;
+        try {
+            playerProfile = PlayerProfileStore.recordSessionStart();
+            profileSessionStarted = true;
+            profileCheckpointNanos = System.nanoTime();
+            GameLog.info("Профиль игрока: начата сессия №" + playerProfile.sessionsPlayed()
+                    + " для мира " + saveFile.getFileName());
+        } catch (IOException error) {
+            GameLog.error("Не удалось записать начало игровой сессии в профиль", error);
+        }
+    }
+
+    private void checkpointPlayerProfile(boolean force) {
+        if (!profileSessionStarted || profileCheckpointNanos <= 0L) return;
+        long now = System.nanoTime();
+        long elapsedSeconds = Math.max(0L, (now - profileCheckpointNanos) / 1_000_000_000L);
+        if (elapsedSeconds <= 0L || (!force && elapsedSeconds < 60L)) return;
+        try {
+            playerProfile = PlayerProfileStore.addPlayTimeSeconds(elapsedSeconds);
+            profileCheckpointNanos += elapsedSeconds * 1_000_000_000L;
+        } catch (IOException error) {
+            GameLog.error("Не удалось сохранить время игры в профиле", error);
+        }
+    }
+
     @Override
     public void destroy() {
+        checkpointPlayerProfile(true);
         GameLog.info("Начато закрытие игрового приложения; worldReady=" + worldReady
                 + "; thread=" + Thread.currentThread().getName());
         try {

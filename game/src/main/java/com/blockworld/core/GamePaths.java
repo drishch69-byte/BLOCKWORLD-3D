@@ -24,6 +24,7 @@ public final class GamePaths {
     public static Path configDirectory() { return gameDirectory().resolve("config"); }
     public static Path settingsFile() { return configDirectory().resolve("settings.properties"); }
     public static Path favoritesFile() { return configDirectory().resolve("world-favorites.txt"); }
+    public static Path playerProfileFile() { return configDirectory().resolve("player-profile.properties"); }
     public static Path modsDirectory() { return gameDirectory().resolve("mods"); }
     public static Path disabledModsDirectory() { return modsDirectory().resolve("disabled"); }
     public static Path resourcePacksDirectory() { return gameDirectory().resolve("resourcepacks"); }

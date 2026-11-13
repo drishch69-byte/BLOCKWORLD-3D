@@ -8,6 +8,7 @@ import com.blockworld.core.WorldCatalog;
 import com.blockworld.core.WorldFavorites;
 import com.blockworld.core.WorldBackupManager;
 import com.blockworld.core.WorldEntry;
+import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameSettings;
 import com.blockworld.core.ModManager;
 import com.blockworld.core.ResourcePackManager;
@@ -124,8 +125,8 @@ public final class Launcher {
     private void createWindow() {
         frame = new JFrame("BLOCKWORLD 3D — лаунчер");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setMinimumSize(new Dimension(760, 520));
-        frame.setSize(850, 600);
+        frame.setMinimumSize(new Dimension(760, 560));
+        frame.setSize(850, 630);
         frame.setLocationRelativeTo(null);
         frame.setLayout(new BorderLayout(12, 12));
 
@@ -205,7 +206,7 @@ public final class Launcher {
 
         JPanel bottom = new JPanel(new BorderLayout(8, 8));
         bottom.setBorder(BorderFactory.createEmptyBorder(0, 24, 18, 24));
-        JPanel buttons = new JPanel(new GridLayout(3, 4, 7, 7));
+        JPanel buttons = new JPanel(new GridLayout(4, 4, 7, 7));
         JButton play = new JButton("ИГРАТЬ");
         JButton newWorld = new JButton("НОВЫЙ МИР");
         JButton settings = new JButton("НАСТРОЙКИ");
@@ -217,6 +218,7 @@ public final class Launcher {
         favoriteButton = new JButton("В ИЗБРАННОЕ");
         JButton backups = new JButton("РЕЗЕРВНЫЕ КОПИИ");
         JButton diagnostics = new JButton("ДИАГНОСТИКА");
+        JButton profile = new JButton("ПРОФИЛЬ ИГРОКА");
         JButton close = new JButton("ВЫХОД");
         play.addActionListener(event -> launchSelectedWorld());
         newWorld.addActionListener(event -> createWorld());
@@ -229,6 +231,7 @@ public final class Launcher {
         favoriteButton.addActionListener(event -> toggleFavorite());
         backups.addActionListener(event -> showBackupDialog());
         diagnostics.addActionListener(event -> showDiagnosticsDialog());
+        profile.addActionListener(event -> showPlayerProfileDialog());
         close.addActionListener(event -> frame.dispose());
         buttons.add(play);
         buttons.add(newWorld);
@@ -241,6 +244,7 @@ public final class Launcher {
         buttons.add(favoriteButton);
         buttons.add(backups);
         buttons.add(diagnostics);
+        buttons.add(profile);
         buttons.add(close);
         bottom.add(buttons, BorderLayout.CENTER);
         status = new JLabel("Миры общие для всех версий. Создай новый мир или выбери сохранённый.");
@@ -334,6 +338,86 @@ public final class Launcher {
             JOptionPane.showMessageDialog(frame, "Не удалось изменить избранное:\n" + error.getMessage(),
                     "Избранные миры", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+
+    private void showPlayerProfileDialog() {
+        PlayerProfileStore.Profile current;
+        try {
+            current = PlayerProfileStore.load();
+        } catch (IOException error) {
+            GameLog.error("Не удалось загрузить профиль игрока", error);
+            current = PlayerProfileStore.Profile.defaults();
+        }
+
+        JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Профиль игрока", true);
+        dialog.setLayout(new BorderLayout(10, 10));
+        JPanel form = new JPanel(new GridLayout(2, 2, 10, 10));
+        form.setBorder(BorderFactory.createEmptyBorder(16, 16, 8, 16));
+
+        JTextField displayName = new JTextField(current.displayName(), 22);
+        JComboBox<String> appearance = new JComboBox<>(new String[]{
+                "Исследователь", "Лесной", "Песчаный", "Кристальный"
+        });
+        appearance.setSelectedIndex(current.appearanceIndex());
+        form.add(new JLabel("Имя персонажа:"));
+        form.add(displayName);
+        form.add(new JLabel("Образ персонажа:"));
+        form.add(appearance);
+        dialog.add(form, BorderLayout.NORTH);
+
+        long seconds = current.playTimeSeconds();
+        long days = seconds / 86_400L;
+        long hours = (seconds % 86_400L) / 3_600L;
+        long minutes = (seconds % 3_600L) / 60L;
+        String time = days > 0 ? days + " д. " + hours + " ч. " + minutes + " мин."
+                : hours > 0 ? hours + " ч. " + minutes + " мин."
+                : minutes + " мин.";
+        JTextArea statistics = new JTextArea(
+                "СТАТИСТИКА ИГРОКА\n"
+                + "Успешно загружено миров: " + current.sessionsPlayed() + "\n"
+                + "Общее время в игре: " + time + "\n"
+                + "Профиль сохраняется на этом компьютере и используется во всех мирах.",
+                4, 34);
+        statistics.setEditable(false);
+        statistics.setFocusable(false);
+        statistics.setOpaque(false);
+        statistics.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        statistics.setBorder(BorderFactory.createEmptyBorder(4, 18, 8, 18));
+        dialog.add(statistics, BorderLayout.CENTER);
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton save = new JButton("СОХРАНИТЬ");
+        JButton cancel = new JButton("ОТМЕНА");
+        save.addActionListener(event -> {
+            if (displayName.getText().isBlank()) {
+                JOptionPane.showMessageDialog(dialog, "Введи имя персонажа.",
+                        "Профиль игрока", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            try {
+                PlayerProfileStore.Profile updated = new PlayerProfileStore.Profile(
+                        displayName.getText(), appearance.getSelectedIndex(),
+                        current.sessionsPlayed(), current.playTimeSeconds());
+                PlayerProfileStore.save(updated);
+                dialog.dispose();
+                JOptionPane.showMessageDialog(frame,
+                        "Профиль «" + updated.displayName() + "» сохранён. Новый образ применится при следующем запуске мира.",
+                        "Профиль игрока", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException error) {
+                GameLog.error("Не удалось сохранить профиль игрока", error);
+                JOptionPane.showMessageDialog(dialog, "Не удалось сохранить профиль:\n" + error.getMessage(),
+                        "Ошибка профиля", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        cancel.addActionListener(event -> dialog.dispose());
+        actions.add(save);
+        actions.add(cancel);
+        dialog.add(actions, BorderLayout.SOUTH);
+        dialog.pack();
+        dialog.setMinimumSize(new Dimension(430, 250));
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
     }
 
     private void showBackupDialog() {
