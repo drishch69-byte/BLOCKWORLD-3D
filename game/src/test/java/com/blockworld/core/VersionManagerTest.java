@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class VersionManagerTest {
     @Test
     void includesAllProfilesAndDefaultsToCaveBiomes() {
-        assertEquals(33, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.6", VersionManager.getDefaultVersion().id());
+        assertEquals(34, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.7", VersionManager.getDefaultVersion().id());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());
@@ -33,6 +33,9 @@ class VersionManagerTest {
         assertEquals("Cave Biomes & Glowflora", VersionManager.find("1.9.6").displayName());
         assertEquals(144, VersionManager.find("1.9.6").worldRadius());
         assertTrue(VersionManager.find("1.9.6").survival());
+        assertEquals("Crystal Guardians & Hidden Treasures", VersionManager.find("1.9.7").displayName());
+        assertEquals(144, VersionManager.find("1.9.7").worldRadius());
+        assertTrue(VersionManager.find("1.9.7").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());

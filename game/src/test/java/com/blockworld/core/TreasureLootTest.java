@@ -29,6 +29,19 @@ class TreasureLootTest {
     }
 
     @Test
+    void crystalCacheLootIsStableAndIncludesRareSupplies() {
+        BlockPos cache = new BlockPos(74, -9, -31);
+        Map<ItemType, Integer> first = TreasureLoot.rollCrystalCache(551122L, cache);
+        Map<ItemType, Integer> second = TreasureLoot.rollCrystalCache(551122L, cache);
+        assertEquals(first, second);
+        assertTrue(first.getOrDefault(ItemType.EMERALD, 0) >= 2);
+        assertTrue(first.getOrDefault(ItemType.COOKED_FISH, 0) >= 1);
+        assertTrue(first.getOrDefault(ItemType.IRON_INGOT, 0) >= 4
+                || first.getOrDefault(ItemType.COPPER_INGOT, 0) >= 4);
+        assertThrows(IllegalArgumentException.class, () -> TreasureLoot.rollCrystalCache(1L, null));
+    }
+
+    @Test
     void chestLootChangesWithWorldSeedOrChestPosition() {
         BlockPos firstChest = new BlockPos(18, -6, 42);
         Map<ItemType, Integer> first = TreasureLoot.roll(778899L, firstChest);

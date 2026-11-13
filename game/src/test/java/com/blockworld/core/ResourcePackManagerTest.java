@@ -119,16 +119,19 @@ class ResourcePackManagerTest {
         Path glow = manager.root().resolve("Default/textures/blocks/glowing_crystal.png");
         Path moss = manager.root().resolve("Default/textures/blocks/cave_moss.png");
         Path fern = manager.root().resolve("Default/textures/blocks/cave_fern.png");
+        Path cache = manager.root().resolve("Default/textures/blocks/crystal_cache.png");
         assertTrue(Files.isRegularFile(ruby));
         assertTrue(Files.isRegularFile(sapphire));
         assertTrue(Files.isRegularFile(glow));
         assertTrue(Files.isRegularFile(moss));
         assertTrue(Files.isRegularFile(fern));
+        assertTrue(Files.isRegularFile(cache));
         assertEquals(16, ImageIO.read(ruby.toFile()).getWidth());
         assertEquals(16, ImageIO.read(sapphire.toFile()).getHeight());
         assertEquals(16, ImageIO.read(glow.toFile()).getWidth());
         assertEquals(16, ImageIO.read(moss.toFile()).getHeight());
         assertEquals(16, ImageIO.read(fern.toFile()).getWidth());
+        assertEquals(16, ImageIO.read(cache.toFile()).getWidth());
     }
 
     @Test
@@ -164,7 +167,10 @@ class ResourcePackManagerTest {
         assertEquals(24, BlockType.GLOWING_CRYSTAL.textureSlot());
         assertEquals(25, BlockType.CAVE_MOSS.textureSlot());
         assertEquals(26, BlockType.CAVE_FERN.textureSlot());
+        assertEquals(27, BlockType.CRYSTAL_CACHE.textureSlot());
         assertTrue(ResourcePackManager.textureTileIndex(BlockType.CAVE_FERN, 2)
+                < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
+        assertTrue(ResourcePackManager.textureTileIndex(BlockType.CRYSTAL_CACHE, 2)
                 < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
         assertTrue(ResourcePackManager.textureTileIndex(BlockType.SAPPHIRE_ORE, 2)
                 < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);

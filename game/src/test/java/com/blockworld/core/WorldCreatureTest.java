@@ -19,6 +19,10 @@ class WorldCreatureTest {
         assertEquals("skeleton", CreatureType.fromId("skeleton").id());
         assertEquals("spider", CreatureType.fromId("spider").id());
         assertEquals("rabbit", CreatureType.fromId("rabbit").id());
+        assertEquals("crystal_sentinel", CreatureType.fromId("crystal_sentinel").id());
+        assertTrue(CreatureType.CRYSTAL_SENTINEL.isHostile());
+        assertEquals(70f, CreatureType.CRYSTAL_SENTINEL.maxHealth());
+        assertEquals(3.5f, CreatureType.CRYSTAL_SENTINEL.attackDamage());
         assertEquals("Кролик", CreatureType.RABBIT.displayName());
         assertEquals(0f, CreatureType.RABBIT.attackDamage());
         assertTrue(!CreatureType.RABBIT.isHostile());

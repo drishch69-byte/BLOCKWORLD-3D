@@ -345,4 +345,49 @@ class VoxelWorldSaveTest {
         assertFalse(oldRestored.hasCaveBiomes());
     }
 
+    @Test
+    void version197AddsCrystalTreesCachesAndAHostileSentinelAndRoundTripsThem() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion previous = VersionManager.find("1.9.6");
+        GameVersion updated = VersionManager.find("1.9.7");
+
+        VoxelWorld oldWorld = new VoxelWorld(assets);
+        oldWorld.generate(previous, 8675309L);
+        assertEquals(0L, oldWorld.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.CRYSTAL_SENTINEL).count());
+        assertEquals(0L, oldWorld.countBlocks(BlockType.CRYSTAL_CACHE));
+
+        VoxelWorld world = new VoxelWorld(assets);
+        world.generate(updated, 8675309L);
+        long sentinels = world.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.CRYSTAL_SENTINEL).count();
+        assertEquals(1L, sentinels, "A new 1.9.7 world should have one cave boss");
+        assertTrue(world.countBlocks(BlockType.CRYSTAL_CACHE) > 0, "Expected crystal caches");
+        assertTrue(world.countBlocks(BlockType.GLOWING_CRYSTAL) > oldWorld.countBlocks(BlockType.GLOWING_CRYSTAL),
+                "Crystal trees should add glowing trunks and branches");
+        assertTrue(world.countBlocks(BlockType.CAVE_FERN) > oldWorld.countBlocks(BlockType.CAVE_FERN),
+                "Crystal trees should add fern-like crowns");
+
+        WorldCreature boss = world.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.CRYSTAL_SENTINEL)
+                .findFirst().orElseThrow();
+        int bossX = (int) Math.floor(boss.x());
+        int bossZ = (int) Math.floor(boss.z());
+        assertEquals((int) Math.floor(boss.y() - 1f),
+                world.highestBlockYAtOrBelow(bossX, bossZ, (int) Math.floor(boss.y() - 0.2f)));
+
+        Path file = tempDir.resolve("version-197-crystal-guardians.bwworld");
+        world.save(file, updated);
+        String saved = Files.readString(file);
+        assertTrue(saved.contains(",crystal_cache"));
+        assertTrue(saved.contains("format=2"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(updated.id(), restored.load(file));
+        assertEquals(world.getBlockCount(), restored.getBlockCount());
+        assertEquals(world.countBlocks(BlockType.CRYSTAL_CACHE), restored.countBlocks(BlockType.CRYSTAL_CACHE));
+        assertTrue(restored.getCreatures().stream()
+                .anyMatch(creature -> creature.type() == CreatureType.CRYSTAL_SENTINEL));
+    }
+
 }
