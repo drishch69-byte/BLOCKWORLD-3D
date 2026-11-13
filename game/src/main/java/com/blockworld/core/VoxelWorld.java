@@ -560,7 +560,8 @@ public final class VoxelWorld {
                         else if (y >= surface - 2) type = biome == BiomeType.DESERT ? BlockType.SANDSTONE : BlockType.DIRT;
                         else {
                             type = BlockType.STONE;
-                            if (version.ores()) type = supportsRelease100(version.id()) ? oreForRelease100(x, y, z) : oreFor(x, y, z);
+                            if (version.ores()) type = supportsDeepCaves(version.id()) ? oreForDeepCaves195(x, y, z)
+                                    : supportsRelease100(version.id()) ? oreForRelease100(x, y, z) : oreFor(x, y, z);
                         }
                         addBlock(new BlockPos(x, y, z), type);
                     }
@@ -607,6 +608,9 @@ public final class VoxelWorld {
             }
             if (supportsExtendedBiomes(version.id())) {
                 addCrystalCaves(random, radius);
+            }
+            if (supportsDeepCaves(version.id())) {
+                addCrystalCaverns(random, radius);
             }
             if (version.id().compareTo("0.8.0") >= 0) {
                 addVillageHouse(-34, 27);
@@ -732,6 +736,54 @@ public final class VoxelWorld {
                             && coordinateRandom(position.x(), position.y(), position.z()) < 0.42f) {
                         removeBlock(position);
                         addBlock(position, BlockType.AMETHYST_ORE);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Adds larger, seed-stable caverns with crystal-lined walls to the 1.9.5 profile. */
+    private void addCrystalCaverns(Random random, int radius) {
+        int created = 0;
+        for (int centerX = -radius + 22; centerX <= radius - 22; centerX += 44) {
+            for (int centerZ = -radius + 22; centerZ <= radius - 22; centerZ += 44) {
+                if (Math.abs(centerX) + Math.abs(centerZ) < 56 || random.nextFloat() > 0.22f) continue;
+                createCrystalCavern(centerX, -6 - random.nextInt(5), centerZ, random);
+                created++;
+            }
+        }
+        int[][] fallback = {{radius - 24, -radius + 24}, {-radius + 24, radius - 24},
+                {radius - 24, radius - 24}, {-radius + 24, -radius + 24}};
+        for (int[] center : fallback) {
+            if (created >= 3) break;
+            if (Math.abs(center[0]) + Math.abs(center[1]) < 48) continue;
+            createCrystalCavern(center[0], -8, center[1], random);
+            created++;
+        }
+    }
+
+    private void createCrystalCavern(int centerX, int centerY, int centerZ, Random random) {
+        int radiusX = 3 + random.nextInt(3);
+        int radiusY = 2 + random.nextInt(2);
+        int radiusZ = 3 + random.nextInt(3);
+        for (int dx = -radiusX; dx <= radiusX; dx++) {
+            for (int dy = -radiusY; dy <= radiusY; dy++) {
+                for (int dz = -radiusZ; dz <= radiusZ; dz++) {
+                    double shape = (dx * dx) / (double) (radiusX * radiusX)
+                            + (dy * dy) / (double) (radiusY * radiusY)
+                            + (dz * dz) / (double) (radiusZ * radiusZ);
+                    if (shape > 1.12) continue;
+                    BlockPos position = new BlockPos(centerX + dx, centerY + dy, centerZ + dz);
+                    if (shape < 0.72) {
+                        removeBlock(position);
+                        if (dy <= -1 && shape < 0.34 && coordinateRandom(position.x(), position.y(), position.z()) < 0.14f) {
+                            addBlock(position, BlockType.WATER);
+                        }
+                    } else if (blocks.get(position) == BlockType.STONE) {
+                        float mineral = coordinateRandom(position.x(), position.y(), position.z());
+                        if (mineral < 0.10f) addBlock(position, BlockType.AMETHYST_ORE);
+                        else if (mineral < 0.14f) addBlock(position, BlockType.RUBY_ORE);
+                        else if (mineral < 0.20f) addBlock(position, BlockType.SAPPHIRE_ORE);
                     }
                 }
             }
@@ -968,9 +1020,25 @@ public final class VoxelWorld {
         return oreForRelease100(y, coordinateRandom(x, y, z));
     }
 
+    private BlockType oreForDeepCaves195(int x, int y, int z) {
+        float roll = coordinateRandom(Math.floorDiv(x, 2), Math.floorDiv(y, 2), Math.floorDiv(z, 2));
+        return OreRules.selectDeepCaves195(y, roll);
+    }
+
     /** Pure ore selection used by the 1.0.0 generator and deterministic tests. */
     public static BlockType oreForRelease100(int y, float roll) {
         return OreRules.selectRelease100(y, roll);
+    }
+
+    private static boolean supportsDeepCaves(String id) {
+        if (id == null) return false;
+        try {
+            String[] parts = id.split("\\.");
+            int major = Integer.parseInt(parts[0]);
+            int minor = Integer.parseInt(parts[1]);
+            int patch = parts.length > 2 ? Integer.parseInt(parts[2]) : 0;
+            return major > 1 || (major == 1 && (minor > 9 || (minor == 9 && patch >= 5)));
+        } catch (RuntimeException ex) { return false; }
     }
 
     private static boolean supportsRelease100(String id) {
