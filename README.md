@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.7 — Crystal Guardians & Hidden Treasures.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.8 — Ancient Temples & Relics.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,14 +10,19 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.7 — Crystal Guardians & Hidden Treasures**
+**1.9.8 — Ancient Temples & Relics**
 
-- Added glowing **crystal trees** to Crystal Grotto rooms, built from luminous blocks, amethyst and cave fronds.
-- Added a distinct **Crystal Cache** block with original 16×16 pixel art and a special deterministic reward table.
-- Added the **Crystal Sentinel**, a large crystal-armored cave boss with its own blocky model, health and attack behaviour.
-- The boss is placed on a small stone arena inside a crystal grotto; its nearby cache can be opened for emeralds, metal ingots and cooked fish.
-- New structures and the boss appear only in new 1.9.7 worlds. Older 1.9.6 cave layouts and ordinary chest loot remain unchanged.
-- Kept world save format 2 and appended stable block and creature IDs.
+- Added two remote **Ancient Temples** built from sandstone, rune pillars and open arena courtyards.
+- Added two **Temple Wardens**, each with a dedicated blocky model, 95 health and hostile movement around its temple.
+- Added **Ancient Caches** with separate deterministic rewards: one Ancient Relic, one Sun or Moon Sigil, emeralds and metal ingots.
+- Added three collectible inventory artifacts with original 16×16 PNG icons: **Ancient Relic**, **Sun Sigil** and **Moon Sigil**.
+- Temple structures, wardens and relic caches are generated only in new 1.9.8 worlds; older 1.9.7 worlds remain unchanged.
+- Kept world save format 2 and appended stable block, creature and item IDs.
+
+**Previous: 1.9.7 — Crystal Guardians & Hidden Treasures**
+
+- Added crystal trees, Crystal Caches and the Crystal Sentinel to newly generated 1.9.7 worlds.
+- Added a separate, seed-stable reward table for Crystal Caches and retained ordinary chest rewards.
 
 **Previous: 1.9.6 — Cave Biomes & Glowflora**
 
@@ -95,7 +100,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.9.7)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.8)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

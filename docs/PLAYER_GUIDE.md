@@ -2,6 +2,13 @@
 
 This is a quick reference for the current gameplay systems. Some actions depend on having the required item and selecting a compatible version profile.
 
+## Ancient Temples & Relics (1.9.8)
+
+- In newly created 1.9.8 worlds, look for two sandstone **Ancient Temples** far from the starting area.
+- Each temple has an open arena guarded by a **Temple Warden**. Aim at the guardian and click the left mouse button to attack repeatedly.
+- Open the **Ancient Cache** with **F** while aiming at it. Its seed-based reward includes an Ancient Relic and either a Sun Sigil or a Moon Sigil, plus supplies.
+- All three artifacts are persistent inventory items and have their own icons. Existing 1.9.7 saves do not receive the new temples automatically.
+
 ## Crystal Guardians & Hidden Treasures (1.9.7)
 
 - Look for a **Crystal Grotto** in newly created 1.9.7 worlds; some grottos contain a crystal tree, a stone arena and a **Crystal Cache**.

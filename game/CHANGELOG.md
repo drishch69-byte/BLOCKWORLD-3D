@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.8 — Ancient Temples & Relics
+- Added two remote sandstone temples with leveled foundations, entrance steps, rune pillars and open central arenas.
+- Added two **Temple Wardens** with their own blocky model, 95 health, hostile behaviour and persistent creature records.
+- Added a distinct **Ancient Cache** block and a deterministic reward table containing an Ancient Relic, a Sun or Moon Sigil, emeralds and metal ingots.
+- Added three new persistent player items with original 16×16 PNG icons and inventory atlas mappings.
+- Added shared-multiplayer support for Ancient Caches and their artifact rewards.
+- Restricted temples, wardens and Ancient Caches to newly generated 1.9.8 worlds; preserved previous worlds and world save format 2.
+- Added generation, loot, texture, inventory-item and save/load regression tests.
+
 ## 1.9.7 — Crystal Guardians & Hidden Treasures
 - Added small crystal trees to Crystal Grotto rooms, with glowing trunks, amethyst cores and fern-like crowns.
 - Added the distinct **Crystal Cache** block with an original 16×16 texture and a deterministic emerald/ingot/food reward table.

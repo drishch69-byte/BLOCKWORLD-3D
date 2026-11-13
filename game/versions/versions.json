@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.7",
+  "defaultVersion": "1.9.8",
   "versions": [
     {
       "id": "0.1.0",
@@ -169,6 +169,11 @@
     {
       "id": "1.9.7",
       "name": "Crystal Guardians & Hidden Treasures",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.8",
+      "name": "Ancient Temples & Relics",
       "status": "current"
     }
   ]
