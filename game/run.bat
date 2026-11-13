@@ -15,7 +15,7 @@ if defined MAVEN_OPTS (
 )
 
 > "%LOG_FILE%" echo ============================================================
->> "%LOG_FILE%" echo CUBEVERSE 3D 1.9.2 - CLASSIC HOTBAR CONTROLS
+>> "%LOG_FILE%" echo Minecraft 3D 1.9.3 - INVENTORY TABS UPDATE
 >> "%LOG_FILE%" echo Started: %DATE% %TIME%
 >> "%LOG_FILE%" echo Project: %CD%
 >> "%LOG_FILE%" echo JVM fatal reports: .logs\hs_err_pid*.log
@@ -23,7 +23,7 @@ if defined MAVEN_OPTS (
 >> "%LOG_FILE%" echo ============================================================
 
 echo ============================================================
-echo CUBEVERSE 3D 1.9.2 - CLASSIC HOTBAR CONTROLS
+echo Minecraft 3D 1.9.3 - INVENTORY TABS UPDATE
 echo Log: %LOG_FILE%
 echo ============================================================
 echo.
@@ -54,7 +54,7 @@ if not exist "%MAVEN_HOME%\bin\mvn.cmd" (
     )
 )
 
-echo Starting CUBEVERSE with downloaded Maven...
+echo Starting Minecraft 3D with downloaded Maven...
 call "%MAVEN_HOME%\bin\mvn.cmd" -B -Dstyle.color=never clean compile exec:java >> "%LOG_FILE%" 2>&1
 set "EXIT_CODE=%ERRORLEVEL%"
 
@@ -62,9 +62,9 @@ set "EXIT_CODE=%ERRORLEVEL%"
 echo.
 echo ============================================================
 if not "%EXIT_CODE%"=="0" (
-    echo CUBEVERSE finished with an error. Log tail:
+    echo Minecraft 3D finished with an error. Log tail:
 ) else (
-    echo CUBEVERSE process ended. If the game window vanished unexpectedly, inspect this log:
+    echo Minecraft 3D process ended. If the game window vanished unexpectedly, inspect this log:
 )
 echo %LOG_FILE%
 echo ============================================================

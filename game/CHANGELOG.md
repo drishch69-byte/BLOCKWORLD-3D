@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.3 — Inventory Tabs Update
+- Split the survival inventory into dedicated **Resources** and **Equipment** tabs.
+- Press **1** for resources and **2** for equipment; left/right arrows cycle between tabs.
+- Prevented number keys from changing the hotbar while the inventory is open.
+- Kept the existing item icons, player portrait, player sidecar format, and world save format unchanged.
+- Added a version-catalog regression assertion for the 1.9.3 default profile.
+
 ## 1.9.2 — Classic Hotbar Controls
 - Added mouse-wheel cycling through quick-access block slots, wrapping around at either end.
 - Kept number keys 1–9 as direct slot shortcuts.

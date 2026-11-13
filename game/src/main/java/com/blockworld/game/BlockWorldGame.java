@@ -146,6 +146,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private float biomeDiscoveryClock;
     private ToolType selectedTool;
     private int craftingPage;
+    private int inventoryPage;
 
     private VoxelWorld world;
     private ModLoader modLoader;
@@ -722,8 +723,8 @@ public final class BlockWorldGame extends SimpleApplication {
                 case "USE_UTILITY" -> useSelectedUtility();
                 case "FISHING_CAST" -> castFishingRod();
                 case "TOGGLE_ACHIEVEMENTS" -> toggleAchievements();
-                case "CRAFT_PAGE_PREV" -> { if (chestOpen) changeChestPage(-1); else changeCraftPage(-1); }
-                case "CRAFT_PAGE_NEXT" -> { if (chestOpen) changeChestPage(1); else changeCraftPage(1); }
+                case "CRAFT_PAGE_PREV" -> { if (chestOpen) changeChestPage(-1); else if (inventoryOpen) changeInventoryPage(-1); else changeCraftPage(-1); }
+                case "CRAFT_PAGE_NEXT" -> { if (chestOpen) changeChestPage(1); else if (inventoryOpen) changeInventoryPage(1); else changeCraftPage(1); }
                 case "EQUIP_HELMET" -> toggleArmor(ArmorSlot.HELMET);
                 case "EQUIP_CHEST" -> toggleArmor(ArmorSlot.CHESTPLATE);
                 case "EQUIP_LEGS" -> toggleArmor(ArmorSlot.LEGGINGS);
@@ -736,8 +737,8 @@ public final class BlockWorldGame extends SimpleApplication {
                     if (paused) stop();
                     else { statusMessage = "Нажми ESC, чтобы открыть меню паузы, затем F10 для выхода."; updateHud(); }
                 }
-                case "SLOT_1" -> { if (chestOpen) selectChestSlot(0); else  if (furnaceOpen) smeltInFurnace(0); else if (tradeOpen) tradeWithVillager(0); else if (craftingOpen && 1 <= craftingRecipes.size()) craftRecipe(0); else if (!craftingOpen && !achievementsOpen) selectSlot(0); }
-                case "SLOT_2" -> { if (chestOpen) selectChestSlot(1); else  if (furnaceOpen) smeltInFurnace(1); else if (tradeOpen) tradeWithVillager(1); else if (craftingOpen && 2 <= craftingRecipes.size()) craftRecipe(1); else if (!craftingOpen) selectSlot(1); }
+                case "SLOT_1" -> { if (chestOpen) selectChestSlot(0); else if (inventoryOpen) setInventoryPage(0); else if (furnaceOpen) smeltInFurnace(0); else if (tradeOpen) tradeWithVillager(0); else if (craftingOpen && 1 <= craftingRecipes.size()) craftRecipe(0); else if (!craftingOpen && !achievementsOpen) selectSlot(0); }
+                case "SLOT_2" -> { if (chestOpen) selectChestSlot(1); else if (inventoryOpen) setInventoryPage(1); else if (furnaceOpen) smeltInFurnace(1); else if (tradeOpen) tradeWithVillager(1); else if (craftingOpen && 2 <= craftingRecipes.size()) craftRecipe(1); else if (!craftingOpen) selectSlot(1); }
                 case "SLOT_3" -> { if (chestOpen) selectChestSlot(2); else  if (furnaceOpen) smeltInFurnace(2); else if (tradeOpen) tradeWithVillager(2); else if (craftingOpen && 3 <= craftingRecipes.size()) craftRecipe(2); else if (!craftingOpen) selectSlot(2); }
                 case "SLOT_4" -> { if (chestOpen) selectChestSlot(3); else  if (furnaceOpen) smeltInFurnace(3); else if (tradeOpen) tradeWithVillager(3); else if (craftingOpen && 4 <= craftingRecipes.size()) craftRecipe(3); else if (!craftingOpen) selectSlot(3); }
                 case "SLOT_5" -> { if (chestOpen) selectChestSlot(4); else  if (!tradeOpen && !achievementsOpen && !furnaceOpen && craftingOpen && 5 <= craftingRecipes.size()) craftRecipe(4); else if (!craftingOpen && !furnaceOpen && !tradeOpen && !achievementsOpen) selectSlot(4); }
@@ -2295,6 +2296,19 @@ public final class BlockWorldGame extends SimpleApplication {
         }
     }
 
+    private void changeInventoryPage(int delta) {
+        if (!inventoryOpen || delta == 0) return;
+        setInventoryPage(Math.floorMod(inventoryPage + Integer.signum(delta), 2));
+    }
+
+    private void setInventoryPage(int page) {
+        if (!inventoryOpen || page < 0 || page > 1 || inventoryPage == page) return;
+        inventoryPage = page;
+        updateInventoryUi();
+        statusMessage = inventoryPage == 0 ? "Инвентарь: ресурсы." : "Инвентарь: экипировка.";
+        updateHud();
+    }
+
     private void changeCraftPage(int delta) {
         if (!craftingOpen) return;
         int pageCount = Math.max(1, (craftingRecipes.size() + 8) / 9);
@@ -2306,16 +2320,14 @@ public final class BlockWorldGame extends SimpleApplication {
         if (chestOpen) return;
         if (!version.survival() || !worldReady) return;
         inventoryOpen = !inventoryOpen;
+        if (inventoryOpen) inventoryPage = 0;
         craftingOpen = false;
         furnaceOpen = false;
         tradeOpen = false;
         achievementsOpen = false;
         showInventoryOverlay(inventoryOpen);
         statusMessage = inventoryOpen
-                ? (release100Enabled ? "Инвентарь открыт. H/J/K/L — броня, T — инструмент, P — рыбалка, M — достижения."
-                    : agricultureEnabled ? "Инвентарь открыт. H/J/K/L — броня, T — инструмент, G — ферма, I — закрыть."
-                    : equipmentEnabled ? "Инвентарь открыт. H/J/K/L — экипировка, I — закрыть, C — крафт."
-                    : "Инвентарь открыт. I — закрыть, C — мастерская.")
+                ? "Инвентарь открыт: 1 — ресурсы, 2 — экипировка, ←/→ — вкладки, I — закрыть."
                 : "Инвентарь закрыт.";
         updateHud();
     }
@@ -2402,6 +2414,44 @@ public final class BlockWorldGame extends SimpleApplication {
                         .append(achievement.title()).append(" — ").append(achievement.description()).append("\n");
             }
             text.append("\nM — закрыть достижения.");
+        } else if (inventoryOpen) {
+            if (inventoryPage == 0) {
+                text.append("Minecraft 3D — ИНВЕНТАРЬ | РЕСУРСЫ  (1/2)\n\n");
+                text.append("Собранные блоки:\n");
+                boolean hasResources = false;
+                for (BlockType block : BlockType.values()) {
+                    int count = inventory.getOrDefault(block, 0);
+                    if (count > 0) {
+                        text.append("• ").append(block.displayName()).append(" × ").append(count).append("\n");
+                        hasResources = true;
+                    }
+                }
+                if (!hasResources) text.append("Пока нет собранных блоков. Исследуй мир и собирай ресурсы!\n");
+                text.append("\nПредметы и их количество показаны справа.");
+            } else {
+                text.append("Minecraft 3D — ИНВЕНТАРЬ | ЭКИПИРОВКА  (2/2)\n\n");
+                if (equipmentEnabled) {
+                    for (ArmorSlot slot : ArmorSlot.values()) {
+                        text.append("• ").append(slot.displayName()).append(": ")
+                                .append(equippedArmor.contains(slot) ? "надето" : "пусто")
+                                .append("  [").append(switch (slot) {
+                                    case HELMET -> "H";
+                                    case CHESTPLATE -> "J";
+                                    case LEGGINGS -> "K";
+                                    case BOOTS -> "L";
+                                }).append("]\n");
+                    }
+                    text.append("\nЗащита: ").append(armorDefense()).append("/8")
+                            .append("\nИнструмент: ")
+                            .append(selectedTool == null ? "нет" : selectedTool.item().displayName())
+                            .append("\nH/J/K/L — надеть или снять броню    T — сменить инструмент");
+                } else {
+                    text.append("Экипировка пока недоступна в этом профиле.");
+                }
+            }
+            text.append("\n\n1 — Ресурсы    2 — Экипировка    ←/→ — вкладки    I — закрыть");
+            if (release100Enabled) text.append("\nP — рыбалка    M — достижения");
+            if (agricultureEnabled) text.append("\nG — ферма и взаимодействие с печью");
         } else if (craftingOpen) {
             int pageCount = Math.max(1, (craftingRecipes.size() + 8) / 9);
             int start = craftingPage * 9;
@@ -2537,7 +2587,7 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void selectSlot(int index) {
-        if (index < 0 || index >= hotbar.size()) return;
+        if (inventoryOpen || index < 0 || index >= hotbar.size()) return;
         selectedBlock = hotbar.get(index);
         statusMessage = "Выбран блок: " + selectedBlock.displayName() + ".";
         updateHud();

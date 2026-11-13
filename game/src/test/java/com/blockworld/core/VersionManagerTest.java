@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionManagerTest {
     @Test
-    void includesAllProfilesAndDefaultsToRabbitAndWildlife() {
-        assertEquals(29, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.2", VersionManager.getDefaultVersion().id());
+    void includesAllProfilesAndDefaultsToInventoryTabs() {
+        assertEquals(30, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.3", VersionManager.getDefaultVersion().id());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());
@@ -21,6 +21,9 @@ class VersionManagerTest {
         assertTrue(VersionManager.find("1.9.1").survival());
         assertEquals("Classic Hotbar Controls", VersionManager.find("1.9.2").displayName());
         assertTrue(VersionManager.find("1.9.2").survival());
+        assertEquals("Inventory Tabs Update", VersionManager.find("1.9.3").displayName());
+        assertEquals(144, VersionManager.find("1.9.3").worldRadius());
+        assertTrue(VersionManager.find("1.9.3").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());

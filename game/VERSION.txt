@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.2
-Codename: Classic Hotbar Controls
+Version: 1.9.3
+Codename: Inventory Tabs Update
 Status: Feature Release

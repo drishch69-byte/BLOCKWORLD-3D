@@ -35,7 +35,8 @@ public final class VersionManager {
             new GameVersion("1.8.1", "Rabbit & Wildlife Update", "Кролики, новая модель и PNG-текстура, прыжковая анимация и природные места обитания", 144, true, true, true, true, true),
             new GameVersion("1.9.0", "Living World & Companions", "Команды следовать и оставаться для пса-компаньона с сохранением поведения", 144, true, true, true, true, true),
             new GameVersion("1.9.1", "World Creator & Seeds", "Выбор размера мира и seed при создании с сохранением параметров", 144, true, true, true, true, true),
-            new GameVersion("1.9.2", "Classic Hotbar Controls", "Переключение слотов панели быстрого доступа колёсиком мыши", 144, true, true, true, true, true)
+            new GameVersion("1.9.2", "Classic Hotbar Controls", "Переключение слотов панели быстрого доступа колёсиком мыши", 144, true, true, true, true, true),
+            new GameVersion("1.9.3", "Inventory Tabs Update", "Вкладки ресурсов и экипировки в инвентаре, переключение клавишами 1–2 и стрелками", 144, true, true, true, true, true)
     );
 
     private VersionManager() {
