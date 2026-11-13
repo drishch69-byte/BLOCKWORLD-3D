@@ -132,7 +132,6 @@ public final class VoxelWorld {
         return blocks.values().stream().filter(type::equals).count();
     }
     public List<WorldNavigation.Landmark> getLandmarks() { return landmarks; }
-    public boolean hasExtendedBiomes() { return extendedBiomes; }
 
     public BiomeType getBiomeAt(int x, int z) {
         if (!activeBiomes) return BiomeType.PLAINS;
