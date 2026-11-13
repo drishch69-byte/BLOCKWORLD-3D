@@ -7,7 +7,7 @@ MAVEN_OPTS="${MAVEN_OPTS:-} -XX:ErrorFile=.logs/hs_err_pid%p.log -XX:+HeapDumpOn
 export MAVEN_OPTS
 {
   echo "============================================================"
-  echo "CUBEVERSE 3D 1.9.1 - WORLD CREATOR AND SEEDS"
+  echo "CUBEVERSE 3D 1.9.2 - CLASSIC HOTBAR CONTROLS"
   date
   echo "Project: $PWD"
   echo "============================================================"

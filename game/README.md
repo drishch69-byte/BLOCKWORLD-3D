@@ -1,4 +1,11 @@
-# Minecraft 3D — World Creator & Seeds
+# Minecraft 3D — Classic Hotbar Controls
+
+## 1.9.2 — CLASSIC HOTBAR CONTROLS
+
+- Колёсико мыши переключает блоки на панели быстрого доступа по кругу.
+- Клавиши 1–9 по-прежнему выбирают слот напрямую.
+- Во время паузы и открытых меню переключение колёсиком приостанавливается.
+
 
 > Unofficial fan project; not affiliated with or endorsed by Mojang or Microsoft. Uses independently created code and assets only.
 

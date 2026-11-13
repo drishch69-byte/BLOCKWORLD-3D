@@ -628,6 +628,8 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addMapping("SLOT_7", new KeyTrigger(KeyInput.KEY_7));
         inputManager.addMapping("SLOT_8", new KeyTrigger(KeyInput.KEY_8));
         inputManager.addMapping("SLOT_9", new KeyTrigger(KeyInput.KEY_9));
+        inputManager.addMapping("HOTBAR_SCROLL_UP", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, true));
+        inputManager.addMapping("HOTBAR_SCROLL_DOWN", new MouseAxisTrigger(MouseInput.AXIS_WHEEL, false));
         inputManager.addMapping("TOGGLE_PAUSE", new KeyTrigger(KeyInput.KEY_ESCAPE));
         inputManager.addMapping("EXIT_GAME", new KeyTrigger(KeyInput.KEY_F10));
         inputManager.addMapping(EAT, new KeyTrigger(KeyInput.KEY_E));
@@ -746,6 +748,13 @@ public final class BlockWorldGame extends SimpleApplication {
                 default -> { }
             }
         };
+        AnalogListener hotbarWheel = (name, value, tpf) -> {
+            if (paused || !worldReady || craftingOpen || inventoryOpen || chestOpen || furnaceOpen || tradeOpen) return;
+            if (name.equals("HOTBAR_SCROLL_UP")) cycleHotbar(-1);
+            else if (name.equals("HOTBAR_SCROLL_DOWN")) cycleHotbar(1);
+        };
+        inputManager.addListener(hotbarWheel, "HOTBAR_SCROLL_UP", "HOTBAR_SCROLL_DOWN");
+
         inputManager.addListener(actions, BREAK, PLACE, SAVE, EAT, "EXIT_GAME", "TOGGLE_PAUSE",
                 "SLOT_1", "SLOT_2", "SLOT_3", "SLOT_4", "SLOT_5",
                 "SLOT_6", "SLOT_7", "SLOT_8", "SLOT_9", "RENDER_DISTANCE", "TOGGLE_CULLING", "WEATHER", TALK,
@@ -2534,6 +2543,14 @@ public final class BlockWorldGame extends SimpleApplication {
         updateHud();
     }
 
+    /** Scroll-wheel selection for the quick-access hotbar. */
+    private void cycleHotbar(int direction) {
+        if (hotbar == null || hotbar.isEmpty() || direction == 0) return;
+        int current = hotbar.indexOf(selectedBlock);
+        if (current < 0) current = 0;
+        selectSlot(Math.floorMod(current + Integer.signum(direction), hotbar.size()));
+    }
+
     private void saveWorld() {
         if (!worldReady) {
             statusMessage = "Подожди завершения загрузки мира.";
@@ -2569,12 +2586,12 @@ public final class BlockWorldGame extends SimpleApplication {
         String controls = version.survival()
                 ? "WASD — ходьба    Мышь — обзор    F5 — камера    V — образ игрока    ПРОБЕЛ — прыжок    E — еда    "
                     + (equipmentEnabled ? "T — инструмент    " : "")
-                    + "I — инвентарь    C — крафт    F — печь/общение"
+                    + "Колесо мыши — выбор слота    I — инвентарь    C — крафт    F — печь/общение"
                     + (agricultureEnabled ? "    G — ферма/печь" : "")
                     + (release100Enabled ? "    P — рыбалка    M — достижения" : "")
                     + (explorationEnabled ? "    B — карта/компас" : "")
                     + (petsEnabled ? "    N — команда псу" : "") + "    ESC — пауза"
-                : "WASD — движение    Мышь — обзор    F — общение/контакт"
+                : "WASD — движение    Мышь — обзор    Колесо мыши — выбор слота    F — общение/контакт"
                     + (explorationEnabled ? "    B — карта/компас" : "")
                     + (petsEnabled ? "    N — команда псу" : "") + "    ESC — пауза";
         String needs = version.survival()

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.2 — Classic Hotbar Controls
+- Added mouse-wheel cycling through quick-access block slots, wrapping around at either end.
+- Kept number keys 1–9 as direct slot shortcuts.
+- Disabled wheel switching while paused or while inventory, crafting, chest, furnace, or trading interfaces are open.
+
 ## 1.9.1 — World Creator & Seeds
 - Added a world-creation dialog with a world name, three map sizes, and an optional numeric seed.
 - Added small, normal, and large generation radii; the selected size is used by terrain, structures, and map landmarks.
