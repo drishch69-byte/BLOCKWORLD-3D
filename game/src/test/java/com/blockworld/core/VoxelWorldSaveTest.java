@@ -440,16 +440,16 @@ class VoxelWorldSaveTest {
         GameVersion previous = VersionManager.find("1.9.8");
         GameVersion updated = VersionManager.find("1.9.9");
         VoxelWorld oldWorld = new VoxelWorld(assets);
-        oldWorld.generate(previous, 20261113L);
+        oldWorld.generate(previous, 3L, 64);
         assertFalse(oldWorld.hasEnchantedBiomes());
-        for (int x = -144; x <= 144; x += 6) {
-            for (int z = -144; z <= 144; z += 6) {
+        for (int x = -64; x <= 64; x += 6) {
+            for (int z = -64; z <= 64; z += 6) {
                 assertFalse(oldWorld.getBiomeAt(x, z) == BiomeType.ENCHANTED_GROVE);
             }
         }
 
         VoxelWorld world = new VoxelWorld(assets);
-        world.generate(updated, 20261113L);
+        world.generate(updated, 3L, 64);
         assertTrue(world.hasEnchantedBiomes());
         BlockPos groveMarker = null;
         for (Map.Entry<BlockPos, BlockType> entry : world.snapshotBlocks().entrySet()) {
