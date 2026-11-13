@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.6",
+  "defaultVersion": "1.9.7",
   "versions": [
     {
       "id": "0.1.0",
@@ -164,6 +164,11 @@
     {
       "id": "1.9.6",
       "name": "Cave Biomes & Glowflora",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.7",
+      "name": "Crystal Guardians & Hidden Treasures",
       "status": "current"
     }
   ]

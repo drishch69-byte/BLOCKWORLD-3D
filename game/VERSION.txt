@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.6
-Codename: Cave Biomes & Glowflora
+Version: 1.9.7
+Codename: Crystal Guardians & Hidden Treasures
 Status: Feature Release

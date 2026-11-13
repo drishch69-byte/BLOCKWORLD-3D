@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.6 — Cave Biomes & Glowflora.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.7 — Crystal Guardians & Hidden Treasures.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,14 +10,19 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.6 — Cave Biomes & Glowflora**
+**1.9.7 — Crystal Guardians & Hidden Treasures**
 
-- Added three deterministic underground biomes: **Crystal Grotto**, **Moss Cavern**, and **Underground Lake**.
-- Crystal grottos contain bright glowing crystals; moss caverns grow cave moss and blocky cave ferns.
-- Underground lake rooms add water pools; the HUD shows the cave-biome name while exploring below ground.
-- Added original 16×16 textures for glowing crystals, cave moss, and cave ferns.
-- Cave-biome generation is exclusive to newly created 1.9.6 worlds. Older worlds retain their existing blocks and biome settings.
-- Added optional caveBiomes save metadata while keeping world save format 2.
+- Added glowing **crystal trees** to Crystal Grotto rooms, built from luminous blocks, amethyst and cave fronds.
+- Added a distinct **Crystal Cache** block with original 16×16 pixel art and a special deterministic reward table.
+- Added the **Crystal Sentinel**, a large crystal-armored cave boss with its own blocky model, health and attack behaviour.
+- The boss is placed on a small stone arena inside a crystal grotto; its nearby cache can be opened for emeralds, metal ingots and cooked fish.
+- New structures and the boss appear only in new 1.9.7 worlds. Older 1.9.6 cave layouts and ordinary chest loot remain unchanged.
+- Kept world save format 2 and appended stable block and creature IDs.
+
+**Previous: 1.9.6 — Cave Biomes & Glowflora**
+
+- Added Crystal Grotto, Moss Cavern and Underground Lake biomes with their own plants and luminous crystal blocks.
+- Added cave-biome labels to the HUD and optional caveBiomes metadata while preserving world format 2.
 
 **Previous: 1.9.5 — Crystal Caverns & Gem Veins**
 
@@ -90,7 +95,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.9.6)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.7)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

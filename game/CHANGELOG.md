@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.7 — Crystal Guardians & Hidden Treasures
+- Added small crystal trees to Crystal Grotto rooms, with glowing trunks, amethyst cores and fern-like crowns.
+- Added the distinct **Crystal Cache** block with an original 16×16 texture and a deterministic emerald/ingot/food reward table.
+- Added the **Crystal Sentinel**, a larger crystal-armored cave boss with 70 health, a dedicated blocky model, hostile movement and a persistent world-creature record.
+- Added cave-floor navigation for the Sentinel so it can move on underground arena floors instead of checking surface terrain.
+- Added shared-multiplayer chest support for Crystal Caches; ordinary treasure chest generation and loot remain unchanged.
+- Gated crystal trees, caches and the boss to newly generated 1.9.7 worlds; world save format remains 2.
+- Added tests for boss generation and persistence, cave movement floor lookup, cache loot, stable texture slots and asset files.
+
 ## 1.9.6 — Cave Biomes & Glowflora
 - Added deterministic underground biome sampling for **Crystal Grotto**, **Moss Cavern**, and **Underground Lake**.
 - Crystal grottos contain bright luminous crystal blocks; moss caverns add cave moss and fern clusters; underground lakes carve larger rooms and add water pools.

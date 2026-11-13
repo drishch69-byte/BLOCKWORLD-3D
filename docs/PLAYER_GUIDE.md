@@ -2,6 +2,13 @@
 
 This is a quick reference for the current gameplay systems. Some actions depend on having the required item and selecting a compatible version profile.
 
+## Crystal Guardians & Hidden Treasures (1.9.7)
+
+- Look for a **Crystal Grotto** in newly created 1.9.7 worlds; some grottos contain a crystal tree, a stone arena and a **Crystal Cache**.
+- The **Crystal Sentinel** guards the arena. Aim at it and hold the left mouse button to attack; its remaining health is shown in the combat message.
+- Open the Crystal Cache with **F** while aiming at it. It gives a fixed, seed-based bundle of emeralds, metal ingots and cooked fish.
+- The sentinel and new structures are not inserted into existing 1.9.6 saves.
+
 ## Cave Biomes & Glowflora (1.9.6)
 
 - Explore **Crystal Grotto** rooms for luminous crystals and amethyst-lined walls.
