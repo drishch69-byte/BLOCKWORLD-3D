@@ -25,4 +25,21 @@ class NatureDecorationManagerTest {
         assertTrue(manager.getNode().getChildren().size() <= 1,
                 "Plants should share a single batched geometry");
     }
+
+    @Test
+    void vegetationDensityCanDisablePlantsForPerformance() {
+        VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
+        for (int x = -5; x <= 5; x++) {
+            for (int z = -5; z <= 5; z++) {
+                world.addBlock(new BlockPos(x, 0, z), BlockType.GRASS);
+            }
+        }
+
+        NatureDecorationManager manager = new NatureDecorationManager(new DesktopAssetManager(true));
+        manager.setDensity(0);
+        manager.rebuild(world);
+
+        assertTrue(manager.size() == 0);
+        assertTrue(manager.getNode().getChildren().isEmpty());
+    }
 }

@@ -34,6 +34,24 @@ class BiomeGeneratorTest {
         assertNotEquals(BiomeType.SWAMP, legacyBiome);
     }
 
+    @Test void cachedBiomeOverloadKeepsMountainHeightIdentical() {
+        boolean testedMountain = false;
+        for (long seed = 1; seed <= 5 && !testedMountain; seed++) {
+            for (int x = -160; x <= 160 && !testedMountain; x += 4) {
+                for (int z = -160; z <= 160; z += 4) {
+                    BiomeType biome = BiomeGenerator.biomeAtV110(seed, x, z);
+                    if (biome == BiomeType.MOUNTAINS) {
+                        assertEquals(BiomeGenerator.mountainHeightBonus(seed, x, z),
+                                BiomeGenerator.mountainHeightBonus(seed, x, z, biome));
+                        testedMountain = true;
+                        break;
+                    }
+                }
+            }
+        }
+        assertTrue(testedMountain, "Expected a sampled mountain column");
+    }
+
     @Test void mountainsAddHeightOnlyInMountainBiome() {
         boolean testedMountain = false;
         for (int x = -160; x <= 160 && !testedMountain; x += 4) {

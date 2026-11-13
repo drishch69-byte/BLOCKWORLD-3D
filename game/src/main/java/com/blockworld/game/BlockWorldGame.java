@@ -319,6 +319,7 @@ public final class BlockWorldGame extends SimpleApplication {
         world = new VoxelWorld(assetManager, palette, textureAtlas);
         creatureManager = new CreatureManager(assetManager);
         natureDecorations = new NatureDecorationManager(assetManager);
+        natureDecorations.setDensity(gameSettings.vegetationDensity());
         playerAvatar = new PlayerAvatar(assetManager);
         if (release100Enabled) {
             gameSounds = new GameSounds(assetManager, rootNode);
@@ -731,7 +732,8 @@ public final class BlockWorldGame extends SimpleApplication {
             }
             // Build only a few chunk meshes per frame to avoid long freezes on modest PCs.
             try {
-                world.updateStreaming(cam.getLocation(), worldReady ? 2 : 5);
+                int chunkBudget = gameSettings.chunkBuildsPerFrame();
+                world.updateStreaming(cam.getLocation(), worldReady ? chunkBudget : chunkBudget + 2);
             } catch (RuntimeException ex) {
                 statusMessage = "Ошибка меша чанка: " + ex.getClass().getSimpleName()
                         + " — " + (ex.getMessage() == null ? "без описания" : ex.getMessage());
@@ -1522,7 +1524,8 @@ public final class BlockWorldGame extends SimpleApplication {
         world.setRenderDistanceChunks(distance);
         try {
             GameSettings.save(new GameSettings(gameSettings.width(), gameSettings.height(), gameSettings.fullscreen(),
-                    gameSettings.vsync(), distance, gameSettings.fov()));
+                    gameSettings.vsync(), distance, gameSettings.fov(),
+                    gameSettings.vegetationDensity(), gameSettings.chunkBuildsPerFrame()));
         } catch (IOException ex) { GameLog.error("Не удалось сохранить дальность прорисовки", ex); }
         statusMessage = "Дальность прорисовки: " + distance + " чанков. Для слабого ПК выбери 3.";
         updateHud();

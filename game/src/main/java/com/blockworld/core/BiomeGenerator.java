@@ -30,7 +30,12 @@ public final class BiomeGenerator {
     }
 
     public static int mountainHeightBonus(long seed, int x, int z) {
-        if (biomeAt(seed, x, z) != BiomeType.MOUNTAINS) return 0;
+        return mountainHeightBonus(seed, x, z, biomeAt(seed, x, z));
+    }
+
+    /** Uses a biome already sampled for this column, avoiding another full noise lookup. */
+    public static int mountainHeightBonus(long seed, int x, int z, BiomeType biome) {
+        if (biome != BiomeType.MOUNTAINS) return 0;
         double elevation = valueNoise(seed, x, z, 43, 0xBADC0DEL);
         return 2 + (int) Math.round((elevation - 0.73) * 18.0);
     }

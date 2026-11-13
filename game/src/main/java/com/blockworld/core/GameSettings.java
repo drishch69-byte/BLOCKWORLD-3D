@@ -9,13 +9,21 @@ import java.util.Properties;
 
 /** Persistent video/game settings. Defaults are deliberately modest for low-end PCs. */
 public record GameSettings(int width, int height, boolean fullscreen, boolean vsync,
-                           int renderDistance, int fov) {
-    public static final GameSettings DEFAULT = new GameSettings(1024, 640, false, false, 3, 68);
+                           int renderDistance, int fov, int vegetationDensity, int chunkBuildsPerFrame) {
+    public static final GameSettings DEFAULT = new GameSettings(1024, 640, false, false, 3, 68, 2, 2);
+
+    /** Keeps settings files and callers from older builds source-compatible. */
+    public GameSettings(int width, int height, boolean fullscreen, boolean vsync,
+                        int renderDistance, int fov) {
+        this(width, height, fullscreen, vsync, renderDistance, fov, 2, 2);
+    }
 
     public GameSettings {
         if (!allowedResolution(width, height)) { width = 1024; height = 640; }
         if (renderDistance != 3 && renderDistance != 4 && renderDistance != 6 && renderDistance != 8) renderDistance = 3;
         fov = Math.max(55, Math.min(100, fov));
+        if (vegetationDensity < 0 || vegetationDensity > 3) vegetationDensity = DEFAULT.vegetationDensity;
+        if (chunkBuildsPerFrame < 1 || chunkBuildsPerFrame > 6) chunkBuildsPerFrame = DEFAULT.chunkBuildsPerFrame;
     }
 
     private static boolean allowedResolution(int width, int height) {
@@ -32,7 +40,9 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
             return new GameSettings(integer(p, "width", DEFAULT.width), integer(p, "height", DEFAULT.height),
                     Boolean.parseBoolean(p.getProperty("fullscreen", "false")),
                     Boolean.parseBoolean(p.getProperty("vsync", "false")),
-                    integer(p, "renderDistance", DEFAULT.renderDistance), integer(p, "fov", DEFAULT.fov));
+                    integer(p, "renderDistance", DEFAULT.renderDistance), integer(p, "fov", DEFAULT.fov),
+                    integer(p, "vegetationDensity", DEFAULT.vegetationDensity),
+                    integer(p, "chunkBuildsPerFrame", DEFAULT.chunkBuildsPerFrame));
         } catch (IOException | RuntimeException ex) {
             GameLog.error("Не удалось прочитать настройки; использованы значения по умолчанию", ex);
             return DEFAULT;
@@ -49,6 +59,8 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         p.setProperty("vsync", Boolean.toString(settings.vsync));
         p.setProperty("renderDistance", Integer.toString(settings.renderDistance));
         p.setProperty("fov", Integer.toString(settings.fov));
+        p.setProperty("vegetationDensity", Integer.toString(settings.vegetationDensity));
+        p.setProperty("chunkBuildsPerFrame", Integer.toString(settings.chunkBuildsPerFrame));
         try (OutputStream out = Files.newOutputStream(file)) { p.store(out, "BLOCKWORLD 3D settings"); }
     }
 

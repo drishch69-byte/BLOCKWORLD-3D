@@ -899,8 +899,12 @@ public final class VoxelWorld {
     }
 
     private int terrainHeightFor(int x, int z) {
+        return terrainHeightFor(x, z, getBiomeAt(x, z));
+    }
+
+    private int terrainHeightFor(int x, int z, BiomeType biome) {
         int base = terrainHeight(x, z);
-        return activeBiomes ? base + BiomeGenerator.mountainHeightBonus(seed, x, z) : base;
+        return activeBiomes ? base + BiomeGenerator.mountainHeightBonus(seed, x, z, biome) : base;
     }
 
     private int terrainHeight(int x, int z) {

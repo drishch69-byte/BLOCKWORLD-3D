@@ -376,7 +376,7 @@ public final class Launcher {
         GameSettings current = GameSettings.load();
         JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Настройки", true);
         dialog.setLayout(new BorderLayout(10, 10));
-        JPanel form = new JPanel(new GridLayout(5, 2, 10, 10));
+        JPanel form = new JPanel(new GridLayout(7, 2, 10, 10));
         form.setBorder(BorderFactory.createEmptyBorder(18, 18, 10, 18));
         JComboBox<String> resolution = new JComboBox<>(new String[]{"1024x640", "1280x720", "1600x900", "1920x1080"});
         resolution.setSelectedItem(current.width() + "x" + current.height());
@@ -385,11 +385,18 @@ public final class Launcher {
         JComboBox<Integer> distance = new JComboBox<>(new Integer[]{3, 4, 6, 8});
         distance.setSelectedItem(current.renderDistance());
         JSpinner fov = new JSpinner(new SpinnerNumberModel(current.fov(), 55, 100, 1));
+        JComboBox<String> vegetation = new JComboBox<>(new String[]{"Выкл.", "Мало", "Обычно", "Много"});
+        vegetation.setSelectedIndex(current.vegetationDensity());
+        JComboBox<Integer> chunkBudget = new JComboBox<>(new Integer[]{1, 2, 3, 4, 6});
+        chunkBudget.setSelectedItem(current.chunkBuildsPerFrame());
+        chunkBudget.setToolTipText("Больше чанков за кадр ускоряет подгрузку, но сильнее нагружает процессор.");
         form.add(new JLabel("Разрешение:")); form.add(resolution);
         form.add(new JLabel("Дальность чанков:")); form.add(distance);
         form.add(new JLabel("Поле зрения (FOV):")); form.add(fov);
         form.add(new JLabel("Экран:")); form.add(fullscreen);
         form.add(new JLabel("Синхронизация:")); form.add(vsync);
+        form.add(new JLabel("Растительность:")); form.add(vegetation);
+        form.add(new JLabel("Чанков за кадр:")); form.add(chunkBudget);
         dialog.add(form, BorderLayout.CENTER);
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton reset = new JButton("ПО УМОЛЧАНИЮ");
@@ -398,12 +405,14 @@ public final class Launcher {
         reset.addActionListener(e -> {
             resolution.setSelectedItem("1024x640"); distance.setSelectedItem(3);
             fov.setValue(68); fullscreen.setSelected(false); vsync.setSelected(false);
+            vegetation.setSelectedIndex(2); chunkBudget.setSelectedItem(2);
         });
         save.addActionListener(e -> {
             String[] parts = String.valueOf(resolution.getSelectedItem()).split("x");
             try {
                 GameSettings settings = new GameSettings(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]),
-                        fullscreen.isSelected(), vsync.isSelected(), (Integer) distance.getSelectedItem(), (Integer) fov.getValue());
+                        fullscreen.isSelected(), vsync.isSelected(), (Integer) distance.getSelectedItem(),
+                        (Integer) fov.getValue(), vegetation.getSelectedIndex(), (Integer) chunkBudget.getSelectedItem());
                 GameSettings.save(settings);
                 status.setText("Настройки сохранены. Разрешение и экран применятся при следующем запуске.");
                 dialog.dispose();
@@ -414,7 +423,7 @@ public final class Launcher {
         cancel.addActionListener(e -> dialog.dispose());
         actions.add(reset); actions.add(save); actions.add(cancel);
         dialog.add(actions, BorderLayout.SOUTH);
-        dialog.pack(); dialog.setMinimumSize(new Dimension(540, 300)); dialog.setLocationRelativeTo(frame); dialog.setVisible(true);
+        dialog.pack(); dialog.setMinimumSize(new Dimension(560, 360)); dialog.setLocationRelativeTo(frame); dialog.setVisible(true);
     }
 
     private void showModsDialog() {

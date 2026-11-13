@@ -22,6 +22,7 @@ public final class NatureDecorationManager {
     private static final int MAX_DECORATIONS = 1200;
     private final Node node = new Node("MeadowDecorations");
     private final Material material;
+    private int density = 2;
     private int decorations;
 
     public NatureDecorationManager(AssetManager assets) {
@@ -34,14 +35,30 @@ public final class NatureDecorationManager {
     public Node getNode() { return node; }
     public int size() { return decorations; }
 
+    /** 0=off, 1=low, 2=normal, 3=high. Takes effect on the next rebuild. */
+    public void setDensity(int density) {
+        this.density = Math.max(0, Math.min(3, density));
+    }
+
     public void rebuild(VoxelWorld world) {
         node.detachAllChildren();
         decorations = 0;
-        if (world == null) return;
+        if (world == null || density == 0) return;
 
+        int flowerThreshold = switch (density) {
+            case 1 -> 3;
+            case 3 -> 14;
+            default -> 9;
+        };
+        int grassThreshold = switch (density) {
+            case 1 -> 10;
+            case 3 -> 45;
+            default -> 29;
+        };
+        int decorationLimit = density == 3 ? MAX_DECORATIONS + 600 : MAX_DECORATIONS;
         MeshBuilder mesh = new MeshBuilder();
         world.forEachBlock((ground, type) -> {
-            if (decorations >= MAX_DECORATIONS || type != BlockType.GRASS) return;
+            if (decorations >= decorationLimit || type != BlockType.GRASS) return;
             if (world.contains(ground.add(0, 1, 0))) return;
 
             long hash = mix(world.getSeed(), ground.x(), ground.z());
@@ -49,12 +66,12 @@ public final class NatureDecorationManager {
             float x = ground.x() + .5f;
             float y = ground.y() + 1.01f;
             float z = ground.z() + .5f;
-            if (sample < 9) {
+            if (sample < flowerThreshold) {
                 addFlower(mesh, x, y, z,
                         FloraCatalog.flowerAt(world.getSeed(), ground.x(), ground.z(),
                                 world.getBiomeAt(ground.x(), ground.z())));
                 decorations++;
-            } else if (sample < 29) {
+            } else if (sample < grassThreshold) {
                 FloraCatalog.Grass grass = FloraCatalog.grassAt(world.getSeed(), ground.x(), ground.z());
                 if (grass == FloraCatalog.Grass.FERN) addFern(mesh, x, y, z);
                 else addGrass(mesh, x, y, z, grass == FloraCatalog.Grass.TALL_GRASS);
