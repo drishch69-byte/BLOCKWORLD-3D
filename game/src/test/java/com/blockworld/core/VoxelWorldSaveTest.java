@@ -58,7 +58,7 @@ class VoxelWorldSaveTest {
         assertEquals(source.getBlockCount(), restored.getBlockCount());
 
         Path legacy = tempDir.resolve("legacy-no-radius.bwworld");
-        Files.writeString(legacy, "BLOCKWORLD_WORLD\\nformat=2\\ngameVersion=0.3.0\\nseed=7\\n--blocks--\\n0,0,0,grass\\n");
+        Files.writeString(legacy, "BLOCKWORLD_WORLD\nformat=2\ngameVersion=0.3.0\nseed=7\n--blocks--\n0,0,0,grass\n");
         VoxelWorld legacyWorld = new VoxelWorld(assets);
         legacyWorld.load(legacy);
         assertEquals(version.worldRadius(), legacyWorld.getWorldRadius());

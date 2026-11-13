@@ -205,8 +205,8 @@ public final class Launcher {
                 "0.8.5 Inventory & Crafting — инвентарь (I), мастерская (C), рецепты досок, палок, верстака и факелов.\n" +
                 "0.9.0 Tools & Equipment — кирки с уровнями добычи, лопата, четыре слота брони; T — выбрать инструмент, H/J/K/L — надеть или снять броню в инвентаре.\n" +
                 "1.0.0 Trading, Fishing & Achievements — торговля с жителями, рыбалка, медная и изумрудная руда, достижения и звуковые эффекты. F — открыть торговлю рядом с жителем, P — ловить рыбу при наведении на воду, M — достижения.\n" +
-                "1.9.1 World Creator & Seeds — размер мира и seed на экране создания нового мира.\\n" +
-                "1.9.0 Living World & Companions — команды следовать и оставаться для пса-компаньона.\\n" +
+                "1.9.1 World Creator & Seeds — размер мира и seed на экране создания нового мира.\n" +
+                "1.9.0 Living World & Companions — команды следовать и оставаться для пса-компаньона.\n" +
                 "1.8.1 Rabbit & Wildlife — кролики, новая модель и PNG-текстура, прыжковая анимация и появление на равнинах, в лесах, тайге и снежной тундре.\n\n" +
                 "ВАЖНО: список миров не зависит от выбранной версии. Один и тот же файл мира\n" +
                 "можно открыть в любом установленном профиле CUBEVERSE. Перед новым миром\n" +
@@ -651,7 +651,7 @@ public final class Launcher {
         WorldCreationOptions options = new WorldCreationOptions(seed, selectedSize);
         try {
             Path file = WorldCatalog.pathForName(name);
-            String safeName = file.getFileName().toString().replaceFirst("(?i)\\\\.bwworld$", "");
+            String safeName = file.getFileName().toString().replaceFirst("(?i)\\.bwworld$", "");
             if (Files.exists(file)) {
                 int answer = JOptionPane.showConfirmDialog(frame,
                         "Мир «" + safeName + "» уже существует. Создать резервную копию и заменить его новым?",
@@ -661,7 +661,7 @@ public final class Launcher {
             }
             launchGame(file, safeName, true, options);
         } catch (IOException ex) {
-            JOptionPane.showMessageDialog(frame, "Не удалось подготовить мир:\\n" + ex.getMessage(),
+            JOptionPane.showMessageDialog(frame, "Не удалось подготовить мир:\n" + ex.getMessage(),
                     "Ошибка", JOptionPane.ERROR_MESSAGE);
         }
     }
