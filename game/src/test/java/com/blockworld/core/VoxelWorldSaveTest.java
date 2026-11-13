@@ -463,7 +463,6 @@ class VoxelWorldSaveTest {
         Path file = tempDir.resolve("version-199-enchanted-grove.bwworld");
         world.save(file, updated);
         assertTrue(Files.readString(file).contains("enchantedBiomes=true"));
-        world.clear();
         VoxelWorld restored = new VoxelWorld(assets);
         assertEquals(updated.id(), restored.load(file));
         assertTrue(restored.hasEnchantedBiomes());
