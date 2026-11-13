@@ -35,14 +35,6 @@ public final class TreasureLoot {
         Random random = new Random(mixedSeed);
         EnumMap<ItemType, Integer> loot = new EnumMap<>(ItemType.class);
 
-        if (chest.y() <= -3) {
-            loot.put(ItemType.EMERALD, 1 + random.nextInt(3));
-            if (random.nextBoolean()) loot.put(ItemType.IRON_INGOT, 3 + random.nextInt(3));
-            else loot.put(ItemType.COPPER_INGOT, 3 + random.nextInt(4));
-            if (random.nextInt(3) == 0) loot.put(ItemType.COOKED_FISH, 1);
-            return Collections.unmodifiableMap(loot);
-        }
-
         int roll = random.nextInt(100);
         if (roll < 12) {
             loot.put(ItemType.EMERALD, 1 + random.nextInt(2));
