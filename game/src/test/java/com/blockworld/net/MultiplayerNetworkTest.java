@@ -43,4 +43,27 @@ class MultiplayerNetworkTest {
             assertTrue(error.getMessage().contains("Неверный пароль"));
         }
     }
+    @Test void serverRejectsClientsAboveConfiguredLimit() throws Exception {
+        try (MultiplayerServer server = new MultiplayerServer("", 1);
+             MultiplayerClient first = new MultiplayerClient();
+             MultiplayerClient second = new MultiplayerClient()) {
+            int port = server.start(0);
+            CountDownLatch firstJoined = new CountDownLatch(1);
+            first.connect("127.0.0.1", port, "", "First",
+                    message -> { if (message.contains("First подключился")) firstJoined.countDown(); });
+            assertTrue(firstJoined.await(3, TimeUnit.SECONDS));
+            IOException error = assertThrows(IOException.class,
+                    () -> second.connect("127.0.0.1", port, "", "Second", ignored -> { }));
+            assertTrue(error.getMessage().contains("Сервер заполнен"));
+            assertEquals(1, server.playerCount());
+        }
+    }
+
+    @Test void failedConnectionClosesClientSocket() {
+        MultiplayerClient client = new MultiplayerClient();
+        assertThrows(IOException.class,
+                () -> client.connect("127.0.0.1", 1, "", "Offline", ignored -> { }));
+        assertFalse(client.isConnected());
+    }
 }
+

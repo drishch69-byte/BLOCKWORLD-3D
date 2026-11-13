@@ -484,18 +484,22 @@ public final class Launcher {
         form.add(new JLabel("Игроков (1–32):")); form.add(limit);
         form.add(new JLabel("Пароль (необязательно):")); form.add(password);
         if (JOptionPane.showConfirmDialog(frame, form, "Создать LAN-сервер", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
+
         MultiplayerServer server = null;
         MultiplayerClient client = null;
         try {
-            server = new MultiplayerServer(new String(password.getPassword()), Integer.parseInt(limit.getText().trim()));
+            String secret = new String(password.getPassword());
+            server = new MultiplayerServer(secret, Integer.parseInt(limit.getText().trim()));
             int actualPort = server.start(Integer.parseInt(port.getText().trim()));
             client = new MultiplayerClient();
-            showMultiplayerLobby("Сервер запущен. Порт: " + actualPort + ". Друзьям в одной Wi-Fi сети нужен локальный IP компьютера.",
-                    client, server, "Host", new String(password.getPassword()), "127.0.0.1", actualPort);
+            showMultiplayerLobby("LAN-сервер запущен. Порт: " + actualPort
+                    + ". Игроки должны использовать адрес этого компьютера в своей сети.",
+                    client, server, "Host", secret, "127.0.0.1", actualPort);
         } catch (Exception error) {
             if (client != null) client.close();
             if (server != null) server.close();
-            JOptionPane.showMessageDialog(frame, "Не удалось создать сервер: " + error.getMessage(), "Сетевая игра", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(frame, "Не удалось создать сервер: " + error.getMessage(),
+                    "Сетевая игра", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -510,45 +514,98 @@ public final class Launcher {
         form.add(new JLabel("Никнейм:")); form.add(nickname);
         form.add(new JLabel("Пароль:")); form.add(password);
         if (JOptionPane.showConfirmDialog(frame, form, "Подключиться к серверу", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
-        showMultiplayerLobby("Подключение к " + host.getText() + ":" + port.getText(),
-                new MultiplayerClient(), null, nickname.getText(), new String(password.getPassword()), host.getText(),
-                Integer.parseInt(port.getText().trim()));
+
+        try {
+            String address = host.getText().trim();
+            int portNumber = Integer.parseInt(port.getText().trim());
+            if (address.isBlank()) throw new IllegalArgumentException("Укажи адрес сервера");
+            if (portNumber < 1 || portNumber > 65535) throw new IllegalArgumentException("Порт должен быть от 1 до 65535");
+            String playerName = nickname.getText().trim();
+            if (playerName.isBlank()) playerName = "Player";
+            showMultiplayerLobby("Подключение к " + address + ":" + portNumber,
+                    new MultiplayerClient(), null, playerName, new String(password.getPassword()), address, portNumber);
+        } catch (IllegalArgumentException error) {
+            JOptionPane.showMessageDialog(frame, "Проверь адрес и порт: " + error.getMessage(),
+                    "Неверные данные сервера", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     private void showMultiplayerLobby(String infoText, MultiplayerClient client, MultiplayerServer server,
                                       String nickname, String password, String host, int port) {
         JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Сетевая комната", false);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setLayout(new BorderLayout(8, 8));
-        JLabel info = new JLabel("<html>" + infoText + "<br>Предварительная версия: чат работает, игровой мир пока не синхронизируется.</html>");
+        JLabel info = new JLabel(infoText + " | Подключение...");
         info.setBorder(BorderFactory.createEmptyBorder(10, 10, 4, 10));
-        JTextArea chat = new JTextArea(); chat.setEditable(false); chat.setLineWrap(true);
-        JTextField message = new JTextField(); JButton send = new JButton("ОТПРАВИТЬ");
-        Runnable connect = () -> {
+        JTextArea chat = new JTextArea();
+        chat.setEditable(false);
+        chat.setLineWrap(true);
+        chat.setWrapStyleWord(true);
+        JTextField message = new JTextField();
+        JButton send = new JButton("ОТПРАВИТЬ");
+        send.setEnabled(false);
+
+        Runnable sendMessage = () -> {
             try {
-                client.connect(host, port, password, nickname, line -> SwingUtilities.invokeLater(() -> {
-                    chat.append(line + "\\n"); chat.setCaretPosition(chat.getDocument().getLength());
-                }));
-                info.setText("<html>Подключено к " + host + ":" + port + "<br>Чат доступен. Мир пока не синхронизируется.</html>");
-            } catch (Exception error) {
-                chat.append("Ошибка подключения: " + error.getMessage() + "\\n");
-                JOptionPane.showMessageDialog(dialog, error.getMessage(), "Сетевая игра", JOptionPane.ERROR_MESSAGE);
+                client.sendChat(message.getText());
+                message.setText("");
+            } catch (IOException error) {
+                chat.append("Не отправлено: " + error.getMessage() + System.lineSeparator());
+                send.setEnabled(client.isConnected());
             }
         };
-        connect.run();
-        Runnable sendMessage = () -> {
-            try { client.sendChat(message.getText()); message.setText(""); }
-            catch (IOException error) { JOptionPane.showMessageDialog(dialog, error.getMessage(), "Чат", JOptionPane.ERROR_MESSAGE); }
-        };
-        send.addActionListener(e -> sendMessage.run()); message.addActionListener(e -> sendMessage.run());
-        JPanel bottom = new JPanel(new BorderLayout(6, 6)); bottom.add(message, BorderLayout.CENTER); bottom.add(send, BorderLayout.EAST);
-        dialog.add(info, BorderLayout.NORTH); dialog.add(new JScrollPane(chat), BorderLayout.CENTER); dialog.add(bottom, BorderLayout.SOUTH);
-        dialog.setSize(650, 420); dialog.setLocationRelativeTo(frame);
+        send.addActionListener(event -> sendMessage.run());
+        message.addActionListener(event -> sendMessage.run());
+
+        JPanel bottom = new JPanel(new BorderLayout(6, 6));
+        bottom.add(message, BorderLayout.CENTER);
+        bottom.add(send, BorderLayout.EAST);
+        dialog.add(info, BorderLayout.NORTH);
+        dialog.add(new JScrollPane(chat), BorderLayout.CENTER);
+        dialog.add(bottom, BorderLayout.SOUTH);
+        dialog.setSize(650, 420);
+        dialog.setLocationRelativeTo(frame);
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosed(java.awt.event.WindowEvent event) { client.close(); if (server != null) server.close(); }
-            @Override public void windowClosing(java.awt.event.WindowEvent event) { client.close(); if (server != null) server.close(); }
+            @Override public void windowClosed(java.awt.event.WindowEvent event) {
+                client.close();
+                if (server != null) server.close();
+            }
         });
         dialog.setVisible(true);
+
+        Thread connector = new Thread(() -> {
+            try {
+                client.connect(host, port, password, nickname, line -> SwingUtilities.invokeLater(() -> {
+                    if (dialog.isDisplayable()) {
+                        chat.append(line + System.lineSeparator());
+                        chat.setCaretPosition(chat.getDocument().getLength());
+                    }
+                }));
+                SwingUtilities.invokeLater(() -> {
+                    if (dialog.isDisplayable()) {
+                        info.setText("Подключено к " + host + ":" + port
+                                + ". Это тестовая комната: игровой мир пока не синхронизируется.");
+                        send.setEnabled(true);
+                        message.requestFocusInWindow();
+                    } else {
+                        client.close();
+                    }
+                });
+            } catch (Exception error) {
+                client.close();
+                SwingUtilities.invokeLater(() -> {
+                    if (dialog.isDisplayable()) {
+                        chat.append("Ошибка подключения: " + error.getMessage() + System.lineSeparator());
+                        info.setText("Не удалось подключиться. Проверь адрес, порт и пароль.");
+                        send.setEnabled(false);
+                    }
+                });
+            }
+        }, "BlockWorld-Multiplayer-Connect");
+        connector.setDaemon(true);
+        connector.start();
     }
+
     private void showResourcePacksDialog() {
         ResourcePackManager manager = new ResourcePackManager();
         JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Ресурс-паки", true);
