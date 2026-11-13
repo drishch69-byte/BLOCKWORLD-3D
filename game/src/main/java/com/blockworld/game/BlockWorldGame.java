@@ -26,6 +26,8 @@ import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
 import com.blockworld.core.GamePaths;
+import com.blockworld.core.WorldCatalog;
+import com.blockworld.core.WorldBackupManager;
 import com.blockworld.core.ResourcePackManager;
 import com.blockworld.core.ModLoader;
 import com.blockworld.api.ModContext;
@@ -85,7 +87,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private static final String TALK = "interactCreature";
 
     private final GameVersion version;
-    private final Path saveFile;
+    private volatile Path saveFile;
     private final boolean createNewWorld;
     private final Runnable onGameExit;
     private final GameSettings gameSettings;
@@ -145,6 +147,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private PlayerAvatar playerAvatar;
     private PlayerProfileStore.Profile playerProfile = PlayerProfileStore.Profile.defaults();
     private ScreenshotAppState worldScreenshotState;
+    private boolean worldPreviewCaptureSetup;
     private boolean worldPreviewCaptureRequested;
     private boolean profileSessionStarted;
     private long profileCheckpointNanos;
@@ -306,7 +309,6 @@ public final class BlockWorldGame extends SimpleApplication {
             GameLog.error("Не удалось загрузить профиль игрока; применён стандартный профиль", error);
             playerProfile = PlayerProfileStore.Profile.defaults();
         }
-        setupWorldPreviewCapture();
         setDisplayFps(false);
         setDisplayStatView(false);
         // A wider FOV and a short near plane keep nearby terrain visible in first-person view.
@@ -407,6 +409,7 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void prepareWorldData() {
         boolean loaded = false;
+        String recoveryReason = null;
         try {
             if (!createNewWorld && Files.exists(saveFile)) {
                 try {
@@ -415,18 +418,12 @@ public final class BlockWorldGame extends SimpleApplication {
                     loaded = true;
                     if (!savedWith.equals(version.id())) statusMessage += " Открыт в версии " + version.id() + ".";
                     if (world.getBlockCount() == 0) {
-                        statusMessage = "Сохранение пустое. Создаю новый мир вместо пустой сцены.";
+                        recoveryReason = "Сохранение оказалось пустым";
                         loaded = false;
                     }
                 } catch (IOException ex) {
-                    statusMessage = "Не удалось загрузить мир: " + ex.getMessage();
-                    try {
-                        Path backup = saveFile.resolveSibling(saveFile.getFileName() + ".load-error-backup");
-                        Files.copy(saveFile, backup, StandardCopyOption.REPLACE_EXISTING);
-                        statusMessage += " Резервная копия: " + backup.getFileName() + ".";
-                    } catch (IOException backupError) {
-                        statusMessage += " Не удалось создать резервную копию файла.";
-                    }
+                    recoveryReason = "Не удалось загрузить сохранение: " + ex.getMessage();
+                    GameLog.error("Существующее сохранение не загружено; оригинал будет сохранён отдельно", ex);
                 }
             }
 
@@ -445,6 +442,32 @@ public final class BlockWorldGame extends SimpleApplication {
                 catch (IOException ex) { GameLog.error("Не удалось загрузить достижения", ex); }
             }
             if (!loaded) {
+                if (recoveryReason != null) {
+                    Path originalSave = saveFile;
+                    String backupName = "не создана";
+                    try {
+                        Path backup = WorldBackupManager.create(originalSave);
+                        backupName = backup.getFileName().toString();
+                    } catch (IOException backupError) {
+                        GameLog.error("Полная резервная копия повреждённого мира не создана; пробуем сохранить исходный файл отдельно", backupError);
+                        try {
+                            Path fallbackBackup = originalSave.resolveSibling(
+                                    originalSave.getFileName() + ".load-error-backup");
+                            Files.copy(originalSave, fallbackBackup, StandardCopyOption.REPLACE_EXISTING);
+                            backupName = fallbackBackup.getFileName().toString()
+                                    + " (только основной файл; sidecar-файлы остались на месте)";
+                        } catch (IOException copyError) {
+                            GameLog.error("Не удалось сделать аварийную копию исходного файла; исходник не будет перезаписан", copyError);
+                        }
+                    }
+                    Path recoveredSave = WorldCatalog.recoveryPathFor(originalSave);
+                    saveFile = recoveredSave;
+                    statusMessage = recoveryReason + ". Исходный файл сохранён отдельно: "
+                            + backupName + ". Для нового мира создан отдельный файл: "
+                            + recoveredSave.getFileName() + ".";
+                    GameLog.warn("Повреждённый/пустой мир изолирован; создан путь восстановления "
+                            + recoveredSave.toAbsolutePath());
+                }
                 long newSeed = ThreadLocalRandom.current().nextLong();
                 world.generate(version, newSeed);
                 if (release100Enabled) achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
@@ -724,6 +747,10 @@ public final class BlockWorldGame extends SimpleApplication {
         if (version.id().compareTo("0.6.0") >= 0) updateNature(tpf);
 
         if (worldDataReady) {
+            if (!worldPreviewCaptureSetup) {
+                setupWorldPreviewCapture();
+                worldPreviewCaptureSetup = true;
+            }
             if (!modsWorldReady && modLoader != null) {
                 modLoader.worldReady();
                 modsWorldReady = true;

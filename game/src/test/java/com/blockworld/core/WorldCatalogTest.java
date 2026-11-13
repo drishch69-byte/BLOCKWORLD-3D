@@ -75,6 +75,25 @@ class WorldCatalogTest {
     }
 
     @Test
+    void createsASeparateLauncherVisiblePathForRecoveredWorlds() throws IOException {
+        originalHome = System.getProperty("user.home");
+        System.setProperty("user.home", tempDir.toString());
+        Path worlds = GamePaths.worldsDirectory();
+        Files.createDirectories(worlds);
+        Path original = worlds.resolve("Broken_Save.bwworld");
+        Files.writeString(original, "corrupt");
+
+        Path recovered = WorldCatalog.recoveryPathFor(original);
+
+        assertEquals(worlds, recovered.getParent());
+        assertTrue(recovered.getFileName().toString().startsWith("Recovered_Broken_Save_"));
+        assertTrue(recovered.getFileName().toString().endsWith(".bwworld"));
+        assertTrue(!recovered.equals(original));
+        assertTrue(!Files.exists(recovered));
+        assertEquals("corrupt", Files.readString(original));
+    }
+
+    @Test
     void sanitizesNewWorldNames() throws IOException {
         originalHome = System.getProperty("user.home");
         System.setProperty("user.home", tempDir.toString());

@@ -90,6 +90,29 @@ public final class WorldCatalog {
         }
     }
 
+    /**
+     * Chooses a distinct, launcher-visible file for a newly generated replacement world.
+     * This prevents a failed/empty source save from being overwritten during recovery.
+     */
+    public static Path recoveryPathFor(Path originalWorld) throws IOException {
+        if (originalWorld == null || originalWorld.getFileName() == null
+                || !originalWorld.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".bwworld")) {
+            throw new IOException("Некорректный путь исходного мира для восстановления.");
+        }
+        String originalName = originalWorld.getFileName().toString();
+        String stem = originalName.substring(0, originalName.length() - ".bwworld".length());
+        String hint = stem.replaceAll("[^\\p{L}\\p{N}_-]+", "_");
+        if (hint.length() > 10) hint = hint.substring(0, 10);
+        if (hint.isBlank()) hint = "World";
+        String base = "Recovered_" + hint + "_" + System.currentTimeMillis();
+        Path candidate = pathForName(base);
+        int suffix = 2;
+        while (Files.exists(candidate)) {
+            candidate = pathForName(base + "_" + suffix++);
+        }
+        return candidate;
+    }
+
     public static Path pathForName(String requestedName) throws IOException {
         if (requestedName == null) throw new IOException("Название мира не задано.");
         String safe = requestedName.strip()
