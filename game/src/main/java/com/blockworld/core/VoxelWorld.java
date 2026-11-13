@@ -945,7 +945,8 @@ public final class VoxelWorld {
 
     /** Creates two remote sandstone temples with artifact caches and their own wardens. */
     private void addAncientTemples(int radius) {
-        int offset = Math.max(12, radius - 20);
+        // Keep both footprints inside the circular playable terrain even at smaller sizes.
+        int offset = Math.max(8, radius / 2 - 2);
         addAncientTemple(offset, -offset, 2_100_001L);
         addAncientTemple(-offset, offset, 2_100_002L);
     }
