@@ -12,12 +12,12 @@ public final class MiningRules {
     public static float durationSeconds(BlockType block, ToolType tool) {
         if (block == null) return 0.5f;
         float baseDuration = switch (block) {
-            case LEAVES, WHEAT_CROP -> 0.25f;
+            case LEAVES, WHEAT_CROP, CAVE_FERN -> 0.25f;
             case GRASS, DIRT, SAND, SNOW, FARMLAND, WATER, LAVA -> 0.45f;
-            case WOOD, PODZOL, MUD -> 0.85f;
+            case WOOD, PODZOL, MUD, CAVE_MOSS -> 0.85f;
             case STONE, SANDSTONE, FURNACE, TREASURE_CHEST -> 1.25f;
             case COAL_ORE, IRON_ORE, GOLD_ORE, COPPER_ORE, EMERALD_ORE, AMETHYST_ORE,
-                    RUBY_ORE, SAPPHIRE_ORE -> 1.9f;
+                    RUBY_ORE, SAPPHIRE_ORE, GLOWING_CRYSTAL -> 2.0f;
         };
         if (tool != null && tool.givesBonus(block)) baseDuration *= 0.55f;
         return Math.max(0.12f, baseDuration);

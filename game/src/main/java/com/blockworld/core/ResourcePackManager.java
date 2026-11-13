@@ -341,6 +341,34 @@ public final class ResourcePackManager {
             for (int x = 0; x < BLOCK_TEXTURE_SIZE; x++) {
                 int noise = random.nextInt(31) - 15;
                 int detail = 0;
+                if (type == BlockType.GLOWING_CRYSTAL || type == BlockType.CAVE_MOSS || type == BlockType.CAVE_FERN) {
+                    int pattern = Math.floorMod(x * 11 + y * 7 + seed, 19);
+                    int r;
+                    int g;
+                    int b;
+                    if (type == BlockType.GLOWING_CRYSTAL) {
+                        boolean bright = pattern < 7 || (x + y * 2) % 11 == 0;
+                        r = bright ? clamp255(70 + random.nextInt(65)) : clamp255(24 + random.nextInt(24));
+                        g = bright ? clamp255(210 + random.nextInt(46)) : clamp255(74 + random.nextInt(56));
+                        b = bright ? clamp255(205 + random.nextInt(50)) : clamp255(90 + random.nextInt(60));
+                        if (pattern == 0) { r = 235; g = 255; b = 250; }
+                    } else if (type == BlockType.CAVE_MOSS) {
+                        boolean moss = pattern < 10 || (x * 3 + y * 5) % 13 == 0;
+                        int rock = clamp255(30 + random.nextInt(28) + noise / 3);
+                        r = moss ? clamp255(22 + random.nextInt(24)) : rock;
+                        g = moss ? clamp255(84 + random.nextInt(90)) : clamp255(rock + 8);
+                        b = moss ? clamp255(28 + random.nextInt(30)) : clamp255(rock + 3);
+                    } else {
+                        boolean leaf = Math.abs(x - 8) <= (y < 8 ? y / 2 + 1 : (15 - y) / 2 + 1)
+                                && (y < 8 || (x + y) % 3 != 0);
+                        r = leaf ? clamp255(25 + random.nextInt(30)) : 34;
+                        g = leaf ? clamp255(110 + random.nextInt(100)) : 48;
+                        b = leaf ? clamp255(32 + random.nextInt(40)) : 36;
+                        if (x == 7 || x == 8) { r = 78; g = 108; b = 43; }
+                    }
+                    image.setRGB(x, y, 0xFF000000 | (r << 16) | (g << 8) | b);
+                    continue;
+                }
                 if (type == BlockType.RUBY_ORE || type == BlockType.SAPPHIRE_ORE) {
                     int pattern = Math.floorMod(x * 7 + y * 11 + seed, 17);
                     boolean crystal = pattern < 5 || (x + 2 * y) % 13 == 0;

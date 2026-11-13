@@ -7,8 +7,8 @@ public enum ToolType {
     WOODEN_PICKAXE(ItemType.WOODEN_PICKAXE, 1, Set.of(BlockType.STONE, BlockType.COAL_ORE)),
     STONE_PICKAXE(ItemType.STONE_PICKAXE, 2, Set.of(BlockType.IRON_ORE, BlockType.COPPER_ORE)),
     IRON_PICKAXE(ItemType.IRON_PICKAXE, 3, Set.of(BlockType.GOLD_ORE, BlockType.EMERALD_ORE,
-            BlockType.RUBY_ORE, BlockType.SAPPHIRE_ORE)),
-    WOODEN_SHOVEL(ItemType.WOODEN_SHOVEL, 0, Set.of(BlockType.GRASS, BlockType.DIRT, BlockType.SAND, BlockType.SNOW)),
+            BlockType.RUBY_ORE, BlockType.SAPPHIRE_ORE, BlockType.GLOWING_CRYSTAL)),
+    WOODEN_SHOVEL(ItemType.WOODEN_SHOVEL, 0, Set.of(BlockType.GRASS, BlockType.DIRT, BlockType.SAND, BlockType.SNOW, BlockType.CAVE_MOSS)),
     WOODEN_HOE(ItemType.WOODEN_HOE, 0, Set.of(BlockType.FARMLAND));
 
     private final ItemType item;
@@ -34,7 +34,7 @@ public enum ToolType {
         return switch (block) {
             case STONE, COAL_ORE -> 1;
             case IRON_ORE, COPPER_ORE -> 2;
-            case GOLD_ORE, EMERALD_ORE, RUBY_ORE, SAPPHIRE_ORE -> 3;
+            case GOLD_ORE, EMERALD_ORE, RUBY_ORE, SAPPHIRE_ORE, GLOWING_CRYSTAL -> 3;
             default -> 0;
         };
     }
