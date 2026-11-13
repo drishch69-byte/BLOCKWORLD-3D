@@ -1827,7 +1827,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private void beginMining() {
         if (paused || !worldReady || inventoryOpen || craftingOpen || furnaceOpen
                 || tradeOpen || chestOpen || achievementsOpen) return;
-        if (!version.survival()) {
+        if (!version.survival() || version.id().compareTo("1.9.4") < 0) {
             breakTargetBlock();
             return;
         }
