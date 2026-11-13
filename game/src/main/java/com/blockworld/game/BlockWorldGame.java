@@ -460,7 +460,19 @@ public final class BlockWorldGame extends SimpleApplication {
                             GameLog.error("Не удалось сделать аварийную копию исходного файла; исходник не будет перезаписан", copyError);
                         }
                     }
-                    Path recoveredSave = WorldCatalog.recoveryPathFor(originalSave);
+                    Path recoveredSave;
+                    try {
+                        recoveredSave = WorldCatalog.recoveryPathFor(originalSave);
+                    } catch (IOException pathError) {
+                        GameLog.error("Не удалось сформировать имя восстановленного мира; используется резервное имя", pathError);
+                        recoveredSave = originalSave.resolveSibling(
+                                "Recovered_" + System.currentTimeMillis() + ".bwworld");
+                        int suffix = 2;
+                        while (Files.exists(recoveredSave)) {
+                            recoveredSave = originalSave.resolveSibling(
+                                    "Recovered_" + System.currentTimeMillis() + "_" + suffix++ + ".bwworld");
+                        }
+                    }
                     saveFile = recoveredSave;
                     statusMessage = recoveryReason + ". Исходный файл сохранён отдельно: "
                             + backupName + ". Для нового мира создан отдельный файл: "
