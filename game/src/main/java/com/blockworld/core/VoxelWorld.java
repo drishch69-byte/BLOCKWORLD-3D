@@ -75,6 +75,7 @@ public final class VoxelWorld {
     private boolean twoSidedRendering = true;
     private boolean activeBiomes;
     private boolean extendedBiomes;
+    private boolean caveBiomesEnabled;
     private int worldRadius;
     private List<WorldNavigation.Landmark> landmarks = List.of();
     private int minBlockX;
@@ -142,6 +143,10 @@ public final class VoxelWorld {
     public int getWorldRadius() { return worldRadius; }
     public boolean hasActiveBiomes() { return activeBiomes; }
     public boolean hasExtendedBiomes() { return extendedBiomes; }
+    public boolean hasCaveBiomes() { return caveBiomesEnabled; }
+    public CaveBiomeType getCaveBiomeAt(int x, int y, int z) {
+        return caveBiomesEnabled ? CaveBiomeGenerator.biomeAt(seed, x, y, z) : CaveBiomeType.NONE;
+    }
     public Map<BlockPos, BlockType> snapshotBlocks() { return Map.copyOf(blocks); }
 
     /** Visits stored blocks without allocating a full snapshot copy. */
@@ -171,6 +176,8 @@ public final class VoxelWorld {
         seed = worldSeed;
         activeBiomes = hasBiomes;
         extendedBiomes = hasExtendedBiomes;
+        caveBiomesEnabled = snapshot.values().stream().anyMatch(type -> type == BlockType.GLOWING_CRYSTAL
+                || type == BlockType.CAVE_MOSS || type == BlockType.CAVE_FERN);
         worldRadius = Math.max(0, Math.min(100_000, snapshotRadius));
         bulkUpdate = true;
         try {
@@ -543,6 +550,7 @@ public final class VoxelWorld {
         worldRadius = requestedRadius;
         activeBiomes = supportsBiomes(version.id());
         extendedBiomes = supportsExtendedBiomes(version.id());
+        caveBiomesEnabled = CaveBiomeGenerator.supports(version.id());
         bulkUpdate = true;
         try {
             Random random = new Random(seed);
@@ -611,6 +619,9 @@ public final class VoxelWorld {
             }
             if (supportsDeepCaves(version.id())) {
                 addCrystalCaverns(random, radius);
+            }
+            if (caveBiomesEnabled) {
+                addSubterraneanBiomes(random, radius);
             }
             if (version.id().compareTo("0.8.0") >= 0) {
                 addVillageHouse(-34, 27);
@@ -784,6 +795,74 @@ public final class VoxelWorld {
                         if (mineral < 0.10f) addBlock(position, BlockType.AMETHYST_ORE);
                         else if (mineral < 0.14f) addBlock(position, BlockType.RUBY_ORE);
                         else if (mineral < 0.20f) addBlock(position, BlockType.SAPPHIRE_ORE);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Places seed-selected underground biome rooms without changing older world profiles. */
+    private void addSubterraneanBiomes(Random random, int radius) {
+        int cellSize = CaveBiomeGenerator.cellSize();
+        int minCell = Math.floorDiv(-radius, cellSize);
+        int maxCell = Math.floorDiv(radius, cellSize);
+        for (int cellX = minCell; cellX <= maxCell; cellX++) {
+            int centerX = cellX * cellSize + cellSize / 2;
+            if (Math.abs(centerX) > radius - 9) continue;
+            for (int cellZ = minCell; cellZ <= maxCell; cellZ++) {
+                int centerZ = cellZ * cellSize + cellSize / 2;
+                if (Math.abs(centerZ) > radius - 9 || Math.abs(centerX) + Math.abs(centerZ) < 42) continue;
+                int centerY = -6 - random.nextInt(6);
+                CaveBiomeType biome = CaveBiomeGenerator.biomeAt(seed, centerX, centerY, centerZ);
+                if (biome == CaveBiomeType.NONE) continue;
+                createSubterraneanRoom(centerX, centerY, centerZ, biome, random);
+            }
+        }
+    }
+
+    private void createSubterraneanRoom(int centerX, int centerY, int centerZ,
+                                        CaveBiomeType biome, Random random) {
+        int radiusX = biome == CaveBiomeType.UNDERGROUND_LAKE ? 5 + random.nextInt(3) : 4 + random.nextInt(2);
+        int radiusY = 2 + random.nextInt(2);
+        int radiusZ = biome == CaveBiomeType.UNDERGROUND_LAKE ? 5 + random.nextInt(3) : 4 + random.nextInt(2);
+        for (int dx = -radiusX; dx <= radiusX; dx++) {
+            for (int dy = -radiusY; dy <= radiusY; dy++) {
+                for (int dz = -radiusZ; dz <= radiusZ; dz++) {
+                    double shape = (dx * dx) / (double) (radiusX * radiusX)
+                            + (dy * dy) / (double) (radiusY * radiusY)
+                            + (dz * dz) / (double) (radiusZ * radiusZ);
+                    if (shape > 1.12) continue;
+                    BlockPos position = new BlockPos(centerX + dx, centerY + dy, centerZ + dz);
+                    if (shape < 0.72) {
+                        removeBlock(position);
+                        if (dy == -radiusY + 1) {
+                            float detail = coordinateRandom(position.x(), position.y(), position.z());
+                            if (biome == CaveBiomeType.UNDERGROUND_LAKE
+                                    && Math.abs(dx) <= radiusX / 2 && Math.abs(dz) <= radiusZ / 2) {
+                                addBlock(position, BlockType.WATER);
+                            } else if (biome == CaveBiomeType.CRYSTAL_GROTTO && shape < 0.26 && detail < 0.28f) {
+                                addBlock(position, BlockType.WATER);
+                            } else if (biome == CaveBiomeType.MOSS_CAVERN && shape < 0.82) {
+                                if (detail < 0.13f) {
+                                    addBlock(position, BlockType.WATER);
+                                } else {
+                                    addBlock(position, BlockType.CAVE_MOSS);
+                                    if (detail > 0.68f && !blocks.containsKey(position.add(0, 1, 0))) {
+                                        addBlock(position.add(0, 1, 0), BlockType.CAVE_FERN);
+                                    }
+                                }
+                            }
+                        }
+                    } else if (blocks.get(position) == BlockType.STONE) {
+                        float mineral = coordinateRandom(position.x(), position.y(), position.z());
+                        if (biome == CaveBiomeType.CRYSTAL_GROTTO) {
+                            if (mineral < 0.24f) addBlock(position, BlockType.GLOWING_CRYSTAL);
+                            else if (mineral < 0.34f) addBlock(position, BlockType.AMETHYST_ORE);
+                        } else if (biome == CaveBiomeType.MOSS_CAVERN && mineral < 0.10f) {
+                            addBlock(position, BlockType.CAVE_MOSS);
+                        } else if (biome == CaveBiomeType.UNDERGROUND_LAKE && mineral < 0.06f) {
+                            addBlock(position, BlockType.GLOWING_CRYSTAL);
+                        }
                     }
                 }
             }
@@ -1091,6 +1170,7 @@ public final class VoxelWorld {
         hasBounds = false;
         activeBiomes = false;
         extendedBiomes = false;
+        caveBiomesEnabled = false;
         worldRadius = 0;
         landmarks = List.of();
         seed = 20261112L;
@@ -1111,6 +1191,7 @@ public final class VoxelWorld {
             writer.write("worldRadius=" + worldRadius); writer.newLine();
             writer.write("biomes=" + activeBiomes); writer.newLine();
             writer.write("extendedBiomes=" + extendedBiomes); writer.newLine();
+            writer.write("caveBiomes=" + caveBiomesEnabled); writer.newLine();
             writer.write("--blocks--"); writer.newLine();
             for (Map.Entry<BlockPos, BlockType> entry : blocks.entrySet()) {
                 BlockPos p = entry.getKey();
@@ -1154,6 +1235,7 @@ public final class VoxelWorld {
         long loadedSeed;
         boolean loadedActiveBiomes;
         boolean loadedExtendedBiomes;
+        boolean loadedCaveBiomes;
         try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             String header = reader.readLine();
             if (header == null || !FILE_HEADER.equals(header.trim())) {
@@ -1165,6 +1247,7 @@ public final class VoxelWorld {
             String versionProperty = "неизвестно";
             String biomeProperty = "";
             String extendedBiomeProperty = "";
+            String caveBiomeProperty = "";
             String seedProperty = "20261112";
             String worldRadiusProperty = "";
             boolean foundBlocks = false;
@@ -1180,6 +1263,7 @@ public final class VoxelWorld {
                 else if (value.startsWith("gameVersion=")) versionProperty = value.substring(12).trim();
                 else if (value.startsWith("biomes=")) biomeProperty = value.substring(7).trim();
                 else if (value.startsWith("extendedBiomes=")) extendedBiomeProperty = value.substring(15).trim();
+                else if (value.startsWith("caveBiomes=")) caveBiomeProperty = value.substring(11).trim();
                 else if (value.startsWith("seed=")) seedProperty = value.substring(5).trim();
                 else if (value.startsWith("worldRadius=")) worldRadiusProperty = value.substring(12).trim();
             }
@@ -1195,11 +1279,14 @@ public final class VoxelWorld {
                     : "false".equalsIgnoreCase(biomeProperty) ? false : supportsBiomes(savedVersion);
             loadedExtendedBiomes = "true".equalsIgnoreCase(extendedBiomeProperty) ? true
                     : "false".equalsIgnoreCase(extendedBiomeProperty) ? false : supportsExtendedBiomes(savedVersion);
+            loadedCaveBiomes = "true".equalsIgnoreCase(caveBiomeProperty) ? true
+                    : "false".equalsIgnoreCase(caveBiomeProperty) ? false : CaveBiomeGenerator.supports(savedVersion);
 
             clear();
             dataStarted = true;
             activeBiomes = loadedActiveBiomes;
             extendedBiomes = loadedExtendedBiomes;
+            caveBiomesEnabled = loadedCaveBiomes;
             seed = loadedSeed;
             int defaultRadius = VersionManager.find(savedVersion).worldRadius();
             int savedRadius = parseIntOr(worldRadiusProperty, defaultRadius);
