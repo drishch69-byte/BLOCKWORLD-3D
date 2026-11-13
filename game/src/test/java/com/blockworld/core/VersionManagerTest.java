@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class VersionManagerTest {
     @Test
     void includesAllProfilesAndBiomesFarmingFurnaceUpdateAsDefault() {
-        assertEquals(22, VersionManager.getSupportedVersions().size())
+        assertEquals(22, VersionManager.getSupportedVersions().size());
         assertEquals("1.0.3", VersionManager.getDefaultVersion().id());
         assertTrue(VersionManager.find("0.3.0").caves());
         assertTrue(VersionManager.find("0.3.0").ores());
