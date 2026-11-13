@@ -82,4 +82,13 @@ class WorldCatalogTest {
         assertEquals("My_World__Test.bwworld", path.getFileName().toString());
         assertEquals(GamePaths.worldsDirectory(), path.getParent());
     }
+
+    @Test
+    void protectsWindowsReservedDeviceNamesAndTrailingDots() throws IOException {
+        originalHome = System.getProperty("user.home");
+        System.setProperty("user.home", tempDir.toString());
+        assertEquals("_CON.bwworld", WorldCatalog.pathForName("CON").getFileName().toString());
+        assertEquals("_LPT1.bwworld", WorldCatalog.pathForName("LPT1").getFileName().toString());
+        assertEquals("My_World.bwworld", WorldCatalog.pathForName("My World.").getFileName().toString());
+    }
 }

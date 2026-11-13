@@ -86,7 +86,20 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         p.setProperty("vegetationDensity", Integer.toString(settings.vegetationDensity));
         p.setProperty("chunkBuildsPerFrame", Integer.toString(settings.chunkBuildsPerFrame));
         p.setProperty("fpsLimit", Integer.toString(settings.fpsLimit));
-        try (OutputStream out = Files.newOutputStream(file)) { p.store(out, "BLOCKWORLD 3D settings"); }
+        Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
+        try {
+            try (OutputStream out = Files.newOutputStream(temporary)) {
+                p.store(out, "BLOCKWORLD 3D settings");
+            }
+            try {
+                Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ex) {
+                Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 
     private static int integer(Properties properties, String key, int fallback) {

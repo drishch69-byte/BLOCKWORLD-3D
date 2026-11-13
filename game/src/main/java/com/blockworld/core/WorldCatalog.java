@@ -95,9 +95,14 @@ public final class WorldCatalog {
         String safe = requestedName.strip()
                 .replaceAll("[\\\\/:*?\"<>|]+", "_")
                 .replaceAll("\\s+", "_")
-                .replaceAll("\\.{2,}", "_");
+                .replaceAll("\\.{2,}", "_")
+                .replaceAll("[. ]+$", "");
         if (safe.isBlank() || safe.equals(".") || safe.equals("..")) {
             throw new IOException("Введи нормальное название мира.");
+        }
+        // Windows reserves device names even when an extension is appended.
+        if (safe.matches("(?i)^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\\\..*)?$")) {
+            safe = "_" + safe;
         }
         if (safe.length() > 40) safe = safe.substring(0, 40);
         Path folder = GamePaths.worldsDirectory();
