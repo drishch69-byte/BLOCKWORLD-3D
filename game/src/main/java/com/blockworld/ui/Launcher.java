@@ -524,8 +524,8 @@ public final class Launcher {
                     "Удаление копии", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (answer != JOptionPane.YES_OPTION) return;
             try {
-                // The selected path came from WorldBackupManager.list for this exact world.
-                Files.deleteIfExists(backup);
+                // The manager removes the world file and all of its saved progress companions.
+                WorldBackupManager.delete(selected.file(), backup);
                 reload.run();
             } catch (IOException error) {
                 JOptionPane.showMessageDialog(dialog, error.getMessage(),

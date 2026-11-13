@@ -108,8 +108,8 @@ public final class PlayerProfileStore {
     public static synchronized Profile addPlayTimeSeconds(Path file, long seconds) throws IOException {
         if (seconds <= 0) return load(file);
         Profile current = load(file);
-        long updated = Math.min(MAX_COUNTER, current.playTimeSeconds()
-                + Math.min(MAX_COUNTER, seconds));
+        long remaining = MAX_COUNTER - current.playTimeSeconds();
+        long updated = current.playTimeSeconds() + Math.min(remaining, seconds);
         return save(file, new Profile(current.displayName(), current.appearanceIndex(),
                 current.sessionsPlayed(), updated));
     }

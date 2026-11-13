@@ -44,6 +44,19 @@ class PlayerProfileStoreTest {
         assertEquals(0L, profile.playTimeSeconds());
     }
 
+
+    @Test
+    void addingVeryLargePlaytimeSaturatesInsteadOfOverflowing() throws Exception {
+        Path file = temp.resolve("large-profile.properties");
+        PlayerProfileStore.save(file, new PlayerProfileStore.Profile("Игрок", 0, 1,
+                999_999_999_999L));
+
+        PlayerProfileStore.Profile updated = PlayerProfileStore.addPlayTimeSeconds(file, Long.MAX_VALUE);
+
+        assertEquals(1_000_000_000_000L, updated.playTimeSeconds());
+        assertEquals(1L, updated.sessionsPlayed());
+    }
+
     @Test
     void sessionAndPlaytimeUpdatesPreserveIdentity() throws Exception {
         Path file = temp.resolve("profile.properties");
