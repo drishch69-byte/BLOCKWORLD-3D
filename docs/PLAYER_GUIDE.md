@@ -2,6 +2,13 @@
 
 This is a quick reference for the current gameplay systems. Some actions depend on having the required item and selecting a compatible version profile.
 
+## Cave Biomes & Glowflora (1.9.6)
+
+- Explore **Crystal Grotto** rooms for luminous crystals and amethyst-lined walls.
+- **Moss Caverns** contain cave moss and small fern clusters; **Underground Lakes** have wider chambers and water pools.
+- When you are deep underground, the HUD displays the current cave-biome name.
+- Cave biomes are generated in newly created 1.9.6 worlds. Older saves are not regenerated automatically.
+
 ## Crystal Caverns & Gem Veins (1.9.5)
 
 - Explore the deeper cave rooms and look for amethyst-lined walls and small underground pools.

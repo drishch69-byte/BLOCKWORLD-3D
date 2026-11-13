@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.6 — Cave Biomes & Glowflora
+- Added deterministic underground biome sampling for **Crystal Grotto**, **Moss Cavern**, and **Underground Lake**.
+- Crystal grottos contain bright luminous crystal blocks; moss caverns add cave moss and fern clusters; underground lakes carve larger rooms and add water pools.
+- Added a cave-biome name to the HUD while the player is underground.
+- Added original 16×16 textures and stable atlas slots for glowing crystals, cave moss, and cave ferns.
+- Added optional caveBiomes world metadata without changing save format 2; pre-1.9.6 worlds remain unchanged when reopened.
+- Added deterministic generator, texture, save/load, and version-profile regression tests.
+
 ## 1.9.5 — Crystal Caverns & Gem Veins
 - Added seed-stable underground cavern rooms with crystal-lined walls and scattered water pools.
 - Added ruby and sapphire ores to deep layers in the new profile; quantized coordinate rolls create short veins instead of isolated specks.
