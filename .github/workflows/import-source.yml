@@ -1,4 +1,4 @@
-name: Import BLOCKWORLD 3D source archive
+name: Import CUBEVERSE 3D legacy source archive
 
 on:
   push:
@@ -59,7 +59,7 @@ jobs:
               raise SystemExit("Archive did not contain a Maven pom.xml at the project root.")
           if not (destination / "src/main/java").is_dir():
               raise SystemExit("Archive did not contain the Java source tree.")
-          print("Imported verified BLOCKWORLD 3D 1.0.0 source into game/")
+          print("Imported verified legacy BLOCKWORLD 3D 1.0.0 source into the CUBEVERSE 3D game folder")
           PY
       - name: Attempt Maven build and tests
         id: maven
