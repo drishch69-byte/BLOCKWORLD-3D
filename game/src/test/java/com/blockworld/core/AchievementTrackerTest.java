@@ -55,4 +55,22 @@ class AchievementTrackerTest {
         assertTrue(newProfile.hasDiscoveredAllBiomes());
     }
 
+
+    @Test
+    void artifactMilestonesUnlockFromASynchronizedPlayerInventoryOnlyOnce() {
+        AchievementTracker tracker = new AchievementTracker();
+        var partial = tracker.unlockArtifactMilestones(java.util.Map.of(ItemType.ANCIENT_RELIC, 1));
+        assertTrue(partial.contains(Achievement.FIND_ANCIENT_RELIC));
+        assertFalse(partial.contains(Achievement.COMPLETE_ARTIFACT_SET));
+
+        var complete = tracker.unlockArtifactMilestones(java.util.Map.of(
+                ItemType.ANCIENT_RELIC, 1, ItemType.SUN_SIGIL, 1, ItemType.MOON_SIGIL, 1));
+        assertTrue(complete.contains(Achievement.FIND_SUN_SIGIL));
+        assertTrue(complete.contains(Achievement.FIND_MOON_SIGIL));
+        assertTrue(complete.contains(Achievement.COMPLETE_ARTIFACT_SET));
+        assertTrue(tracker.isUnlocked(Achievement.FIND_ANCIENT_RELIC));
+        assertTrue(tracker.unlockArtifactMilestones(java.util.Map.of(
+                ItemType.ANCIENT_RELIC, 1, ItemType.SUN_SIGIL, 1, ItemType.MOON_SIGIL, 1)).isEmpty());
+    }
+
 }

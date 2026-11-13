@@ -1152,6 +1152,9 @@ public final class BlockWorldGame extends SimpleApplication {
         }
         refreshMultiplayerReadiness();
         updateInventoryUi();
+        // Shared-chest transfers arrive as a fresh server profile, so re-check collection milestones here too.
+        refreshArtifactAchievements(true);
+        updateHud();
     }
 
     private void processMultiplayerEvent(String event) {
@@ -1462,6 +1465,11 @@ public final class BlockWorldGame extends SimpleApplication {
                         world.replaceBlockSnapshot(pendingNetworkSeed, pendingNetworkActiveBiomes,
                                 pendingNetworkExtendedBiomes, pendingNetworkEnchantedBiomes,
                                 pendingNetworkRadius, pendingNetworkWorld);
+                        if (release100Enabled) {
+                            achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
+                            achievements.setEnchantedBiomeSet(world.hasEnchantedBiomes());
+                            saveAchievementsQuietly();
+                        }
                         farmGrowth.keySet().removeIf(position -> world.getBlock(position) != BlockType.WHEAT_CROP);
                         world.replaceCreatureSnapshot(new ArrayList<>(pendingNetworkCreatures.values()));
                         if (creatureManager != null) creatureManager.sync(world);
@@ -2265,26 +2273,15 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void refreshArtifactAchievements(boolean notify) {
         if (!release100Enabled) return;
+        java.util.Set<Achievement> newlyUnlocked = achievements.unlockArtifactMilestones(craftedItems);
+        if (newlyUnlocked.isEmpty()) return;
         Achievement latest = null;
-        if (craftedItems.getOrDefault(ItemType.ANCIENT_RELIC, 0) > 0
-                && achievements.unlock(Achievement.FIND_ANCIENT_RELIC)) latest = Achievement.FIND_ANCIENT_RELIC;
-        if (craftedItems.getOrDefault(ItemType.SUN_SIGIL, 0) > 0
-                && achievements.unlock(Achievement.FIND_SUN_SIGIL)) latest = Achievement.FIND_SUN_SIGIL;
-        if (craftedItems.getOrDefault(ItemType.MOON_SIGIL, 0) > 0
-                && achievements.unlock(Achievement.FIND_MOON_SIGIL)) latest = Achievement.FIND_MOON_SIGIL;
-        boolean complete = craftedItems.getOrDefault(ItemType.ANCIENT_RELIC, 0) > 0
-                && craftedItems.getOrDefault(ItemType.SUN_SIGIL, 0) > 0
-                && craftedItems.getOrDefault(ItemType.MOON_SIGIL, 0) > 0;
-        if (complete && achievements.unlock(Achievement.COMPLETE_ARTIFACT_SET)) {
-            latest = Achievement.COMPLETE_ARTIFACT_SET;
+        for (Achievement achievement : newlyUnlocked) latest = achievement;
+        if (notify && latest != null) {
+            statusMessage = "Новое достижение: " + latest.title() + "!";
+            playSound(GameSounds.Effect.ACHIEVEMENT);
         }
-        if (latest != null) {
-            if (notify) {
-                statusMessage = "Новое достижение: " + latest.title() + "!";
-                playSound(GameSounds.Effect.ACHIEVEMENT);
-            }
-            saveAchievementsQuietly();
-        }
+        saveAchievementsQuietly();
     }
 
     private void saveAchievementsQuietly() {

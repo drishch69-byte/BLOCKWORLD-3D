@@ -2,6 +2,7 @@ package com.blockworld.core;
 
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.Set;
 
 /** Tracks one-time milestones and discovered biomes for a player. */
@@ -21,6 +22,25 @@ public final class AchievementTracker {
         boolean added = discoveredBiomes.add(biome);
         if (hasDiscoveredAllBiomes()) unlocked.add(Achievement.ALL_BIOMES);
         return added;
+    }
+
+    /** Unlocks collection milestones from the current player inventory (also used after network sync). */
+    public Set<Achievement> unlockArtifactMilestones(Map<ItemType, Integer> items) {
+        if (items == null) return Set.of();
+        EnumSet<Achievement> newlyUnlocked = EnumSet.noneOf(Achievement.class);
+        if (items.getOrDefault(ItemType.ANCIENT_RELIC, 0) > 0
+                && unlock(Achievement.FIND_ANCIENT_RELIC)) newlyUnlocked.add(Achievement.FIND_ANCIENT_RELIC);
+        if (items.getOrDefault(ItemType.SUN_SIGIL, 0) > 0
+                && unlock(Achievement.FIND_SUN_SIGIL)) newlyUnlocked.add(Achievement.FIND_SUN_SIGIL);
+        if (items.getOrDefault(ItemType.MOON_SIGIL, 0) > 0
+                && unlock(Achievement.FIND_MOON_SIGIL)) newlyUnlocked.add(Achievement.FIND_MOON_SIGIL);
+        boolean complete = items.getOrDefault(ItemType.ANCIENT_RELIC, 0) > 0
+                && items.getOrDefault(ItemType.SUN_SIGIL, 0) > 0
+                && items.getOrDefault(ItemType.MOON_SIGIL, 0) > 0;
+        if (complete && unlock(Achievement.COMPLETE_ARTIFACT_SET)) {
+            newlyUnlocked.add(Achievement.COMPLETE_ARTIFACT_SET);
+        }
+        return newlyUnlocked.isEmpty() ? Set.of() : Collections.unmodifiableSet(EnumSet.copyOf(newlyUnlocked));
     }
 
     public int unlockedCount() { return unlocked.size(); }
