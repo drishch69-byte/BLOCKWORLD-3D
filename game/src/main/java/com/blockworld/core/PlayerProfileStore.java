@@ -93,16 +93,24 @@ public final class PlayerProfileStore {
 
     /** Counts a session only after a world has finished loading. */
     public static synchronized Profile recordSessionStart() throws IOException {
-        Profile current = load();
-        return save(current.withSessionCount(current.sessionsPlayed() + 1));
+        return recordSessionStart(profileFile());
+    }
+
+    public static synchronized Profile recordSessionStart(Path file) throws IOException {
+        Profile current = load(file);
+        return save(file, current.withSessionCount(current.sessionsPlayed() + 1));
     }
 
     public static synchronized Profile addPlayTimeSeconds(long seconds) throws IOException {
-        if (seconds <= 0) return load();
-        Profile current = load();
+        return addPlayTimeSeconds(profileFile(), seconds);
+    }
+
+    public static synchronized Profile addPlayTimeSeconds(Path file, long seconds) throws IOException {
+        if (seconds <= 0) return load(file);
+        Profile current = load(file);
         long updated = Math.min(MAX_COUNTER, current.playTimeSeconds()
                 + Math.min(MAX_COUNTER, seconds));
-        return save(new Profile(current.displayName(), current.appearanceIndex(),
+        return save(file, new Profile(current.displayName(), current.appearanceIndex(),
                 current.sessionsPlayed(), updated));
     }
 

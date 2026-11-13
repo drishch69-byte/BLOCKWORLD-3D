@@ -48,20 +48,15 @@ class PlayerProfileStoreTest {
     void sessionAndPlaytimeUpdatesPreserveIdentity() throws Exception {
         Path file = temp.resolve("profile.properties");
         PlayerProfileStore.save(file, new PlayerProfileStore.Profile("Кристалл", 3, 4, 90));
-        PlayerProfileStore.Profile current = PlayerProfileStore.load(file);
-        PlayerProfileStore.save(file, current.withAppearance(1));
 
-        PlayerProfileStore.Profile afterStart = new PlayerProfileStore.Profile(
-                "Кристалл", 1, 5, 90);
-        PlayerProfileStore.save(file, afterStart);
-        PlayerProfileStore.Profile afterTime = new PlayerProfileStore.Profile(
-                "Кристалл", 1, 5, 450);
-        PlayerProfileStore.save(file, afterTime);
+        PlayerProfileStore.Profile afterStart = PlayerProfileStore.recordSessionStart(file);
+        assertEquals(5L, afterStart.sessionsPlayed());
+        assertEquals(90L, afterStart.playTimeSeconds());
 
-        PlayerProfileStore.Profile loaded = PlayerProfileStore.load(file);
-        assertEquals("Кристалл", loaded.displayName());
-        assertEquals(1, loaded.appearanceIndex());
-        assertEquals(5L, loaded.sessionsPlayed());
-        assertEquals(450L, loaded.playTimeSeconds());
+        PlayerProfileStore.Profile afterTime = PlayerProfileStore.addPlayTimeSeconds(file, 360);
+        assertEquals("Кристалл", afterTime.displayName());
+        assertEquals(3, afterTime.appearanceIndex());
+        assertEquals(5L, afterTime.sessionsPlayed());
+        assertEquals(450L, afterTime.playTimeSeconds());
     }
 }

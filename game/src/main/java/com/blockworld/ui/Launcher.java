@@ -342,13 +342,14 @@ public final class Launcher {
 
 
     private void showPlayerProfileDialog() {
-        PlayerProfileStore.Profile current;
+        PlayerProfileStore.Profile loaded;
         try {
-            current = PlayerProfileStore.load();
+            loaded = PlayerProfileStore.load();
         } catch (IOException error) {
             GameLog.error("Не удалось загрузить профиль игрока", error);
-            current = PlayerProfileStore.Profile.defaults();
+            loaded = PlayerProfileStore.Profile.defaults();
         }
+        final PlayerProfileStore.Profile current = loaded;
 
         JDialog dialog = new JDialog(frame, "BLOCKWORLD 3D — Профиль игрока", true);
         dialog.setLayout(new BorderLayout(10, 10));
