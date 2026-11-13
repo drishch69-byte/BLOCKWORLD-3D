@@ -465,7 +465,7 @@ public final class BlockWorldGame extends SimpleApplication {
                     statusMessage = recoveryReason + ". Исходный файл сохранён отдельно: "
                             + backupName + ". Для нового мира создан отдельный файл: "
                             + recoveredSave.getFileName() + ".";
-                    GameLog.warn("Повреждённый/пустой мир изолирован; создан путь восстановления "
+                    GameLog.info("Повреждённый/пустой мир изолирован; создан путь восстановления "
                             + recoveredSave.toAbsolutePath());
                 }
                 long newSeed = ThreadLocalRandom.current().nextLong();

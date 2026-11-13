@@ -102,7 +102,7 @@ public final class WorldCatalog {
         String originalName = originalWorld.getFileName().toString();
         String stem = originalName.substring(0, originalName.length() - ".bwworld".length());
         String hint = stem.replaceAll("[^\\p{L}\\p{N}_-]+", "_");
-        if (hint.length() > 10) hint = hint.substring(0, 10);
+        if (hint.length() > 12) hint = hint.substring(0, 12);
         if (hint.isBlank()) hint = "World";
         String base = "Recovered_" + hint + "_" + System.currentTimeMillis();
         Path candidate = pathForName(base);
