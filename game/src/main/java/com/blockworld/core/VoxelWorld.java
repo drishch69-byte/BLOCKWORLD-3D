@@ -13,6 +13,8 @@ import com.jme3.scene.VertexBuffer;
 import com.jme3.texture.Texture2D;
 import com.jme3.util.BufferUtils;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -983,31 +985,45 @@ public final class VoxelWorld {
     public void save(Path file, GameVersion version) throws IOException {
         Path parent = file.toAbsolutePath().getParent();
         if (parent != null) Files.createDirectories(parent);
-        List<Map.Entry<BlockPos, BlockType>> entries = new ArrayList<>(blocks.entrySet());
-        entries.sort(Comparator.comparingInt((Map.Entry<BlockPos, BlockType> e) -> e.getKey().x())
-                .thenComparingInt(e -> e.getKey().z()).thenComparingInt(e -> e.getKey().y()));
-        StringBuilder data = new StringBuilder(Math.max(256, entries.size() * 22));
-        data.append(FILE_HEADER).append('\n');
-        data.append("format=").append(VersionManager.WORLD_FORMAT).append('\n');
-        data.append("gameVersion=").append(version.id()).append('\n');
-        data.append("seed=").append(seed).append('\n');
-        // Preserve the actual terrain feature set when an older world is saved from a newer profile.
-        data.append("biomes=").append(activeBiomes).append('\n');
-        data.append("extendedBiomes=").append(extendedBiomes).append('\n');
-        data.append("--blocks--\n");
-        for (Map.Entry<BlockPos, BlockType> entry : entries) {
-            BlockPos p = entry.getKey();
-            String id = preservedUnknownIds.getOrDefault(p, entry.getValue().id());
-            data.append(p.x()).append(',').append(p.y()).append(',').append(p.z()).append(',').append(id).append('\n');
-        }
-        data.append("--creatures--\n");
-        for (WorldCreature creature : creatures) {
-            data.append(creature.id()).append(',').append(creature.type().id()).append(',')
-                    .append(creature.x()).append(',').append(creature.y()).append(',')
-                    .append(creature.z()).append(',').append(creature.yaw()).append('\n');
-        }
         Path temp = file.resolveSibling(file.getFileName() + ".tmp");
-        Files.writeString(temp, data, StandardCharsets.UTF_8);
+        // Stream directly to disk: sorting and building one giant String doubled peak memory
+        // for large worlds and made the first save after generation unnecessarily slow.
+        try (BufferedWriter writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
+            writer.write(FILE_HEADER); writer.newLine();
+            writer.write("format=" + VersionManager.WORLD_FORMAT); writer.newLine();
+            writer.write("gameVersion=" + version.id()); writer.newLine();
+            writer.write("seed=" + seed); writer.newLine();
+            writer.write("biomes=" + activeBiomes); writer.newLine();
+            writer.write("extendedBiomes=" + extendedBiomes); writer.newLine();
+            writer.write("--blocks--"); writer.newLine();
+            for (Map.Entry<BlockPos, BlockType> entry : blocks.entrySet()) {
+                BlockPos p = entry.getKey();
+                String id = preservedUnknownIds.getOrDefault(p, entry.getValue().id());
+                writer.write(Integer.toString(p.x()));
+                writer.write(',');
+                writer.write(Integer.toString(p.y()));
+                writer.write(',');
+                writer.write(Integer.toString(p.z()));
+                writer.write(',');
+                writer.write(id);
+                writer.newLine();
+            }
+            writer.write("--creatures--"); writer.newLine();
+            for (WorldCreature creature : creatures) {
+                writer.write(Long.toString(creature.id()));
+                writer.write(',');
+                writer.write(creature.type().id());
+                writer.write(',');
+                writer.write(Float.toString(creature.x()));
+                writer.write(',');
+                writer.write(Float.toString(creature.y()));
+                writer.write(',');
+                writer.write(Float.toString(creature.z()));
+                writer.write(',');
+                writer.write(Float.toString(creature.yaw()));
+                writer.newLine();
+            }
+        }
         try {
             Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException ex) {
@@ -1015,96 +1031,154 @@ public final class VoxelWorld {
         }
     }
 
-    /** Loads a legacy-compatible block save. Rendering is deferred to updateStreaming(). */
+    /** Loads a legacy-compatible block save without keeping the whole file in RAM. */
     public String load(Path file) throws IOException {
-        List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
-        if (lines.size() < 5 || !FILE_HEADER.equals(lines.get(0).trim())) throw new IOException("Это не файл сохранения BlockWorld.");
-        int format = readIntProperty(lines, "format", -1);
-        if (format > VersionManager.WORLD_FORMAT) throw new IOException("Мир использует более новый формат сохранения (" + format + "). Обнови BlockWorld.");
-        if (format < 1) throw new IOException("Формат мира повреждён или не поддерживается.");
-        String savedVersion = readStringProperty(lines, "gameVersion", "неизвестно");
-        String biomeProperty = readStringProperty(lines, "biomes", "");
-        boolean loadedActiveBiomes = "true".equalsIgnoreCase(biomeProperty) ? true
-                : "false".equalsIgnoreCase(biomeProperty) ? false : supportsBiomes(savedVersion);
-        String extendedBiomeProperty = readStringProperty(lines, "extendedBiomes", "");
-        boolean loadedExtendedBiomes = "true".equalsIgnoreCase(extendedBiomeProperty) ? true
-                : "false".equalsIgnoreCase(extendedBiomeProperty) ? false : supportsExtendedBiomes(savedVersion);
+        boolean dataStarted = false;
+        String savedVersion;
         long loadedSeed;
-        try { loadedSeed = Long.parseLong(readStringProperty(lines, "seed", "20261112")); }
-        catch (NumberFormatException ex) { loadedSeed = 20261112L; }
-        int marker = lines.indexOf("--blocks--");
-        if (marker < 0) throw new IOException("В файле отсутствует список блоков.");
-        int creatureMarker = lines.indexOf("--creatures--");
-        int blocksEnd = creatureMarker >= 0 ? creatureMarker : lines.size();
-
-        clear();
-        activeBiomes = loadedActiveBiomes;
-        extendedBiomes = loadedExtendedBiomes;
-        seed = loadedSeed;
-        worldRadius = VersionManager.find(savedVersion).worldRadius();
-        bulkUpdate = true;
-        try {
-            int loaded = 0;
-            for (int i = marker + 1; i < blocksEnd; i++) {
-                String line = lines.get(i).trim();
-                if (line.isEmpty()) continue;
-                if (++loaded > MAX_SAVED_BLOCKS) throw new IOException("В мире слишком много блоков. Загрузка отменена для безопасности.");
-                String[] parts = line.split(",", -1);
-                if (parts.length != 4) throw new IOException("Повреждена запись блока в строке " + (i + 1) + ".");
-                try {
-                    BlockPos pos = new BlockPos(Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim()), Integer.parseInt(parts[2].trim()));
-                    String rawId = parts[3].trim();
-                    if (!rawId.matches("[A-Za-z0-9_-]{1,64}")) throw new IllegalArgumentException("Недопустимый ID блока");
-                    BlockType type;
-                    boolean unknown = false;
-                    try { type = BlockType.fromId(rawId); }
-                    catch (IllegalArgumentException ex) { type = BlockType.STONE; unknown = true; }
-                    if (addBlock(pos, type) && unknown) preservedUnknownIds.put(pos, rawId);
-                } catch (RuntimeException ex) {
-                    throw new IOException("Некорректный блок в строке " + (i + 1) + ".", ex);
-                }
+        boolean loadedActiveBiomes;
+        boolean loadedExtendedBiomes;
+        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+            String header = reader.readLine();
+            if (header == null || !FILE_HEADER.equals(header.trim())) {
+                throw new IOException("Это не файл сохранения BlockWorld.");
             }
-            if (creatureMarker >= 0) {
-                int loadedCreatures = 0;
-                for (int i = creatureMarker + 1; i < lines.size(); i++) {
-                    String line = lines.get(i).trim();
-                    if (line.isEmpty()) continue;
-                    if (++loadedCreatures > 256) throw new IOException("В мире слишком много существ. Загрузка отменена для безопасности.");
-                    String[] parts = line.split(",", -1);
-                    if (parts.length != 6) throw new IOException("Повреждена запись существа в строке " + (i + 1) + ".");
+
+            int lineNumber = 1;
+            int format = -1;
+            String versionProperty = "неизвестно";
+            String biomeProperty = "";
+            String extendedBiomeProperty = "";
+            String seedProperty = "20261112";
+            boolean foundBlocks = false;
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                String value = line.trim();
+                if ("--blocks--".equals(value)) {
+                    foundBlocks = true;
+                    break;
+                }
+                if (value.startsWith("format=")) format = parseIntOr(value.substring(7), -1);
+                else if (value.startsWith("gameVersion=")) versionProperty = value.substring(12).trim();
+                else if (value.startsWith("biomes=")) biomeProperty = value.substring(7).trim();
+                else if (value.startsWith("extendedBiomes=")) extendedBiomeProperty = value.substring(15).trim();
+                else if (value.startsWith("seed=")) seedProperty = value.substring(5).trim();
+            }
+            if (!foundBlocks) throw new IOException("В файле отсутствует список блоков.");
+            if (format > VersionManager.WORLD_FORMAT) {
+                throw new IOException("Мир использует более новый формат сохранения (" + format + "). Обнови BlockWorld.");
+            }
+            if (format < 1) throw new IOException("Формат мира повреждён или не поддерживается.");
+
+            savedVersion = versionProperty.isBlank() ? "неизвестно" : versionProperty;
+            loadedSeed = parseLongOr(seedProperty, 20261112L);
+            loadedActiveBiomes = "true".equalsIgnoreCase(biomeProperty) ? true
+                    : "false".equalsIgnoreCase(biomeProperty) ? false : supportsBiomes(savedVersion);
+            loadedExtendedBiomes = "true".equalsIgnoreCase(extendedBiomeProperty) ? true
+                    : "false".equalsIgnoreCase(extendedBiomeProperty) ? false : supportsExtendedBiomes(savedVersion);
+
+            clear();
+            dataStarted = true;
+            activeBiomes = loadedActiveBiomes;
+            extendedBiomes = loadedExtendedBiomes;
+            seed = loadedSeed;
+            worldRadius = VersionManager.find(savedVersion).worldRadius();
+            bulkUpdate = true;
+
+            int loadedBlocks = 0;
+            int loadedCreatures = 0;
+            boolean readingCreatures = false;
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                String value = line.trim();
+                if (value.isEmpty()) continue;
+                if ("--creatures--".equals(value)) {
+                    readingCreatures = true;
+                    continue;
+                }
+                if (!readingCreatures) {
+                    if (++loadedBlocks > MAX_SAVED_BLOCKS) {
+                        throw new IOException("В мире слишком много блоков. Загрузка отменена для безопасности.");
+                    }
+                    try {
+                        int first = value.indexOf(',');
+                        int second = first < 0 ? -1 : value.indexOf(',', first + 1);
+                        int third = second < 0 ? -1 : value.indexOf(',', second + 1);
+                        if (first <= 0 || second <= first + 1 || third <= second + 1
+                                || value.indexOf(',', third + 1) >= 0) {
+                            throw new IllegalArgumentException("Ожидались координаты и ID блока");
+                        }
+                        int x = Integer.parseInt(value.substring(0, first).trim());
+                        int y = Integer.parseInt(value.substring(first + 1, second).trim());
+                        int z = Integer.parseInt(value.substring(second + 1, third).trim());
+                        String rawId = value.substring(third + 1).trim();
+                        if (!isValidBlockId(rawId)) throw new IllegalArgumentException("Недопустимый ID блока");
+                        BlockType type;
+                        boolean unknown = false;
+                        try {
+                            type = BlockType.fromId(rawId);
+                        } catch (IllegalArgumentException ex) {
+                            type = BlockType.STONE;
+                            unknown = true;
+                        }
+                        BlockPos pos = new BlockPos(x, y, z);
+                        if (addBlock(pos, type) && unknown) preservedUnknownIds.put(pos, rawId);
+                    } catch (RuntimeException ex) {
+                        throw new IOException("Некорректный блок в строке " + lineNumber + ".", ex);
+                    }
+                } else {
+                    if (++loadedCreatures > 256) {
+                        throw new IOException("В мире слишком много существ. Загрузка отменена для безопасности.");
+                    }
+                    String[] parts = value.split(",", -1);
+                    if (parts.length != 6) {
+                        throw new IOException("Повреждена запись существа в строке " + lineNumber + ".");
+                    }
                     try {
                         WorldCreature creature = new WorldCreature(
                                 Long.parseLong(parts[0].trim()), CreatureType.fromId(parts[1].trim()),
                                 Float.parseFloat(parts[2].trim()), Float.parseFloat(parts[3].trim()),
                                 Float.parseFloat(parts[4].trim()), Float.parseFloat(parts[5].trim()));
-                        if (!addCreature(creature)) throw new IllegalArgumentException("Повторный ID существа или превышен лимит");
+                        if (!addCreature(creature)) {
+                            throw new IllegalArgumentException("Повторный ID существа или превышен лимит");
+                        }
                     } catch (RuntimeException ex) {
-                        throw new IOException("Некорректное существо в строке " + (i + 1) + ".", ex);
+                        throw new IOException("Некорректное существо в строке " + lineNumber + ".", ex);
                     }
                 }
             }
         } catch (IOException ex) {
-            clear();
+            if (dataStarted) clear();
             throw ex;
         } finally {
             bulkUpdate = false;
         }
+
         if (WorldNavigation.supportsExploration(savedVersion)) {
             landmarks = WorldNavigation.allMarkers(loadedSeed, worldRadius);
         }
         return savedVersion;
     }
 
-    private int readIntProperty(List<String> lines, String key, int fallback) {
-        try { return Integer.parseInt(readStringProperty(lines, key, Integer.toString(fallback))); }
+    private int parseIntOr(String value, int fallback) {
+        try { return Integer.parseInt(value.trim()); }
         catch (NumberFormatException ex) { return fallback; }
     }
 
-    private String readStringProperty(List<String> lines, String key, String fallback) {
-        String prefix = key + "=";
-        for (String line : lines) if (line.startsWith(prefix)) return line.substring(prefix.length()).trim();
-        return fallback;
+    private long parseLongOr(String value, long fallback) {
+        try { return Long.parseLong(value.trim()); }
+        catch (NumberFormatException ex) { return fallback; }
     }
 
-    private record Face(int nx, int ny, int nz, float shade, float[] vertices) { }
+    private boolean isValidBlockId(String value) {
+        if (value == null || value.isEmpty() || value.length() > 64) return false;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (!(ch >= 'A' && ch <= 'Z') && !(ch >= 'a' && ch <= 'z')
+                    && !(ch >= '0' && ch <= '9') && ch != '_' && ch != '-') return false;
+        }
+        return true;
+    }
+
 }
