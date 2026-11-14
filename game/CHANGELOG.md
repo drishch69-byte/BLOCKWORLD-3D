@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.9.18 — Launcher Backup Update
+- Refreshed all launcher buttons with a consistent visual style, clearer tooltips and keyboard-friendly focus.
+- Reorganized settings into **Screen**, **Graphics**, and **Performance** tabs with explanations for each option and a live approximate load indicator.
+- Added a clear notice that saved graphics settings are applied the next time a world is launched.
 - Added a manual **Create Backup** action to the launcher's world backup window.
 - Manual backups include the world save and its player, achievement, pet, and animal progress sidecars.
 - Added **F5** as a shortcut to refresh the launcher's saved-world list.

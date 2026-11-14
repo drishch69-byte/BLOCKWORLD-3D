@@ -41,6 +41,7 @@ import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
+import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -50,6 +51,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridLayout;
 import java.awt.FlowLayout;
+import java.awt.Cursor;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import javax.imageio.ImageIO;
@@ -273,22 +275,23 @@ public final class Launcher {
         bottom.setOpaque(false);
         bottom.setBorder(BorderFactory.createEmptyBorder(0, 24, 16, 24));
         JPanel buttons = new JPanel(new GridLayout(4, 4, 7, 7));
-        JButton play = new JButton("ИГРАТЬ");
+        JButton play = createLauncherButton("ИГРАТЬ");
         play.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
         play.setBackground(new java.awt.Color(195, 225, 198));
-        JButton newWorld = new JButton("НОВЫЙ МИР");
-        JButton settings = new JButton("НАСТРОЙКИ");
-        JButton mods = new JButton("МОДЫ");
-        JButton packs = new JButton("РЕСУРС-ПАКИ");
-        JButton multiplayer = new JButton("СЕТЕВАЯ ИГРА");
-        JButton refresh = new JButton("ОБНОВИТЬ СПИСОК");
-        JButton worlds = new JButton("ПАПКА МИРОВ");
-        favoriteButton = new JButton("В ИЗБРАННОЕ");
-        JButton backups = new JButton("РЕЗЕРВНЫЕ КОПИИ");
-        JButton diagnostics = new JButton("ДИАГНОСТИКА");
-        JButton profile = new JButton("ПРОФИЛЬ ИГРОКА");
-        JButton versionProfiles = new JButton("ПРОФИЛИ ВЕРСИЙ");
-        JButton close = new JButton("ВЫХОД");
+        play.setToolTipText("Запустить выбранный мир с выбранным профилем версии.");
+        JButton newWorld = createLauncherButton("НОВЫЙ МИР");
+        JButton settings = createLauncherButton("НАСТРОЙКИ");
+        JButton mods = createLauncherButton("МОДЫ");
+        JButton packs = createLauncherButton("РЕСУРС-ПАКИ");
+        JButton multiplayer = createLauncherButton("СЕТЕВАЯ ИГРА");
+        JButton refresh = createLauncherButton("ОБНОВИТЬ СПИСОК");
+        JButton worlds = createLauncherButton("ПАПКА МИРОВ");
+        favoriteButton = createLauncherButton("В ИЗБРАННОЕ");
+        JButton backups = createLauncherButton("РЕЗЕРВНЫЕ КОПИИ");
+        JButton diagnostics = createLauncherButton("ДИАГНОСТИКА");
+        JButton profile = createLauncherButton("ПРОФИЛЬ ИГРОКА");
+        JButton versionProfiles = createLauncherButton("ПРОФИЛИ ВЕРСИЙ");
+        JButton close = createLauncherButton("ВЫХОД");
         play.addActionListener(event -> launchSelectedWorld());
         newWorld.addActionListener(event -> createWorld());
         settings.addActionListener(event -> showSettingsDialog());
@@ -303,6 +306,19 @@ public final class Launcher {
         profile.addActionListener(event -> showPlayerProfileDialog());
         versionProfiles.addActionListener(event -> showVersionProfilesDialog());
         close.addActionListener(event -> frame.dispose());
+        newWorld.setToolTipText("Создать мир: выбрать название, размер карты и seed.");
+        settings.setToolTipText("Настроить разрешение, графику и производительность.");
+        mods.setToolTipText("Установить, включить или отключить моды выбранного профиля.");
+        packs.setToolTipText("Импортировать PNG-ресурс-паки и выбрать активный набор.");
+        multiplayer.setToolTipText("Создать LAN-сервер или подключиться к существующей комнате.");
+        refresh.setToolTipText("Обновить список сохранённых миров (также клавиша F5).");
+        worlds.setToolTipText("Открыть папку с сохранёнными мирами.");
+        favoriteButton.setToolTipText("Добавить выбранный мир в избранное или убрать его оттуда.");
+        backups.setToolTipText("Создать, восстановить или удалить резервную копию мира.");
+        diagnostics.setToolTipText("Посмотреть сведения о Java, памяти, настройках и журнале.");
+        profile.setToolTipText("Изменить имя и образ персонажа, посмотреть статистику.");
+        versionProfiles.setToolTipText("Управлять профилями версий, их настройками и модами.");
+        close.setToolTipText("Закрыть лаунчер.");
         buttons.add(play);
         buttons.add(newWorld);
         buttons.add(settings);
@@ -339,6 +355,22 @@ public final class Launcher {
                 event -> refreshWorldList(selectedWorldPath()),
                 KeyStroke.getKeyStroke("F5"),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
+    }
+
+    private static JButton createLauncherButton(String text) {
+        JButton button = new JButton(text);
+        button.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+        button.setForeground(new java.awt.Color(38, 62, 48));
+        button.setBackground(new java.awt.Color(231, 239, 231));
+        button.setFocusPainted(false);
+        button.setOpaque(true);
+        button.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(190, 207, 191)),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)));
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        button.setToolTipText(text);
+        button.getAccessibleContext().setAccessibleDescription(text);
+        return button;
     }
 
     private String systemSummary() {
@@ -528,8 +560,8 @@ public final class Launcher {
         dialog.add(statistics, BorderLayout.CENTER);
 
         JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton save = new JButton("СОХРАНИТЬ");
-        JButton cancel = new JButton("ОТМЕНА");
+        JButton save = createLauncherButton("СОХРАНИТЬ");
+        JButton cancel = createLauncherButton("ОТМЕНА");
         save.addActionListener(event -> {
             if (displayName.getText().isBlank()) {
                 JOptionPane.showMessageDialog(dialog, "Введи имя персонажа.",
@@ -589,11 +621,11 @@ public final class Launcher {
         dialog.add(info, BorderLayout.NORTH);
         dialog.add(new JScrollPane(backups), BorderLayout.CENTER);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton create = new JButton("СОЗДАТЬ КОПИЮ");
-        JButton restore = new JButton("ВОССТАНОВИТЬ");
-        JButton delete = new JButton("УДАЛИТЬ КОПИЮ");
-        JButton refresh = new JButton("ОБНОВИТЬ");
-        JButton close = new JButton("ЗАКРЫТЬ");
+        JButton create = createLauncherButton("СОЗДАТЬ КОПИЮ");
+        JButton restore = createLauncherButton("ВОССТАНОВИТЬ");
+        JButton delete = createLauncherButton("УДАЛИТЬ КОПИЮ");
+        JButton refresh = createLauncherButton("ОБНОВИТЬ");
+        JButton close = createLauncherButton("ЗАКРЫТЬ");
         Runnable reload = () -> {
             model.clear();
             try {
@@ -697,8 +729,8 @@ public final class Launcher {
         dialog.setLayout(new BorderLayout(8, 8));
         dialog.add(new JScrollPane(report), BorderLayout.CENTER);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton logFolder = new JButton("ПАПКА ЖУРНАЛОВ");
-        JButton close = new JButton("ЗАКРЫТЬ");
+        JButton logFolder = createLauncherButton("ПАПКА ЖУРНАЛОВ");
+        JButton close = createLauncherButton("ЗАКРЫТЬ");
         logFolder.addActionListener(event -> openFolder(logFile.getParent()));
         close.addActionListener(event -> dialog.dispose());
         buttons.add(logFolder); buttons.add(close);
@@ -924,11 +956,11 @@ public final class Launcher {
         });
 
         JPanel actions = new JPanel(new GridLayout(1, 5, 6, 6));
-        JButton activate = new JButton("АКТИВИРОВАТЬ");
-        JButton settings = new JButton("НАСТРОЙКИ");
-        JButton mods = new JButton("МОДЫ");
-        JButton folder = new JButton("ПАПКА");
-        JButton close = new JButton("ЗАКРЫТЬ");
+        JButton activate = createLauncherButton("АКТИВИРОВАТЬ");
+        JButton settings = createLauncherButton("НАСТРОЙКИ");
+        JButton mods = createLauncherButton("МОДЫ");
+        JButton folder = createLauncherButton("ПАПКА");
+        JButton close = createLauncherButton("ЗАКРЫТЬ");
         activate.addActionListener(event -> {
             GameVersion selected = list.getSelectedValue();
             if (selected == null) return;
@@ -978,9 +1010,9 @@ public final class Launcher {
         GameSettings current = GameSettings.load(profileId);
         JDialog dialog = new JDialog(frame, "Minecraft 3D — Настройки " + profileId, true);
         dialog.setLayout(new BorderLayout(10, 10));
-        JPanel form = new JPanel(new GridLayout(8, 2, 10, 10));
-        form.setBorder(BorderFactory.createEmptyBorder(18, 18, 10, 18));
-        JComboBox<String> resolution = new JComboBox<>(new String[]{"1024x640", "1280x720", "1600x900", "1920x1080"});
+
+        JComboBox<String> resolution = new JComboBox<>(
+                new String[]{"1024x640", "1280x720", "1600x900", "1920x1080"});
         resolution.setSelectedItem(current.width() + "x" + current.height());
         JCheckBox fullscreen = new JCheckBox("Полноэкранный режим", current.fullscreen());
         JCheckBox vsync = new JCheckBox("Вертикальная синхронизация (VSync)", current.vsync());
@@ -991,25 +1023,90 @@ public final class Launcher {
         vegetation.setSelectedIndex(current.vegetationDensity());
         JComboBox<Integer> chunkBudget = new JComboBox<>(new Integer[]{1, 2, 3, 4, 6});
         chunkBudget.setSelectedItem(current.chunkBuildsPerFrame());
-        chunkBudget.setToolTipText("Больше чанков за кадр ускоряет подгрузку, но сильнее нагружает процессор.");
-        JComboBox<String> fpsLimit = new JComboBox<>(new String[]{"Без ограничения", "30", "60", "90", "120", "144"});
+        JComboBox<String> fpsLimit = new JComboBox<>(
+                new String[]{"Без ограничения", "30", "60", "90", "120", "144"});
         fpsLimit.setSelectedItem(fpsLabel(current.fpsLimit()));
-        form.add(new JLabel("Разрешение:")); form.add(resolution);
-        form.add(new JLabel("Дальность чанков:")); form.add(distance);
-        form.add(new JLabel("Поле зрения (FOV):")); form.add(fov);
-        form.add(new JLabel("Экран:")); form.add(fullscreen);
-        form.add(new JLabel("Синхронизация:")); form.add(vsync);
-        form.add(new JLabel("Растительность:")); form.add(vegetation);
-        form.add(new JLabel("Чанков за кадр:")); form.add(chunkBudget);
-        form.add(new JLabel("Ограничение FPS:")); form.add(fpsLimit);
-        dialog.add(form, BorderLayout.CENTER);
-        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton reset = new JButton("ПО УМОЛЧАНИЮ");
-        JButton recommend = new JButton("АВТОПОДБОР");
-        JButton save = new JButton("СОХРАНИТЬ");
-        JButton cancel = new JButton("ОТМЕНА");
-        recommend.setToolTipText("Подбирает умеренные настройки по памяти JVM и числу процессоров.");
-        recommend.addActionListener(e -> {
+
+        resolution.setToolTipText("Размер игрового окна. Выбирай разрешение, которое поддерживает монитор.");
+        fullscreen.setToolTipText("Переключает игру в полноэкранный режим.");
+        vsync.setToolTipText("Синхронизирует кадры с частотой монитора и может уменьшить разрывы изображения.");
+        distance.setToolTipText("Чем больше дальность, тем дальше виден мир, но тем выше нагрузка.");
+        fov.setToolTipText("Угол обзора камеры: от 55° до 100°.");
+        vegetation.setToolTipText("Количество декоративной растительности в мире.");
+        chunkBudget.setToolTipText("Сколько чанков обрабатывать за кадр. Высокие значения быстрее загружают мир, но сильнее нагружают CPU.");
+        fpsLimit.setToolTipText("Ограничение частоты кадров. Меньший лимит может снизить нагрев и расход энергии.");
+
+        JPanel screen = createSettingsPanel("Окно игры");
+        addSetting(screen, "Разрешение:", resolution);
+        addSetting(screen, "Режим экрана:", fullscreen);
+        JPanel graphics = createSettingsPanel("Изображение и окружение");
+        addSetting(graphics, "Дальность чанков:", distance);
+        addSetting(graphics, "Поле зрения (FOV):", fov);
+        addSetting(graphics, "Растительность:", vegetation);
+        JPanel performance = createSettingsPanel("Производительность");
+        addSetting(performance, "Синхронизация:", vsync);
+        addSetting(performance, "Чанков за кадр:", chunkBudget);
+        addSetting(performance, "Ограничение FPS:", fpsLimit);
+
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.addTab("ЭКРАН", screen);
+        tabs.addTab("ГРАФИКА", graphics);
+        tabs.addTab("ПРОИЗВОДИТЕЛЬНОСТЬ", performance);
+
+        JLabel estimate = new JLabel();
+        estimate.setBorder(BorderFactory.createEmptyBorder(8, 4, 4, 4));
+        Runnable updateEstimate = () -> {
+            String selectedResolution = String.valueOf(resolution.getSelectedItem());
+            int selectedDistance = (Integer) distance.getSelectedItem();
+            int selectedChunks = (Integer) chunkBudget.getSelectedItem();
+            int score = Math.max(0, selectedDistance - 3) * 2
+                    + vegetation.getSelectedIndex() + Math.max(0, selectedChunks - 2)
+                    + (selectedResolution.startsWith("1920") ? 2 : 0);
+            String load = score >= 8 ? "повышенная" : score >= 4 ? "средняя" : "низкая";
+            estimate.setText("<html><b>Оценка выбранных параметров:</b> нагрузка " + load
+                    + " &nbsp;|&nbsp; " + selectedResolution
+                    + " &nbsp;|&nbsp; чанки " + selectedDistance
+                    + " &nbsp;|&nbsp; FPS " + fpsLabel(parseFpsLabel(String.valueOf(fpsLimit.getSelectedItem())))
+                    + "</html>");
+        };
+        resolution.addActionListener(event -> updateEstimate.run());
+        distance.addActionListener(event -> updateEstimate.run());
+        vegetation.addActionListener(event -> updateEstimate.run());
+        chunkBudget.addActionListener(event -> updateEstimate.run());
+        fpsLimit.addActionListener(event -> updateEstimate.run());
+        fov.addChangeListener(event -> updateEstimate.run());
+        fullscreen.addActionListener(event -> updateEstimate.run());
+        vsync.addActionListener(event -> updateEstimate.run());
+        updateEstimate.run();
+
+        JLabel notice = new JLabel("Настройки хранятся отдельно для каждого профиля версии. Изменения применятся при следующем запуске мира.");
+        notice.setBorder(BorderFactory.createEmptyBorder(2, 4, 4, 4));
+        JPanel center = new JPanel(new BorderLayout(8, 8));
+        center.setBorder(BorderFactory.createEmptyBorder(12, 14, 8, 14));
+        center.add(estimate, BorderLayout.NORTH);
+        center.add(tabs, BorderLayout.CENTER);
+        center.add(notice, BorderLayout.SOUTH);
+        dialog.add(center, BorderLayout.CENTER);
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        JButton reset = createLauncherButton("ПО УМОЛЧАНИЮ");
+        JButton recommend = createLauncherButton("АВТОПОДБОР");
+        JButton save = createLauncherButton("СОХРАНИТЬ");
+        JButton cancel = createLauncherButton("ОТМЕНА");
+        recommend.setToolTipText("Подобрать умеренные параметры с учётом памяти JVM и числа процессоров.");
+        reset.addActionListener(event -> {
+            GameSettings defaults = GameSettings.DEFAULT;
+            resolution.setSelectedItem(defaults.width() + "x" + defaults.height());
+            distance.setSelectedItem(defaults.renderDistance());
+            fov.setValue(defaults.fov());
+            fullscreen.setSelected(defaults.fullscreen());
+            vsync.setSelected(defaults.vsync());
+            vegetation.setSelectedIndex(defaults.vegetationDensity());
+            chunkBudget.setSelectedItem(defaults.chunkBuildsPerFrame());
+            fpsLimit.setSelectedItem(fpsLabel(defaults.fpsLimit()));
+            updateEstimate.run();
+        });
+        recommend.addActionListener(event -> {
             GameSettings suggested = GameSettings.recommended(Runtime.getRuntime().maxMemory(),
                     Runtime.getRuntime().availableProcessors());
             resolution.setSelectedItem(suggested.width() + "x" + suggested.height());
@@ -1020,30 +1117,50 @@ public final class Launcher {
             vegetation.setSelectedIndex(suggested.vegetationDensity());
             chunkBudget.setSelectedItem(suggested.chunkBuildsPerFrame());
             fpsLimit.setSelectedItem(fpsLabel(suggested.fpsLimit()));
+            updateEstimate.run();
         });
-        reset.addActionListener(e -> {
-            resolution.setSelectedItem("1024x640"); distance.setSelectedItem(3);
-            fov.setValue(68); fullscreen.setSelected(false); vsync.setSelected(false);
-            vegetation.setSelectedIndex(2); chunkBudget.setSelectedItem(2); fpsLimit.setSelectedItem("60");
-        });
-        save.addActionListener(e -> {
+        save.addActionListener(event -> {
             String[] parts = String.valueOf(resolution.getSelectedItem()).split("x");
             try {
-                GameSettings settings = new GameSettings(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]),
+                GameSettings updated = new GameSettings(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]),
                         fullscreen.isSelected(), vsync.isSelected(), (Integer) distance.getSelectedItem(),
-                        (Integer) fov.getValue(), vegetation.getSelectedIndex(), (Integer) chunkBudget.getSelectedItem(),
+                        (Integer) fov.getValue(), vegetation.getSelectedIndex(),
+                        (Integer) chunkBudget.getSelectedItem(),
                         parseFpsLabel(String.valueOf(fpsLimit.getSelectedItem())));
-                GameSettings.save(profileId, settings);
-                status.setText("Настройки профиля " + profileId + " сохранены отдельно от других версий.");
+                GameSettings.save(profileId, updated);
+                status.setText("Настройки профиля " + profileId
+                        + " сохранены. Они применятся при следующем запуске мира.");
                 dialog.dispose();
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(dialog, "Не удалось сохранить настройки: " + ex.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
+            } catch (Exception error) {
+                GameLog.error("Не удалось сохранить настройки профиля " + profileId, error);
+                JOptionPane.showMessageDialog(dialog,
+                        "Не удалось сохранить настройки: " + error.getMessage(),
+                        "Ошибка настроек", JOptionPane.ERROR_MESSAGE);
             }
         });
-        cancel.addActionListener(e -> dialog.dispose());
+        cancel.addActionListener(event -> dialog.dispose());
         actions.add(reset); actions.add(recommend); actions.add(save); actions.add(cancel);
         dialog.add(actions, BorderLayout.SOUTH);
-        dialog.pack(); dialog.setMinimumSize(new Dimension(560, 360)); dialog.setLocationRelativeTo(frame); dialog.setVisible(true);
+        dialog.getRootPane().setDefaultButton(save);
+        dialog.setMinimumSize(new Dimension(720, 470));
+        dialog.setSize(760, 500);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
+    }
+
+    private static JPanel createSettingsPanel(String title) {
+        JPanel panel = new JPanel(new GridLayout(0, 2, 12, 14));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(title),
+                BorderFactory.createEmptyBorder(14, 14, 14, 14)));
+        return panel;
+    }
+
+    private static void addSetting(JPanel panel, String label, JComponent component) {
+        JLabel caption = new JLabel(label);
+        caption.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        panel.add(caption);
+        panel.add(component);
     }
 
     private void showModsDialog() {
@@ -1060,13 +1177,13 @@ public final class Launcher {
         dialog.add(info, BorderLayout.NORTH);
         dialog.add(new JScrollPane(list), BorderLayout.CENTER);
         JPanel buttons = new JPanel(new GridLayout(3, 3, 6, 6));
-        JButton install = new JButton("УСТАНОВИТЬ JAR");
-        JButton toggle = new JButton("ВКЛ / ВЫКЛ");
-        JButton remove = new JButton("УДАЛИТЬ");
-        JButton folder = new JButton("ПАПКА ПРОФИЛЯ");
-        JButton sharedFolder = new JButton("ОБЩИЕ МОДЫ");
-        JButton refresh = new JButton("ОБНОВИТЬ");
-        JButton close = new JButton("ЗАКРЫТЬ");
+        JButton install = createLauncherButton("УСТАНОВИТЬ JAR");
+        JButton toggle = createLauncherButton("ВКЛ / ВЫКЛ");
+        JButton remove = createLauncherButton("УДАЛИТЬ");
+        JButton folder = createLauncherButton("ПАПКА ПРОФИЛЯ");
+        JButton sharedFolder = createLauncherButton("ОБЩИЕ МОДЫ");
+        JButton refresh = createLauncherButton("ОБНОВИТЬ");
+        JButton close = createLauncherButton("ЗАКРЫТЬ");
         Runnable reload = () -> {
             model.clear();
             try { for (ModManager.ModInfo mod : manager.listAll()) model.addElement(mod); }
@@ -1211,9 +1328,9 @@ public final class Launcher {
         chat.setLineWrap(true);
         chat.setWrapStyleWord(true);
         JTextField message = new JTextField();
-        JButton send = new JButton("ОТПРАВИТЬ");
+        JButton send = createLauncherButton("ОТПРАВИТЬ");
         send.setEnabled(false);
-        JButton play = new JButton("ЗАПУСТИТЬ ВЫБРАННЫЙ МИР");
+        JButton play = createLauncherButton("ЗАПУСТИТЬ ВЫБРАННЫЙ МИР");
         play.setEnabled(false);
         boolean[] handedOffToGame = {false};
 
@@ -1318,11 +1435,11 @@ public final class Launcher {
             }
         });
         JPanel buttons = new JPanel(new GridLayout(2, 3, 6, 6));
-        JButton apply = new JButton("ПРИМЕНИТЬ");
-        JButton install = new JButton("ИМПОРТ ZIP");
-        JButton remove = new JButton("УДАЛИТЬ ПАК");
-        JButton folder = new JButton("ПАПКА РЕСУРС-ПАКОВ");
-        JButton close = new JButton("ЗАКРЫТЬ");
+        JButton apply = createLauncherButton("ПРИМЕНИТЬ");
+        JButton install = createLauncherButton("ИМПОРТ ZIP");
+        JButton remove = createLauncherButton("УДАЛИТЬ ПАК");
+        JButton folder = createLauncherButton("ПАПКА РЕСУРС-ПАКОВ");
+        JButton close = createLauncherButton("ЗАКРЫТЬ");
         Runnable reload = () -> {
             try {
                 String active = manager.selectedPackId();

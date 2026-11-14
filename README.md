@@ -31,6 +31,9 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 **1.9.18 — Launcher Backup Update (development)**
 
+- All launcher buttons now share a consistent style and useful tooltips.
+- Settings are grouped into **Screen**, **Graphics**, and **Performance** tabs; each option includes an explanation and the dialog shows an approximate load estimate.
+- Settings are saved per version profile and take effect the next time you launch a world.
 - The launcher now lets you create a manual backup from the selected world's backup window.
 - Backups include the world save and companion progress files for the player, achievements, pets, and animals.
 - Press **F5** to refresh the saved-world list without restarting the launcher.
