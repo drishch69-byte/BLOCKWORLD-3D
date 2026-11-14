@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.9.11 — Farm Life & Baby Animals
+- Added breeding for adult cows, sheep, pigs, and chickens in single-player survival. Bring two adults of the same species together, carry two feed items, and press **F** near either parent.
+- Cows, sheep, and pigs eat wheat; chickens eat wheat seeds.
+- Added calves, lambs, piglets, and chicks with smaller models; babies grow into adults after three minutes of active game time.
+- Added a five-minute breeding cooldown for both parents, persisted together with baby growth in a new atomic animal sidecar file.
+- Nearby farm animals provide a small extra wheat-growth bonus alongside the existing rain and farmer bonuses.
+- Added animal-sidecar backup/restore support and coverage for backup manifests from older releases.
+- Kept world save format 2 and all existing creature IDs unchanged; baby creature IDs are appended.
+
+
 ## 1.9.10 — Fox Companions & Taming
 - Added fox taming in survival mode: interact with a nearby fox using **F** while carrying cooked fish.
 - Tamed foxes follow the player and can be told to **Stay** or **Follow** again with **N**, alongside existing dog companions.

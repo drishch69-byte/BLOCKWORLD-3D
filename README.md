@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.10 — Fox Companions & Taming.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.11 — Farm Life & Baby Animals.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,7 +10,16 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.10 — Fox Companions & Taming**
+**1.9.11 — Farm Life & Baby Animals**
+
+- Breed adult cows, sheep, pigs, and chickens in single-player survival by bringing two of the same species together and pressing **F** while carrying two feed items.
+- Cows, sheep, and pigs eat wheat; chickens eat wheat seeds.
+- Calves, lambs, piglets, and chicks use smaller models and grow into adults after three minutes of active game time.
+- Each parent has a five-minute breeding cooldown; baby growth and cooldowns are stored in a separate animal sidecar and included in world backups.
+- Nearby farm animals provide a small extra wheat-growth bonus.
+- Kept world save format 2 and all earlier creature IDs unchanged.
+
+**Previous: 1.9.10 — Fox Companions & Taming**
 
 - Feed a nearby fox cooked fish and press **F** to tame it in survival mode.
 - Tamed foxes follow you; press **N** near a dog or tamed fox to switch between **Follow** and **Stay**.
@@ -116,7 +125,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.9.9)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.11)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
