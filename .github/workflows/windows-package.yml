@@ -1,0 +1,141 @@
+name: Windows Portable Build
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    name: Build portable Windows x64 game
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    defaults:
+      run:
+        working-directory: game
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: game/pom.xml
+
+      - name: Read application version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$pom = Get-Content -Raw pom.xml
+          $version = [string]$pom.project.version
+          if ($version -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') {
+            throw "Unsupported app version: $version"
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build and run tests
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Create portable Windows app
+        id: package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.value }}"
+          [xml]$pom = Get-Content -Raw pom.xml
+          $artifactId = [string]$pom.project.artifactId
+          $jarName = "$artifactId-$version.jar"
+          $jarPath = Join-Path $PWD "target/$jarName"
+          if (-not (Test-Path -LiteralPath $jarPath)) {
+            throw "Shaded application JAR was not produced: $jarPath"
+          }
+
+          $inputDir = Join-Path $PWD "package-input"
+          $distDir = Join-Path $PWD "dist"
+          if (Test-Path $inputDir) { Remove-Item $inputDir -Recurse -Force }
+          if (Test-Path $distDir) { Remove-Item $distDir -Recurse -Force }
+          New-Item -ItemType Directory -Path $inputDir | Out-Null
+          Copy-Item -LiteralPath $jarPath -Destination (Join-Path $inputDir $jarName)
+
+          jpackage --type app-image --name "BLOCKWORLD 3D" --input $inputDir --main-jar $jarName --main-class com.blockworld.ui.Launcher --app-version $version --dest $distDir
+          if ($LASTEXITCODE -ne 0) {
+            throw "jpackage failed with exit code $LASTEXITCODE"
+          }
+
+          $appDir = Join-Path $distDir "BLOCKWORLD 3D"
+          $launcher = Join-Path $appDir "BLOCKWORLD 3D.exe"
+          if (-not (Test-Path -LiteralPath $launcher)) {
+            throw "Windows launcher was not created: $launcher"
+          }
+
+          $instructions = @"
+          BLOCKWORLD 3D — Windows x64 (portable)
+          Version: $version
+
+          START
+          1. Extract the complete ZIP archive to a folder.
+          2. Open the extracted "BLOCKWORLD 3D" folder.
+          3. Double-click "BLOCKWORLD 3D.exe".
+
+          The Java runtime is included. You do not need to install Java or Maven.
+          Keep the complete folder together; do not move the EXE out of it.
+
+          Your worlds and settings are stored separately in:
+          %USERPROFILE%\\.blockworld3d
+
+          This is an unsigned community game build. Windows may show a first-run
+          security notice because the executable is not code-signed. Only run
+          builds downloaded from the official project repository.
+
+          Project:
+          https://github.com/drishch69-byte/BLOCKWORLD-3D
+          "@
+          Set-Content -LiteralPath (Join-Path $appDir "README-WINDOWS.txt") -Value $instructions -Encoding utf8
+
+          $zipName = "BLOCKWORLD-3D-$version-Windows-x64.zip"
+          $zipPath = Join-Path $PWD $zipName
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path $appDir -DestinationPath $zipPath -CompressionLevel Optimal
+          if (-not (Test-Path -LiteralPath $zipPath)) {
+            throw "Portable Windows archive was not created."
+          }
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Windows download
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: game/${{ steps.package.outputs.zip_name }}
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-release:
+    name: Attach Windows build to GitHub Release
+    needs: build-windows
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows package
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-package
+          path: dist
+
+      - name: Publish release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          name: BLOCKWORLD 3D ${{ needs.build-windows.outputs.version }} — Windows x64
+          files: dist/BLOCKWORLD-3D-${{ needs.build-windows.outputs.version }}-Windows-x64.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
