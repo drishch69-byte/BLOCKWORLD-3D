@@ -259,21 +259,31 @@ public final class VoxelWorld {
         lastStreamCenter = null;
     }
 
-    public boolean contains(BlockPos pos) { return blocks.containsKey(pos); }
+    /** Open gates remain visible, but no longer block player or creature movement. */
+    public boolean contains(BlockPos pos) {
+        BlockType type = blocks.get(pos);
+        return type != null && type != BlockType.OPEN_WOODEN_GATE;
+    }
     public BlockType getBlock(BlockPos pos) { return blocks.get(pos); }
 
     /** Returns the highest solid block in a column, or -13 below the world floor. */
     public int highestBlockY(int x, int z) {
-        return columnHeights.getOrDefault(columnKey(x, z), -13);
+        int highest = columnHeights.getOrDefault(columnKey(x, z), -13);
+        while (highest >= -12
+                && blocks.get(new BlockPos(x, highest, z)) == BlockType.OPEN_WOODEN_GATE) {
+            highest = highestBlockYAtOrBelow(x, z, highest - 1);
+        }
+        return highest;
     }
 
-    /** Finds the highest block below a ceiling; used by creatures that walk inside cave rooms. */
+    /** Finds the highest solid block below a ceiling; open gates do not count as floor. */
     public int highestBlockYAtOrBelow(int x, int z, int ceilingY) {
         int highest = -13;
         Set<BlockPos> members = chunkBlocks.get(ChunkPos.fromBlock(x, z));
         if (members == null) return highest;
         for (BlockPos pos : members) {
-            if (pos.x() == x && pos.z() == z && pos.y() <= ceilingY && pos.y() > highest) {
+            if (pos.x() == x && pos.z() == z && pos.y() <= ceilingY && pos.y() > highest
+                    && blocks.get(pos) != BlockType.OPEN_WOODEN_GATE) {
                 highest = pos.y();
             }
         }
@@ -453,7 +463,8 @@ public final class VoxelWorld {
             int localZ = pos.z() - baseZ;
             for (Face face : FACES) {
                 BlockPos neighbor = pos.add(face.nx, face.ny, face.nz);
-                if (blocks.containsKey(neighbor)) {
+                BlockType neighborType = blocks.get(neighbor);
+                if (neighborType != null && neighborType != BlockType.OPEN_WOODEN_GATE) {
                     boolean neighborChunkDesired = true;
                     if (face.nx != 0 && ((face.nx > 0 && localX == ChunkPos.SIZE - 1)
                             || (face.nx < 0 && localX == 0))) {
@@ -477,7 +488,12 @@ public final class VoxelWorld {
                 float vBottom = 1f - (tileY + 1) / (float) ResourcePackManager.ATLAS_COLUMNS + inset;
                 for (int vertex = 0; vertex < 4; vertex++) {
                     int offset = vertex * 3;
-                    positions.add(localX + face.vertices[offset]);
+                    float vertexX = face.vertices[offset];
+                    if (type == BlockType.OPEN_WOODEN_GATE) {
+                        // The opened gate swings against the east post, leaving the doorway clear.
+                        vertexX = 0.78f + vertexX * 0.18f;
+                    }
+                    positions.add(localX + vertexX);
                     positions.add(pos.y() + face.vertices[offset + 1]);
                     positions.add(localZ + face.vertices[offset + 2]);
                     if (texturedChunks) {
