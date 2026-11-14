@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620">
+<defs><linearGradient id="s" x2="0" y2="1"><stop stop-color="#122b44"/><stop offset="1" stop-color="#397085"/></linearGradient><linearGradient id="g" x2="0" y2="1"><stop stop-color="#b4e875"/><stop offset="1" stop-color="#4d9b58"/></linearGradient></defs>
+<rect width="1200" height="620" rx="30" fill="url(#s)"/><circle cx="940" cy="115" r="48" fill="#ffe6a0"/>
+<g fill="#fff" opacity=".7"><rect x="120" y="90" width="7" height="7"/><rect x="250" y="160" width="5" height="5"/><rect x="700" y="80" width="6" height="6"/><rect x="1080" y="230" width="5" height="5"/></g>
+<path d="M0 480Q200 410 390 470T800 450T1200 470V620H0Z" fill="#176c8d"/>
+<path d="M220 350 500 240 870 290 1040 390 760 490 390 460Z" fill="#68452f"/>
+<path d="M220 350 500 240 870 290 1040 390 760 490 390 460Z" fill="url(#g)"/>
+<path d="M390 460 760 490 760 520 390 490Z" fill="#4b342a"/><path d="M760 490 1040 390 1040 420 760 520Z" fill="#4b342a"/>
+<path d="M510 300 615 165 720 300Z" fill="#81969a"/><path d="m615 165 105 135h-84l-36-50-38 50h-52Z" fill="#d5e3df"/><path d="m615 165 42 54-42-10-39 46Z" fill="#fff"/>
+<g><path d="M365 305h24v82h-24z" fill="#875533"/><path d="M337 260h78v65h-78zM350 238h52v45h-52z" fill="#348f51"/><path d="M820 286h22v72h-22z" fill="#875533"/><path d="M785 245h92v72h-92zM805 220h53v48h-53z" fill="#348f51"/></g>
+<g><path d="m690 390 20-60 20 60-20 27Z" fill="#71e6ff" stroke="#d4ffff" stroke-width="3"/><path d="m730 410 15-44 15 44-15 20Z" fill="#bb8bff" stroke="#eee0ff" stroke-width="3"/><path d="m270 380 13-39 13 39-13 18Z" fill="#8cf2e8"/></g>
+<rect x="44" y="38" width="315" height="56" rx="14" fill="#08121e" opacity=".55"/><text x="66" y="75" fill="#f4f8fb" font-family="Arial,sans-serif" font-size="27" font-weight="800" letter-spacing="2">BLOCKWORLD 3D</text>
+<text x="54" y="566" fill="#eaf5f5" font-family="Arial,sans-serif" font-size="17">EXPLORE • BUILD • CRAFT • CREATE</text>
+</svg>
