@@ -1,6 +1,13 @@
-# Minecraft 3D — Launcher UI Polish
+# Minecraft 3D — Launcher & Log Stability Fix
 
-## 1.9.20 — STABILITY & LOG ROTATION (DEVELOPMENT)
+## 1.9.21 — LAUNCHER & LOG STABILITY FIX (DEVELOPMENT)
+
+- Исправлена версия и название обновления в заголовке лаунчера.
+- Журнал игры корректно создаётся по относительному пути без родительской папки.
+- Добавлен регрессионный тест записи журнала.
+- Формат сохранения мира остаётся 2.
+
+## 1.9.20 — STABILITY & LOG ROTATION
 
 - Runtime diagnostics are capped at 1 MiB per active log; the previous run is preserved as `latest-run.log.1`.
 - Logging I/O errors never interrupt gameplay.

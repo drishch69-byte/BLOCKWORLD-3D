@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.20",
+  "defaultVersion": "1.9.21",
   "versions": [
     {
       "id": "0.1.0",
@@ -234,6 +234,11 @@
     {
       "id": "1.9.20",
       "name": "Stability & Log Rotation",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.21",
+      "name": "Launcher & Log Stability Fix",
       "status": "current"
     }
   ]

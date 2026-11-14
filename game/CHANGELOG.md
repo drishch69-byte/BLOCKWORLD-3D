@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.21 — Launcher & Log Stability Fix
+- Corrected the launcher release banner to match the current version and codename.
+- Made runtime logging safe for relative paths without a parent directory.
+- Added a regression test for parentless relative log paths.
+- Kept world save format 2 and existing world/profile compatibility.
+
 ## 1.9.20 — Stability & Log Rotation
 - Added automatic log rotation at 1 MiB; the previous run is retained as `latest-run.log.1`.
 - Logging I/O failures remain non-fatal and never interrupt gameplay.
