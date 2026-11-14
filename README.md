@@ -21,7 +21,7 @@
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
-**Project website:** the multilingual site source is in [docs/index.html](docs/index.html). To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
+**Project website:** the multilingual site source is in [docs/index.html](docs/index.html), with a separate [version history](docs/versions.html) covering updates from 1.1.0 to 1.9.18. To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
 
 **Want to help?** Share [the project](https://github.com/drishch69-byte/BLOCKWORLD-3D), try a build, [report a bug](https://github.com/drishch69-byte/BLOCKWORLD-3D/issues/new/choose), or suggest a feature.
 
@@ -233,7 +233,7 @@ Preview workflow artifacts are retained for 30 days. GitHub Release assets remai
 - **Permanent versioned builds:** [GitHub Releases](https://github.com/drishch69-byte/BLOCKWORLD-3D/releases) — choose one of the four platform archives attached to a release.
 - **Latest source code:** [Download source ZIP](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip).
 
-[**Download latest source ZIP (1.9.17 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.18 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
@@ -258,8 +258,8 @@ Launch scripts are provided for Windows (run.bat) and Linux/macOS (run.sh).
 ## Project documentation
 
 - [Multilingual project website](docs/index.html) — English, Ukrainian and Russian landing page.
+- [Version history](docs/versions.html) — changelog and feature summaries from 1.1.0 through 1.9.18.
 - [Promotion kit](PROMOTE.md) — ready-to-share descriptions and official project links.
-
 - [Player guide](docs/PLAYER_GUIDE.md) — controls, survival loop, and save reminders.
 - [Roadmap](ROADMAP.md) — proposed features for versions 1.1.0 through 2.0.0.
 - [Contributing](CONTRIBUTING.md) — development and testing guidelines.
