@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.22 — Chunk Streaming Priority
+- Pending chunk meshes are re-sorted around the latest camera chunk whenever the player moves, so nearby terrain is built before stale work from the previous direction.
+- A frame build budget of zero now correctly defers mesh generation instead of forcing one chunk to build.
+- Added regression tests for camera movement prioritization and zero-budget streaming.
+- Removed a duplicate import in the main game class.
+- World save format remains 2; existing worlds and player data remain compatible.
+
 ## 1.9.21 — Launcher & Log Stability Fix
 - Corrected the launcher release banner to match the current version and codename.
 - Made runtime logging safe for relative paths without a parent directory.

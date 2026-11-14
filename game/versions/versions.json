@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.21",
+  "defaultVersion": "1.9.22",
   "versions": [
     {
       "id": "0.1.0",
@@ -239,6 +239,11 @@
     {
       "id": "1.9.21",
       "name": "Launcher & Log Stability Fix",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.22",
+      "name": "Chunk Streaming Priority",
       "status": "current"
     }
   ]
