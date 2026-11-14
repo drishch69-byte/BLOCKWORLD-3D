@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.23
-Codename: Feature Progression Fix
+Version: 1.9.24
+Codename: Living Villages & Creature AI
 Status: Development Build

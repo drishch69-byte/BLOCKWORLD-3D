@@ -164,7 +164,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.23  •  FEATURE PROGRESSION FIX");
+        JLabel release = new JLabel("1.9.24  •  LIVING VILLAGES & CREATURE AI");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);
@@ -247,7 +247,11 @@ public final class Launcher {
         center.add(selectionArea, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
-                "ИСПРАВЛЕНИЕ ПРОГРЕССИИ ФУНКЦИЙ — 1.9.23\n\n" +
+                "ЖИВАЯ ДЕРЕВНЯ И ИИ СУЩЕСТВ — 1.9.24\n\n" +
+                "• Жители отдыхают ночью и возвращаются к прогулкам днём.\n" +
+                "• Обычные жители стараются отойти от приближающихся монстров.\n" +
+                "• Стражи остаются на посту и защищают деревню.\n\n" +
+                "ПРОГРЕССИЯ ИГРОВЫХ ФУНКЦИЙ — 1.9.23\n\n" +
                 "• Новые версии сохраняют приручение лис, разведение животных и сбор продукции.\n" +
                 "• Кормушки и возможности животных больше не отключаются в поздних профилях.\n" +
                 "• Проверки возможностей используют числовые номера версий.\n\n" +

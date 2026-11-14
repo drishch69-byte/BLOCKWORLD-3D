@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.24 — Living Villages & Creature AI
+- Villagers follow a simple day schedule: ordinary villagers rest at night and resume roaming after dawn.
+- Non-guard villagers notice nearby hostile creatures and move away from danger using collision-aware navigation.
+- Village guards remain on duty and continue to pursue threats.
+- Added tests for daily activity windows, guard duty, hostile filtering, flee radius and invalid inputs.
+- World save format remains 2; existing creature records are unchanged.
+
 ## 1.9.23 — Feature Progression Fix
 - Newer profiles now inherit fox companions, animal breeding, animal products and smart feeders from the versions that introduced those features.
 - Replaced fragile text-based version checks for pets, nature and progressive mining with numeric version comparisons.
