@@ -33,6 +33,8 @@ class VoxelWorldVillageTest {
         float dz = librarian.z() - (library.z() + 0.5f);
         assertTrue(dx * dx + dz * dz <= 4f * 4f,
                 "The librarian should start close to the generated village library");
+        assertEquals(library.y(), Math.round(librarian.y()),
+                "The librarian should spawn at the house floor height, not on the roof");
     }
 
     @Test
