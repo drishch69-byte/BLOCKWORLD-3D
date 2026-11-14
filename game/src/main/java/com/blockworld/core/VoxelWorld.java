@@ -42,6 +42,7 @@ public final class VoxelWorld {
     private static final int MAX_SAVED_BLOCKS = 1_000_000;
     private static final int DEFAULT_RENDER_DISTANCE = 4;
     private static final int MAX_RENDER_DISTANCE = 12;
+    private static final float LANTERN_LIGHT_RADIUS = 7f;
 
     private static final int[][] QUAD_UV_CORNERS = {{0, 1}, {0, 0}, {1, 0}, {1, 1}};
 
@@ -56,6 +57,7 @@ public final class VoxelWorld {
 
     private final Node node = new Node("VoxelWorld");
     private final Map<BlockPos, BlockType> blocks = new HashMap<>();
+    private final Set<BlockPos> lanternPositions = new HashSet<>();
     private final List<WorldCreature> creatures = new ArrayList<>();
     private final Map<BlockPos, String> preservedUnknownIds = new HashMap<>();
     private final Map<ChunkPos, Set<BlockPos>> chunkBlocks = new HashMap<>();
@@ -320,6 +322,10 @@ public final class VoxelWorld {
         ChunkPos chunk = ChunkPos.fromBlock(pos.x(), pos.z());
         chunkBlocks.computeIfAbsent(chunk, ignored -> new HashSet<>()).add(pos);
         columnHeights.merge(columnKey(pos.x(), pos.z()), pos.y(), Math::max);
+        if (type == BlockType.LANTERN) {
+            lanternPositions.add(pos);
+            if (!bulkUpdate) markLanternLightChunksDirty(pos);
+        }
         if (!bulkUpdate) markBlockAndBorderChunksDirty(pos);
         return true;
     }
@@ -327,6 +333,10 @@ public final class VoxelWorld {
     public boolean removeBlock(BlockPos pos) {
         BlockType removed = blocks.remove(pos);
         if (removed == null) return false;
+        if (removed == BlockType.LANTERN) {
+            lanternPositions.remove(pos);
+            if (!bulkUpdate) markLanternLightChunksDirty(pos);
+        }
         preservedUnknownIds.remove(pos);
         ChunkPos chunk = ChunkPos.fromBlock(pos.x(), pos.z());
         Set<BlockPos> members = chunkBlocks.get(chunk);
@@ -454,6 +464,7 @@ public final class VoxelWorld {
         List<BlockHit> hits = new ArrayList<>();
         int baseX = chunk.minBlockX();
         int baseZ = chunk.minBlockZ();
+        List<BlockPos> nearbyLanterns = nearbyLanternsForChunk(chunk);
 
         for (BlockPos pos : members) {
             BlockType type = blocks.get(pos);
@@ -462,15 +473,15 @@ public final class VoxelWorld {
             int localX = pos.x() - baseX;
             int localZ = pos.z() - baseZ;
             if (type == BlockType.WOODEN_FENCE) {
-                appendFenceModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits);
+                appendFenceModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits, nearbyLanterns);
                 continue;
             }
             if (type == BlockType.LANTERN) {
-                appendLanternModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits);
+                appendLanternModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits, nearbyLanterns);
                 continue;
             }
             if (type == BlockType.SCARECROW) {
-                appendScarecrowModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits);
+                appendScarecrowModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits, nearbyLanterns);
                 continue;
             }
             for (Face face : FACES) {
@@ -505,22 +516,29 @@ public final class VoxelWorld {
                         // The opened gate swings against the east post, leaving the doorway clear.
                         vertexX = 0.78f + vertexX * 0.18f;
                     }
+                    float vertexY = face.vertices[offset + 1];
+                    float vertexZ = face.vertices[offset + 2];
                     positions.add(localX + vertexX);
-                    positions.add(pos.y() + face.vertices[offset + 1]);
-                    positions.add(localZ + face.vertices[offset + 2]);
+                    positions.add(pos.y() + vertexY);
+                    positions.add(localZ + vertexZ);
+                    float glow = lanternLightIntensityAt(pos.x() + vertexX, pos.y() + vertexY,
+                            pos.z() + vertexZ, nearbyLanterns);
+                    float warmRed = glow * 0.44f;
+                    float warmGreen = glow * 0.23f;
+                    float warmBlue = glow * 0.06f;
                     if (texturedChunks) {
-                        // Texture pixels already contain the pack's base color; vertex color only shades each face.
-                        colors.add(clamp(face.shade));
-                        colors.add(clamp(face.shade));
-                        colors.add(clamp(face.shade));
+                        // Texture pixels already contain the pack's base color; vertex color adds warm lantern light.
+                        colors.add(clamp(face.shade + warmRed));
+                        colors.add(clamp(face.shade + warmGreen));
+                        colors.add(clamp(face.shade + warmBlue));
                         colors.add(1f);
                         texCoords.add(QUAD_UV_CORNERS[vertex][0] == 0 ? u0 : u1);
                         texCoords.add(QUAD_UV_CORNERS[vertex][1] == 0 ? vTop : vBottom);
                     } else {
                         // Compatibility path used by older tests and callers without a texture atlas.
-                        colors.add(clamp(base.r * face.shade));
-                        colors.add(clamp(base.g * face.shade));
-                        colors.add(clamp(base.b * face.shade));
+                        colors.add(clamp(base.r * face.shade + warmRed));
+                        colors.add(clamp(base.g * face.shade + warmGreen));
+                        colors.add(clamp(base.b * face.shade + warmBlue));
                         colors.add(1f);
                     }
                 }
@@ -562,32 +580,32 @@ public final class VoxelWorld {
     /** A fence is a post plus horizontal rails that connect to adjacent fences or gates. */
     private void appendFenceModel(BlockPos pos, int localX, int localZ, ColorRGBA base,
                                   FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
-                                  IntBuilder indices, List<BlockHit> hits) {
+                                  IntBuilder indices, List<BlockHit> hits, List<BlockPos> nearbyLanterns) {
         appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                0.40f, 0f, 0.40f, 0.60f, 1.12f, 0.60f, positions, colors, texCoords, indices, hits);
+                0.40f, 0f, 0.40f, 0.60f, 1.12f, 0.60f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         if (connectsFence(pos.add(-1, 0, 0))) {
             appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                    0f, 0.27f, 0.42f, 0.50f, 0.39f, 0.58f, positions, colors, texCoords, indices, hits);
+                    0f, 0.27f, 0.42f, 0.50f, 0.39f, 0.58f, positions, colors, texCoords, indices, hits, nearbyLanterns);
             appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                    0f, 0.69f, 0.42f, 0.50f, 0.81f, 0.58f, positions, colors, texCoords, indices, hits);
+                    0f, 0.69f, 0.42f, 0.50f, 0.81f, 0.58f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         }
         if (connectsFence(pos.add(1, 0, 0))) {
             appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                    0.50f, 0.27f, 0.42f, 1f, 0.39f, 0.58f, positions, colors, texCoords, indices, hits);
+                    0.50f, 0.27f, 0.42f, 1f, 0.39f, 0.58f, positions, colors, texCoords, indices, hits, nearbyLanterns);
             appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                    0.50f, 0.69f, 0.42f, 1f, 0.81f, 0.58f, positions, colors, texCoords, indices, hits);
+                    0.50f, 0.69f, 0.42f, 1f, 0.81f, 0.58f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         }
         if (connectsFence(pos.add(0, 0, -1))) {
             appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                    0.42f, 0.27f, 0f, 0.58f, 0.39f, 0.50f, positions, colors, texCoords, indices, hits);
+                    0.42f, 0.27f, 0f, 0.58f, 0.39f, 0.50f, positions, colors, texCoords, indices, hits, nearbyLanterns);
             appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                    0.42f, 0.69f, 0f, 0.58f, 0.81f, 0.50f, positions, colors, texCoords, indices, hits);
+                    0.42f, 0.69f, 0f, 0.58f, 0.81f, 0.50f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         }
         if (connectsFence(pos.add(0, 0, 1))) {
             appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                    0.42f, 0.27f, 0.50f, 0.58f, 0.39f, 1f, positions, colors, texCoords, indices, hits);
+                    0.42f, 0.27f, 0.50f, 0.58f, 0.39f, 1f, positions, colors, texCoords, indices, hits, nearbyLanterns);
             appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
-                    0.42f, 0.69f, 0.50f, 0.58f, 0.81f, 1f, positions, colors, texCoords, indices, hits);
+                    0.42f, 0.69f, 0.50f, 0.58f, 0.81f, 1f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         }
     }
 
@@ -601,38 +619,38 @@ public final class VoxelWorld {
     /** Decorative lantern assembled from a glass body, foot and roof. */
     private void appendLanternModel(BlockPos pos, int localX, int localZ, ColorRGBA base,
                                     FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
-                                    IntBuilder indices, List<BlockHit> hits) {
+                                    IntBuilder indices, List<BlockHit> hits, List<BlockPos> nearbyLanterns) {
         appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
-                0.30f, 0.25f, 0.30f, 0.70f, 0.70f, 0.70f, positions, colors, texCoords, indices, hits);
+                0.30f, 0.25f, 0.30f, 0.70f, 0.70f, 0.70f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
-                0.22f, 0.17f, 0.22f, 0.78f, 0.27f, 0.78f, positions, colors, texCoords, indices, hits);
+                0.22f, 0.17f, 0.22f, 0.78f, 0.27f, 0.78f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
-                0.22f, 0.69f, 0.22f, 0.78f, 0.80f, 0.78f, positions, colors, texCoords, indices, hits);
+                0.22f, 0.69f, 0.22f, 0.78f, 0.80f, 0.78f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
-                0.43f, 0.80f, 0.43f, 0.57f, 0.94f, 0.57f, positions, colors, texCoords, indices, hits);
+                0.43f, 0.80f, 0.43f, 0.57f, 0.94f, 0.57f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
-                0.34f, 0.92f, 0.34f, 0.66f, 1.00f, 0.66f, positions, colors, texCoords, indices, hits);
+                0.34f, 0.92f, 0.34f, 0.66f, 1.00f, 0.66f, positions, colors, texCoords, indices, hits, nearbyLanterns);
     }
 
     /** Simple wooden scarecrow silhouette with a post, crossbar and straw head. */
     private void appendScarecrowModel(BlockPos pos, int localX, int localZ, ColorRGBA base,
                                       FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
-                                      IntBuilder indices, List<BlockHit> hits) {
+                                      IntBuilder indices, List<BlockHit> hits, List<BlockPos> nearbyLanterns) {
         appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
-                0.44f, 0f, 0.44f, 0.56f, 0.98f, 0.56f, positions, colors, texCoords, indices, hits);
+                0.44f, 0f, 0.44f, 0.56f, 0.98f, 0.56f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
-                0.12f, 0.62f, 0.40f, 0.88f, 0.74f, 0.60f, positions, colors, texCoords, indices, hits);
+                0.12f, 0.62f, 0.40f, 0.88f, 0.74f, 0.60f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
-                0.30f, 0.76f, 0.30f, 0.70f, 1.08f, 0.70f, positions, colors, texCoords, indices, hits);
+                0.30f, 0.76f, 0.30f, 0.70f, 1.08f, 0.70f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
-                0.34f, 0.48f, 0.36f, 0.66f, 0.62f, 0.64f, positions, colors, texCoords, indices, hits);
+                0.34f, 0.48f, 0.36f, 0.66f, 0.62f, 0.64f, positions, colors, texCoords, indices, hits, nearbyLanterns);
     }
 
     /** Adds six textured faces of a model cuboid to the shared chunk mesh. */
     private void appendCuboidFaces(BlockPos pos, int localX, int localZ, BlockType type, ColorRGBA base,
                                    float minX, float minY, float minZ, float maxX, float maxY, float maxZ,
                                    FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
-                                   IntBuilder indices, List<BlockHit> hits) {
+                                   IntBuilder indices, List<BlockHit> hits, List<BlockPos> nearbyLanterns) {
         float sizeX = maxX - minX, sizeY = maxY - minY, sizeZ = maxZ - minZ;
         for (Face face : FACES) {
             int firstVertex = positions.size() / 3;
@@ -647,18 +665,25 @@ public final class VoxelWorld {
             float vBottom = 1f - (tileY + 1) / (float) ResourcePackManager.ATLAS_COLUMNS + inset;
             for (int vertex = 0; vertex < 4; vertex++) {
                 int offset = vertex * 3;
+                float worldX = pos.x() + minX + face.vertices[offset] * sizeX;
+                float worldY = pos.y() + minY + face.vertices[offset + 1] * sizeY;
+                float worldZ = pos.z() + minZ + face.vertices[offset + 2] * sizeZ;
                 positions.add(localX + minX + face.vertices[offset] * sizeX);
-                positions.add(pos.y() + minY + face.vertices[offset + 1] * sizeY);
+                positions.add(worldY);
                 positions.add(localZ + minZ + face.vertices[offset + 2] * sizeZ);
+                float glow = lanternLightIntensityAt(worldX, worldY, worldZ, nearbyLanterns);
+                float warmRed = glow * 0.44f;
+                float warmGreen = glow * 0.23f;
+                float warmBlue = glow * 0.06f;
                 if (texturedChunks) {
-                    colors.add(clamp(face.shade)); colors.add(clamp(face.shade));
-                    colors.add(clamp(face.shade)); colors.add(1f);
+                    colors.add(clamp(face.shade + warmRed)); colors.add(clamp(face.shade + warmGreen));
+                    colors.add(clamp(face.shade + warmBlue)); colors.add(1f);
                     texCoords.add(QUAD_UV_CORNERS[vertex][0] == 0 ? u0 : u1);
                     texCoords.add(QUAD_UV_CORNERS[vertex][1] == 0 ? vTop : vBottom);
                 } else {
-                    colors.add(clamp(base.r * face.shade));
-                    colors.add(clamp(base.g * face.shade));
-                    colors.add(clamp(base.b * face.shade));
+                    colors.add(clamp(base.r * face.shade + warmRed));
+                    colors.add(clamp(base.g * face.shade + warmGreen));
+                    colors.add(clamp(base.b * face.shade + warmBlue));
                     colors.add(1f);
                 }
             }
@@ -666,6 +691,53 @@ public final class VoxelWorld {
             indices.add(firstVertex); indices.add(firstVertex + 2); indices.add(firstVertex + 3);
             hits.add(new BlockHit(pos, face.nx, face.ny, face.nz));
         }
+    }
+
+    private void markLanternLightChunksDirty(BlockPos lantern) {
+        ChunkPos center = ChunkPos.fromBlock(lantern.x(), lantern.z());
+        // A seven-block light radius can cross into any immediately adjacent chunk.
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                markChunkDirty(new ChunkPos(center.x() + dx, center.z() + dz));
+            }
+        }
+    }
+
+    private List<BlockPos> nearbyLanternsForChunk(ChunkPos chunk) {
+        int margin = (int) Math.ceil(LANTERN_LIGHT_RADIUS);
+        int minX = chunk.minBlockX() - margin;
+        int maxX = chunk.minBlockX() + ChunkPos.SIZE - 1 + margin;
+        int minZ = chunk.minBlockZ() - margin;
+        int maxZ = chunk.minBlockZ() + ChunkPos.SIZE - 1 + margin;
+        List<BlockPos> nearby = new ArrayList<>();
+        for (BlockPos lantern : lanternPositions) {
+            if (lantern.x() >= minX && lantern.x() <= maxX
+                    && lantern.z() >= minZ && lantern.z() <= maxZ) {
+                nearby.add(lantern);
+            }
+        }
+        return nearby;
+    }
+
+    float lanternLightIntensityAt(float worldX, float worldY, float worldZ) {
+        return lanternLightIntensityAt(worldX, worldY, worldZ, new ArrayList<>(lanternPositions));
+    }
+
+    private float lanternLightIntensityAt(float worldX, float worldY, float worldZ,
+                                          List<BlockPos> nearbyLanterns) {
+        float total = 0f;
+        float radiusSquared = LANTERN_LIGHT_RADIUS * LANTERN_LIGHT_RADIUS;
+        for (BlockPos lantern : nearbyLanterns) {
+            float dx = worldX - (lantern.x() + 0.5f);
+            float dy = worldY - (lantern.y() + 0.55f);
+            float dz = worldZ - (lantern.z() + 0.5f);
+            float distanceSquared = dx * dx + dy * dy + dz * dz;
+            if (distanceSquared >= radiusSquared) continue;
+            float attenuation = 1f - (float) Math.sqrt(distanceSquared) / LANTERN_LIGHT_RADIUS;
+            total = Math.min(1f, total + attenuation * attenuation * 0.9f);
+            if (total >= 1f) break;
+        }
+        return total;
     }
 
     private float clamp(float value) { return Math.max(0f, Math.min(1f, value)); }
@@ -1564,6 +1636,7 @@ public final class VoxelWorld {
     private void clear() {
         node.detachAllChildren();
         blocks.clear();
+        lanternPositions.clear();
         creatures.clear();
         preservedUnknownIds.clear();
         chunkBlocks.clear();

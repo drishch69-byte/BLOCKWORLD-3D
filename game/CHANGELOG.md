@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.16 — Lantern Lighting
+- Lanterns now cast a warm glow on nearby block surfaces with smooth distance falloff up to 7 blocks.
+- Placing or mining a lantern refreshes nearby visible chunk meshes so its glow appears or disappears immediately.
+- Lighting works with PNG texture atlases and the fallback color renderer; world save format remains 2.
+- Added tests for light falloff, range and light removal.
+
 ## 1.9.15 — Farmstead Decorations
 - Replaced full-cube fence rendering with connected 3D posts and rails; neighboring fences and gates form continuous sections.
 - Added a decorative lantern model, crafted from 2 copper ingots and 1 torch.

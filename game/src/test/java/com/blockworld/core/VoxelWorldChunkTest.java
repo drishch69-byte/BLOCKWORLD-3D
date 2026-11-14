@@ -155,4 +155,17 @@ class VoxelWorldChunkTest {
         assertEquals(1, world.highestBlockY(3, 0));
     }
 
+    @Test
+    void lanternLightHasWarmDistanceFalloffAndDisappearsWhenLanternIsRemoved() {
+        VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
+        BlockPos lantern = new BlockPos(0, 0, 0);
+
+        assertTrue(world.addBlock(lantern, BlockType.LANTERN));
+        assertTrue(world.lanternLightIntensityAt(1.5f, 0.55f, 0.5f) > 0.5f);
+        assertEquals(0f, world.lanternLightIntensityAt(8f, 0.55f, 0.5f), 0.0001f);
+
+        assertTrue(world.removeBlock(lantern));
+        assertEquals(0f, world.lanternLightIntensityAt(1.5f, 0.55f, 0.5f), 0.0001f);
+    }
+
 }

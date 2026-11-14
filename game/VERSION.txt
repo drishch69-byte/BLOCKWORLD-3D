@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.15
-Codename: Farmstead Decorations
+Version: 1.9.16
+Codename: Lantern Lighting
 Status: Development Build

@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.15",
+  "defaultVersion": "1.9.16",
   "versions": [
     {
       "id": "0.1.0",
@@ -209,6 +209,11 @@
     {
       "id": "1.9.15",
       "name": "Farmstead Decorations",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.16",
+      "name": "Lantern Lighting",
       "status": "current"
     }
   ]
