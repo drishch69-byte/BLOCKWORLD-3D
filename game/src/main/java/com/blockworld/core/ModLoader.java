@@ -2,34 +2,55 @@ package com.blockworld.core;
 
 import com.blockworld.api.BlockWorldMod;
 import com.blockworld.api.ModContext;
+
 import java.io.IOException;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.Set;
 
-/** Loads enabled mod JARs with the small ServiceLoader-based BLOCKWORLD API. */
+/** Loads enabled mod JARs from profile and compatibility folders. */
 public final class ModLoader implements AutoCloseable {
     private record Loaded(BlockWorldMod mod, URLClassLoader classLoader, String source) { }
     private final List<Loaded> loaded = new ArrayList<>();
-    private final Path modsDirectory;
+    private final List<Path> modsDirectories;
 
-    public ModLoader(Path modsDirectory) { this.modsDirectory = modsDirectory; }
+    public ModLoader(Path modsDirectory, Path... additionalDirectories) {
+        Set<Path> unique = new LinkedHashSet<>();
+        unique.add(modsDirectory.toAbsolutePath().normalize());
+        if (additionalDirectories != null) {
+            for (Path directory : additionalDirectories) {
+                if (directory != null) unique.add(directory.toAbsolutePath().normalize());
+            }
+        }
+        modsDirectories = List.copyOf(unique);
+    }
 
     public int load(ModContext context) {
         try {
-            Files.createDirectories(modsDirectory);
+            for (Path directory : modsDirectories) Files.createDirectories(directory);
             Files.createDirectories(context.configDirectory());
-        } catch (IOException ex) { GameLog.error("Не удалось открыть папку модов/настроек", ex); return 0; }
-        try (var stream = Files.list(modsDirectory)) {
+        } catch (IOException ex) {
+            GameLog.error("Не удалось открыть папку модов/настроек", ex);
+            return 0;
+        }
+        for (Path directory : modsDirectories) loadDirectory(directory, context);
+        return loaded.size();
+    }
+
+    private void loadDirectory(Path directory, ModContext context) {
+        try (var stream = Files.list(directory)) {
             for (Path jar : stream.filter(p -> Files.isRegularFile(p)
                     && p.getFileName().toString().toLowerCase().endsWith(".jar")).sorted().toList()) {
                 URLClassLoader loader = null;
                 boolean retained = false;
                 try {
-                    loader = new URLClassLoader(new java.net.URL[]{jar.toUri().toURL()}, BlockWorldMod.class.getClassLoader());
+                    loader = new URLClassLoader(new java.net.URL[]{jar.toUri().toURL()},
+                            BlockWorldMod.class.getClassLoader());
                     int found = 0;
                     String modFileName = jar.getFileName().toString();
                     String configKey = modFileName.replaceFirst("(?i)\\.jar$", "")
@@ -54,13 +75,13 @@ public final class ModLoader implements AutoCloseable {
                 } catch (Throwable error) {
                     GameLog.error("Не удалось загрузить мод " + jar.getFileName(), error);
                 } finally {
-                    if (!retained && loader != null) try { loader.close(); } catch (IOException ex) {
-                        GameLog.error("Не удалось закрыть загрузчик мода", ex);
-                    }
+                    if (!retained && loader != null) try { loader.close(); }
+                    catch (IOException ex) { GameLog.error("Не удалось закрыть загрузчик мода", ex); }
                 }
             }
-        } catch (IOException ex) { GameLog.error("Ошибка чтения каталога модов", ex); }
-        return loaded.size();
+        } catch (IOException ex) {
+            GameLog.error("Ошибка чтения каталога модов " + directory, ex);
+        }
     }
 
     public void worldReady() { invoke("onWorldReady", BlockWorldMod::onWorldReady); }
@@ -77,7 +98,8 @@ public final class ModLoader implements AutoCloseable {
     @FunctionalInterface private interface ModCall { void run(BlockWorldMod mod) throws Exception; }
 
     @Override public void close() {
-        java.util.Set<URLClassLoader> classLoaders = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        java.util.Set<URLClassLoader> classLoaders =
+                java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         for (int i = loaded.size() - 1; i >= 0; i--) {
             Loaded item = loaded.get(i);
             try { item.mod().onShutdown(); }

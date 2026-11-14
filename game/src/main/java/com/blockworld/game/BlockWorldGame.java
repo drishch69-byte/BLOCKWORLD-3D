@@ -98,6 +98,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private final GameSettings gameSettings;
     private final MultiplayerClient multiplayerClient;
     private final WorldCreationOptions worldCreationOptions;
+    private final String profileId;
     private final ConcurrentLinkedQueue<String> multiplayerInbox = new ConcurrentLinkedQueue<>();
     private final Map<Integer, RemotePlayerState> remotePlayers = new HashMap<>();
     private Map<BlockPos, BlockType> pendingNetworkWorld;
@@ -253,6 +254,13 @@ public final class BlockWorldGame extends SimpleApplication {
     public BlockWorldGame(GameVersion version, Path saveFile, boolean createNewWorld,
                           Runnable onGameExit, GameSettings gameSettings, MultiplayerClient multiplayerClient,
                           WorldCreationOptions worldCreationOptions) {
+        this(version, saveFile, createNewWorld, onGameExit, gameSettings, multiplayerClient,
+                worldCreationOptions, null);
+    }
+
+    public BlockWorldGame(GameVersion version, Path saveFile, boolean createNewWorld,
+                          Runnable onGameExit, GameSettings gameSettings, MultiplayerClient multiplayerClient,
+                          WorldCreationOptions worldCreationOptions, String profileId) {
         this.version = version;
         this.equipmentEnabled = supportsEquipment(version);
         this.agricultureEnabled = supportsAgriculture(version);
@@ -268,6 +276,7 @@ public final class BlockWorldGame extends SimpleApplication {
         this.gameSettings = gameSettings == null ? GameSettings.DEFAULT : gameSettings;
         this.multiplayerClient = multiplayerClient;
         this.worldCreationOptions = worldCreationOptions;
+        this.profileId = profileId;
         if (multiplayerClient != null) multiplayerClient.setEventListener(multiplayerInbox::add);
     }
 
@@ -374,8 +383,12 @@ public final class BlockWorldGame extends SimpleApplication {
         int savedDistance = gameSettings.renderDistance();
         for (int i = 0; i < RENDER_DISTANCES.length; i++) if (RENDER_DISTANCES[i] == savedDistance) renderDistanceIndex = i;
         world.setRenderDistanceChunks(RENDER_DISTANCES[renderDistanceIndex]);
-        modLoader = new ModLoader(GamePaths.modsDirectory());
-        loadedModCount = modLoader.load(new ModContext(world, version, GamePaths.configDirectory()));
+        Path profileMods = profileId == null ? GamePaths.modsDirectory() : GamePaths.profileModsDirectory(profileId);
+        Path profileConfig = profileId == null ? GamePaths.configDirectory() : GamePaths.profileConfigDirectory(profileId);
+        modLoader = profileId == null
+                ? new ModLoader(profileMods)
+                : new ModLoader(profileMods, GamePaths.modsDirectory());
+        loadedModCount = modLoader.load(new ModContext(world, version, profileConfig));
         GameLog.info("Активных модов: " + loadedModCount);
         world.setTwoSidedRendering(twoSidedRendering);
 

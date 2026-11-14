@@ -55,7 +55,16 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
     }
 
     public static GameSettings load() {
-        Path file = GamePaths.settingsFile();
+        return loadFrom(GamePaths.settingsFile());
+    }
+
+    /** Loads profile settings; before the first profile save, inherits legacy shared settings. */
+    public static GameSettings load(String versionId) {
+        Path file = GamePaths.profileSettingsFile(versionId);
+        return Files.isRegularFile(file) ? loadFrom(file) : load();
+    }
+
+    private static GameSettings loadFrom(Path file) {
         if (!Files.isRegularFile(file)) return DEFAULT;
         Properties p = new Properties();
         try (InputStream in = Files.newInputStream(file)) {
@@ -73,8 +82,17 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         }
     }
 
+    /** Saves to the legacy shared settings file. */
     public static void save(GameSettings settings) throws IOException {
-        Path file = GamePaths.settingsFile();
+        saveTo(GamePaths.settingsFile(), settings);
+    }
+
+    /** Saves only to the selected version profile. */
+    public static void save(String versionId, GameSettings settings) throws IOException {
+        saveTo(GamePaths.profileSettingsFile(versionId), settings);
+    }
+
+    private static void saveTo(Path file, GameSettings settings) throws IOException {
         Files.createDirectories(file.getParent());
         Properties p = new Properties();
         p.setProperty("width", Integer.toString(settings.width));
@@ -89,7 +107,7 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
         try {
             try (OutputStream out = Files.newOutputStream(temporary)) {
-                p.store(out, "CUBEVERSE 3D settings");
+                p.store(out, "Minecraft 3D profile settings");
             }
             try {
                 Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING,

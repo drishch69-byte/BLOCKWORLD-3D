@@ -3,7 +3,6 @@ package com.blockworld.core;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.jar.JarFile;
@@ -18,16 +17,36 @@ public final class ModManager {
         }
     }
 
+    private final Path enabledDirectory;
+    private final Path disabledDirectory;
+
+    /** Legacy manager for mods shared by all profiles. */
+    public ModManager() {
+        this(GamePaths.modsDirectory(), GamePaths.disabledModsDirectory());
+    }
+
+    /** Manager scoped to one built-in game-version profile. */
+    public ModManager(String versionId) {
+        this(GamePaths.profileModsDirectory(versionId), GamePaths.profileDisabledModsDirectory(versionId));
+    }
+
+    ModManager(Path enabledDirectory, Path disabledDirectory) {
+        this.enabledDirectory = enabledDirectory.toAbsolutePath().normalize();
+        this.disabledDirectory = disabledDirectory.toAbsolutePath().normalize();
+    }
+
+    public Path root() { return enabledDirectory; }
+
     public void ensureDirectories() throws IOException {
-        Files.createDirectories(GamePaths.modsDirectory());
-        Files.createDirectories(GamePaths.disabledModsDirectory());
+        Files.createDirectories(enabledDirectory);
+        Files.createDirectories(disabledDirectory);
     }
 
     public List<ModInfo> listAll() throws IOException {
         ensureDirectories();
         List<ModInfo> result = new ArrayList<>();
-        scan(GamePaths.modsDirectory(), true, result);
-        scan(GamePaths.disabledModsDirectory(), false, result);
+        scan(enabledDirectory, true, result);
+        scan(disabledDirectory, false, result);
         result.sort(java.util.Comparator.comparing(ModInfo::title, String.CASE_INSENSITIVE_ORDER));
         return result;
     }
@@ -53,18 +72,20 @@ public final class ModManager {
                 } catch (IOException invalid) {
                     description = "Не удалось прочитать JAR: " + invalid.getMessage();
                 }
-                out.add(new ModInfo(file.getFileName().toString(), title, version, description, file, enabled, provider));
+                out.add(new ModInfo(file.getFileName().toString(), title, version, description,
+                        file, enabled, provider));
             }
         }
     }
 
     public Path install(Path jarFile) throws IOException {
         ensureDirectories();
-        if (!Files.isRegularFile(jarFile) || !jarFile.getFileName().toString().toLowerCase().endsWith(".jar"))
+        if (!Files.isRegularFile(jarFile) || !jarFile.getFileName().toString().toLowerCase().endsWith(".jar")) {
             throw new IOException("Выбери Java-файл .jar");
+        }
         try (JarFile ignored = new JarFile(jarFile.toFile())) { /* Validate the archive. */ }
-        Path target = GamePaths.modsDirectory().resolve(jarFile.getFileName()).normalize();
-        if (!target.getParent().equals(GamePaths.modsDirectory().normalize())) throw new IOException("Недопустимое имя файла");
+        Path target = enabledDirectory.resolve(jarFile.getFileName()).normalize();
+        if (!target.getParent().equals(enabledDirectory)) throw new IOException("Недопустимое имя файла");
         if (Files.exists(target)) throw new IOException("Мод с таким именем уже установлен");
         Files.copy(jarFile, target);
         return target;
@@ -73,13 +94,14 @@ public final class ModManager {
     public void setEnabled(ModInfo mod, boolean enabled) throws IOException {
         ensureDirectories();
         if (mod.enabled() == enabled) return;
-        Path target = (enabled ? GamePaths.modsDirectory() : GamePaths.disabledModsDirectory())
-                .resolve(mod.fileName()).normalize();
-        if (!target.getParent().equals((enabled ? GamePaths.modsDirectory() : GamePaths.disabledModsDirectory()).normalize()))
-            throw new IOException("Недопустимое имя мода");
+        Path destinationDirectory = enabled ? enabledDirectory : disabledDirectory;
+        Path target = destinationDirectory.resolve(mod.fileName()).normalize();
+        if (!target.getParent().equals(destinationDirectory)) throw new IOException("Недопустимое имя мода");
         if (Files.exists(target)) throw new IOException("Файл с таким именем уже существует");
         Files.move(mod.file(), target);
     }
 
-    public void remove(ModInfo mod) throws IOException { Files.deleteIfExists(mod.file()); }
+    public void remove(ModInfo mod) throws IOException {
+        Files.deleteIfExists(mod.file());
+    }
 }

@@ -282,6 +282,7 @@ public final class Launcher {
         JButton backups = new JButton("РЕЗЕРВНЫЕ КОПИИ");
         JButton diagnostics = new JButton("ДИАГНОСТИКА");
         JButton profile = new JButton("ПРОФИЛЬ ИГРОКА");
+        JButton versionProfiles = new JButton("ПРОФИЛИ ВЕРСИЙ");
         JButton close = new JButton("ВЫХОД");
         play.addActionListener(event -> launchSelectedWorld());
         newWorld.addActionListener(event -> createWorld());
@@ -295,6 +296,7 @@ public final class Launcher {
         backups.addActionListener(event -> showBackupDialog());
         diagnostics.addActionListener(event -> showDiagnosticsDialog());
         profile.addActionListener(event -> showPlayerProfileDialog());
+        versionProfiles.addActionListener(event -> showVersionProfilesDialog());
         close.addActionListener(event -> frame.dispose());
         buttons.add(play);
         buttons.add(newWorld);
@@ -308,6 +310,7 @@ public final class Launcher {
         buttons.add(backups);
         buttons.add(diagnostics);
         buttons.add(profile);
+        buttons.add(versionProfiles);
         buttons.add(close);
         bottom.add(buttons, BorderLayout.CENTER);
 
@@ -789,7 +792,8 @@ public final class Launcher {
         Thread gameThread = new Thread(() -> {
             try {
                 new BlockWorldGame(versionToLaunch, worldFile, createNewWorld, onGameExit,
-                        GameSettings.load(), multiplayerClient, worldCreationOptions).launch();
+                        GameSettings.load(versionToLaunch.id()), multiplayerClient, worldCreationOptions,
+                        versionToLaunch.id()).launch();
             } catch (Throwable error) {
                 if (multiplayerClient != null) multiplayerClient.close();
                 if (multiplayerServer != null) multiplayerServer.close();
@@ -850,9 +854,100 @@ public final class Launcher {
         return "Без ограничения".equals(value) ? -1 : Integer.parseInt(value);
     }
 
+    private String selectedProfileId() {
+        GameVersion selected = (GameVersion) versionSelector.getSelectedItem();
+        return selected == null ? VersionManager.getDefaultVersion().id() : selected.id();
+    }
+
+    private void showVersionProfilesDialog() {
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Профили версий", true);
+        dialog.setLayout(new BorderLayout(8, 8));
+        DefaultListModel<GameVersion> model = new DefaultListModel<>();
+        for (GameVersion version : VersionManager.getSupportedVersions()) model.addElement(version);
+        JList<GameVersion> list = new JList<>(model);
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        list.setSelectedValue(versionSelector.getSelectedItem(), true);
+
+        JLabel info = new JLabel();
+        info.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+        Runnable updateInfo = () -> {
+            GameVersion selected = list.getSelectedValue();
+            if (selected == null) {
+                info.setText("Выбери версию из списка.");
+                return;
+            }
+            Path folder = GamePaths.profileDirectory(selected.id());
+            Path settingsFile = GamePaths.profileSettingsFile(selected.id());
+            try {
+                int mods = new ModManager(selected.id()).listAll().size();
+                info.setText("<html><b>" + htmlEscape(selected.id()) + " — "
+                        + htmlEscape(selected.displayName()) + "</b><br>Модов профиля: " + mods
+                        + " &nbsp; | &nbsp; "
+                        + (Files.isRegularFile(settingsFile) ? "есть отдельные настройки" : "настройки наследуются от общих")
+                        + "<br>Папка профиля: " + htmlEscape(folder.toString()) + "</html>");
+            } catch (IOException error) {
+                info.setText("Не удалось прочитать профиль: " + htmlEscape(error.getMessage()));
+            }
+        };
+        list.addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting()) updateInfo.run();
+        });
+
+        JPanel actions = new JPanel(new GridLayout(1, 5, 6, 6));
+        JButton activate = new JButton("АКТИВИРОВАТЬ");
+        JButton settings = new JButton("НАСТРОЙКИ");
+        JButton mods = new JButton("МОДЫ");
+        JButton folder = new JButton("ПАПКА");
+        JButton close = new JButton("ЗАКРЫТЬ");
+        activate.addActionListener(event -> {
+            GameVersion selected = list.getSelectedValue();
+            if (selected == null) return;
+            versionSelector.setSelectedItem(selected);
+            updateSelectedVersionInfo();
+            status.setText("Активный профиль: " + selected.id() + " — " + selected.displayName());
+            dialog.dispose();
+        });
+        settings.addActionListener(event -> {
+            GameVersion selected = list.getSelectedValue();
+            if (selected == null) return;
+            versionSelector.setSelectedItem(selected);
+            updateSelectedVersionInfo();
+            dialog.dispose();
+            showSettingsDialog();
+        });
+        mods.addActionListener(event -> {
+            GameVersion selected = list.getSelectedValue();
+            if (selected == null) return;
+            versionSelector.setSelectedItem(selected);
+            updateSelectedVersionInfo();
+            dialog.dispose();
+            showModsDialog();
+        });
+        folder.addActionListener(event -> {
+            GameVersion selected = list.getSelectedValue();
+            if (selected != null) openFolder(GamePaths.profileDirectory(selected.id()));
+        });
+        close.addActionListener(event -> dialog.dispose());
+
+        actions.add(activate);
+        actions.add(settings);
+        actions.add(mods);
+        actions.add(folder);
+        actions.add(close);
+        dialog.add(new JScrollPane(list), BorderLayout.CENTER);
+        dialog.add(info, BorderLayout.NORTH);
+        dialog.add(actions, BorderLayout.SOUTH);
+        updateInfo.run();
+        dialog.setSize(820, 480);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
+    }
+
     private void showSettingsDialog() {
-        GameSettings current = GameSettings.load();
-        JDialog dialog = new JDialog(frame, "Minecraft 3D — Настройки", true);
+        String profileId = selectedProfileId();
+        GameSettings current = GameSettings.load(profileId);
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Настройки " + profileId, true);
         dialog.setLayout(new BorderLayout(10, 10));
         JPanel form = new JPanel(new GridLayout(8, 2, 10, 10));
         form.setBorder(BorderFactory.createEmptyBorder(18, 18, 10, 18));
@@ -909,8 +1004,8 @@ public final class Launcher {
                         fullscreen.isSelected(), vsync.isSelected(), (Integer) distance.getSelectedItem(),
                         (Integer) fov.getValue(), vegetation.getSelectedIndex(), (Integer) chunkBudget.getSelectedItem(),
                         parseFpsLabel(String.valueOf(fpsLimit.getSelectedItem())));
-                GameSettings.save(settings);
-                status.setText("Настройки сохранены. Разрешение и экран применятся при следующем запуске.");
+                GameSettings.save(profileId, settings);
+                status.setText("Настройки профиля " + profileId + " сохранены отдельно от других версий.");
                 dialog.dispose();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(dialog, "Не удалось сохранить настройки: " + ex.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE);
@@ -923,22 +1018,24 @@ public final class Launcher {
     }
 
     private void showModsDialog() {
-        ModManager manager = new ModManager();
-        JDialog dialog = new JDialog(frame, "Minecraft 3D — Моды", true);
+        String profileId = selectedProfileId();
+        ModManager manager = new ModManager(profileId);
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Моды " + profileId, true);
         dialog.setLayout(new BorderLayout(8, 8));
         DefaultListModel<ModManager.ModInfo> model = new DefaultListModel<>();
         JList<ModManager.ModInfo> list = new JList<>(model);
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
-        JLabel info = new JLabel("Моды запускают Java-код. Устанавливай только файлы из источников, которым доверяешь.");
+        JLabel info = new JLabel("Моды профиля " + profileId + " отделены от других версий. Общие старые моды тоже загружаются. Устанавливай только доверенные JAR.");
         info.setBorder(BorderFactory.createEmptyBorder(10, 12, 4, 12));
         dialog.add(info, BorderLayout.NORTH);
         dialog.add(new JScrollPane(list), BorderLayout.CENTER);
-        JPanel buttons = new JPanel(new GridLayout(2, 3, 6, 6));
+        JPanel buttons = new JPanel(new GridLayout(3, 3, 6, 6));
         JButton install = new JButton("УСТАНОВИТЬ JAR");
         JButton toggle = new JButton("ВКЛ / ВЫКЛ");
         JButton remove = new JButton("УДАЛИТЬ");
-        JButton folder = new JButton("ПАПКА МОДОВ");
+        JButton folder = new JButton("ПАПКА ПРОФИЛЯ");
+        JButton sharedFolder = new JButton("ОБЩИЕ МОДЫ");
         JButton refresh = new JButton("ОБНОВИТЬ");
         JButton close = new JButton("ЗАКРЫТЬ");
         Runnable reload = () -> {
@@ -974,11 +1071,12 @@ public final class Launcher {
             if (answer == JOptionPane.YES_OPTION) try { manager.remove(selected); reload.run(); }
             catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE); }
         });
-        folder.addActionListener(e -> openFolder(GamePaths.modsDirectory()));
+        folder.addActionListener(e -> openFolder(manager.root()));
+        sharedFolder.addActionListener(e -> openFolder(GamePaths.modsDirectory()));
         refresh.addActionListener(e -> reload.run());
         close.addActionListener(e -> dialog.dispose());
         buttons.add(install); buttons.add(toggle); buttons.add(remove);
-        buttons.add(folder); buttons.add(refresh); buttons.add(close);
+        buttons.add(folder); buttons.add(sharedFolder); buttons.add(refresh); buttons.add(close);
         dialog.add(buttons, BorderLayout.SOUTH);
         reload.run();
         dialog.setSize(760, 430); dialog.setLocationRelativeTo(frame); dialog.setVisible(true);
