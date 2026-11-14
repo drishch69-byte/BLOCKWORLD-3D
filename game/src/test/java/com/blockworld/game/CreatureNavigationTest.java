@@ -13,6 +13,34 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class CreatureNavigationTest {
     @Test
+    void openGateAllowsCreaturesThroughWhileClosedGateBlocksTheDoorway() {
+        AssetManager assets = new DesktopAssetManager(true);
+        VoxelWorld world = new VoxelWorld(assets);
+        for (int x = -1; x <= 2; x++) {
+            for (int z = -1; z <= 1; z++) {
+                world.addBlock(new BlockPos(x, 0, z), BlockType.GRASS);
+            }
+        }
+        BlockPos gate = new BlockPos(1, 1, 0);
+        assertTrue(world.addBlock(gate, BlockType.WOODEN_GATE));
+
+        CreatureNavigation.Step closed = CreatureNavigation.resolveStep(
+                CreatureType.COW, 0.5f, 1f, 0.5f, 1.1f, 0.5f, world);
+        assertNotNull(closed);
+        assertEquals(0.5f, closed.x(), 0.0001f);
+        assertTrue(world.removeBlock(gate));
+        assertTrue(world.addBlock(gate, BlockType.OPEN_WOODEN_GATE));
+
+        assertFalse(world.contains(gate), "An open gate must not block collision checks");
+        assertEquals(0, world.highestBlockY(1, 0), "The gate must not become the floor");
+        CreatureNavigation.Step opened = CreatureNavigation.resolveStep(
+                CreatureType.COW, 0.5f, 1f, 0.5f, 1.1f, 0.5f, world);
+        assertNotNull(opened);
+        assertEquals(1.1f, opened.x(), 0.0001f);
+        assertEquals(1f, opened.y(), 0.0001f);
+    }
+
+    @Test
     void hostileCreatureSlidesAlongOpenAxisWhenDiagonalIsBlockedByWall() {
         AssetManager assets = new DesktopAssetManager(true);
         VoxelWorld world = new VoxelWorld(assets);

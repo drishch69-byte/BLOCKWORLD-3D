@@ -341,6 +341,20 @@ public final class ResourcePackManager {
             for (int x = 0; x < BLOCK_TEXTURE_SIZE; x++) {
                 int noise = random.nextInt(31) - 15;
                 int detail = 0;
+                if (type == BlockType.WOODEN_GATE || type == BlockType.OPEN_WOODEN_GATE) {
+                    boolean open = type == BlockType.OPEN_WOODEN_GATE;
+                    boolean post = x <= 2 || x >= 13;
+                    boolean rail = y == 3 || y == 4 || y == 10 || y == 11;
+                    boolean slat = x == 5 || x == 8 || x == 11;
+                    int r = post || rail ? 142 + noise / 2 : 99 + noise;
+                    int g = post || rail ? 91 + noise / 2 : 61 + noise / 2;
+                    int b = post || rail ? 43 + noise / 3 : 29 + noise / 3;
+                    if (slat && y >= 4 && y <= 11) { r += 16; g += 12; }
+                    if (open && (x <= 3 || x >= 12)) { r += 12; g += 8; }
+                    image.setRGB(x, y, 0xFF000000 | (clamp255(r) << 16)
+                            | (clamp255(g) << 8) | clamp255(b));
+                    continue;
+                }
                 if (type == BlockType.WOODEN_FENCE) {
                     boolean post = x <= 3 || x >= 12 || y <= 2 || y >= 13;
                     boolean rail = y == 6 || y == 7 || y == 10 || y == 11;

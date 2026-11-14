@@ -91,15 +91,19 @@ class VoxelWorldSaveTest {
     }
 
     @Test
-    void version1913WoodenFencesAndFeedTroughsRoundTripWithoutChangingWorldFormat() throws IOException {
+    void version1914FarmBuildingsAndBothGateStatesRoundTripWithoutChangingWorldFormat() throws IOException {
         AssetManager assets = new DesktopAssetManager(true);
-        GameVersion version = VersionManager.find("1.9.13");
+        GameVersion version = VersionManager.find("1.9.14");
         VoxelWorld source = new VoxelWorld(assets);
         source.generate(version, 8675309L, 24);
         BlockPos fence = new BlockPos(2, 30, 3);
         BlockPos trough = new BlockPos(3, 30, 3);
+        BlockPos closedGate = new BlockPos(4, 30, 3);
+        BlockPos openGate = new BlockPos(5, 30, 3);
         assertTrue(source.addBlock(fence, BlockType.WOODEN_FENCE));
         assertTrue(source.addBlock(trough, BlockType.FEED_TROUGH));
+        assertTrue(source.addBlock(closedGate, BlockType.WOODEN_GATE));
+        assertTrue(source.addBlock(openGate, BlockType.OPEN_WOODEN_GATE));
 
         Path file = tempDir.resolve("version-1913-farm-buildings.bwworld");
         source.save(file, version);
@@ -107,11 +111,15 @@ class VoxelWorldSaveTest {
         assertTrue(saved.contains("format=2"));
         assertTrue(saved.contains("2,30,3,wooden_fence"));
         assertTrue(saved.contains("3,30,3,feed_trough"));
+        assertTrue(saved.contains("4,30,3,wooden_gate"));
+        assertTrue(saved.contains("5,30,3,open_wooden_gate"));
 
         VoxelWorld restored = new VoxelWorld(assets);
         assertEquals(version.id(), restored.load(file));
         assertEquals(BlockType.WOODEN_FENCE, restored.getBlock(fence));
         assertEquals(BlockType.FEED_TROUGH, restored.getBlock(trough));
+        assertEquals(BlockType.WOODEN_GATE, restored.getBlock(closedGate));
+        assertEquals(BlockType.OPEN_WOODEN_GATE, restored.getBlock(openGate));
     }
 
     @Test

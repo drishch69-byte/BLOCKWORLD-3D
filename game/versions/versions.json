@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.13",
+  "defaultVersion": "1.9.14",
   "versions": [
     {
       "id": "0.1.0",
@@ -199,6 +199,11 @@
     {
       "id": "1.9.13",
       "name": "Farm Pens & Smart Feeders",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.14",
+      "name": "Gates & Smarter Animal Pens",
       "status": "current"
     }
   ]
