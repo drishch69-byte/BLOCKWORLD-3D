@@ -27,6 +27,8 @@ import com.blockworld.core.PlayerDataStore;
 import com.blockworld.core.PetDataStore;
 import com.blockworld.core.PetMode;
 import com.blockworld.core.PetRules;
+import com.blockworld.core.AnimalBreedingRules;
+import com.blockworld.core.AnimalDataStore;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
@@ -137,18 +139,21 @@ public final class BlockWorldGame extends SimpleApplication {
     private final Set<ArmorSlot> equippedArmor = EnumSet.noneOf(ArmorSlot.class);
     private final Map<BlockPos, Float> farmGrowth = new HashMap<>();
     private final Map<Long, PetMode> pendingPetModes = new HashMap<>();
+    private AnimalDataStore.State pendingAnimalData = AnimalDataStore.State.empty();
     private final boolean equipmentEnabled;
     private final boolean agricultureEnabled;
     private final boolean release100Enabled;
     private final boolean explorationEnabled;
     private final boolean petsEnabled;
     private final boolean foxCompanionsEnabled;
+    private final boolean animalBreedingEnabled;
     private final List<CraftingRecipe> craftingRecipes;
     private final List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
     private final AchievementTracker achievements = new AchievementTracker();
     private GameSounds gameSounds;
     private float fishingCooldown;
     private float biomeDiscoveryClock;
+    private float animalSaveClock;
     private ToolType selectedTool;
     private int craftingPage;
     private int inventoryPage;
@@ -269,7 +274,8 @@ public final class BlockWorldGame extends SimpleApplication {
         this.release100Enabled = supportsRelease100(version);
         this.explorationEnabled = WorldNavigation.supportsExploration(version.id());
         this.petsEnabled = version.id().compareTo("1.9.0") >= 0;
-        this.foxCompanionsEnabled = "1.9.10".equals(version.id());
+        this.foxCompanionsEnabled = "1.9.10".equals(version.id()) || "1.9.11".equals(version.id());
+        this.animalBreedingEnabled = "1.9.11".equals(version.id());
         List<CraftingRecipe> allRecipes = release100Enabled ? CraftingRecipe.release100Recipes()
                 : agricultureEnabled ? CraftingRecipe.advancedRecipes() : CraftingRecipe.starterRecipes();
         this.craftingRecipes = equipmentEnabled ? allRecipes : List.copyOf(allRecipes.subList(0, 4));
@@ -480,6 +486,15 @@ public final class BlockWorldGame extends SimpleApplication {
             if (loaded && petsEnabled) {
                 try { PetDataStore.load(saveFile, pendingPetModes); }
                 catch (IOException ex) { GameLog.error("Не удалось загрузить команды питомцев", ex); }
+            }
+            if (loaded && animalBreedingEnabled) {
+                try { pendingAnimalData = AnimalDataStore.load(saveFile); }
+                catch (IOException ex) {
+                    pendingAnimalData = AnimalDataStore.State.empty();
+                    GameLog.error("Не удалось загрузить рост детёнышей и разведение животных", ex);
+                }
+            } else {
+                pendingAnimalData = AnimalDataStore.State.empty();
             }
             if (release100Enabled) {
                 achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
@@ -855,6 +870,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 rootNode.attachChild(world.getNode());
                 creatureManager.sync(world);
                 if (petsEnabled) creatureManager.setPetModes(pendingPetModes, foxCompanionsEnabled);
+                if (animalBreedingEnabled) creatureManager.setAnimalData(pendingAnimalData, true);
                 rootNode.attachChild(creatureManager.getNode());
                 natureDecorations.rebuild(world);
                 rootNode.attachChild(natureDecorations.getNode());
@@ -934,6 +950,13 @@ public final class BlockWorldGame extends SimpleApplication {
         if (worldReady && creatureManager != null && world != null
                 && (multiplayerClient == null || !multiplayerClient.isConnected() || multiplayerClient.isHost())) {
             creatureManager.update(tpf, version.survival() ? playerEyePosition : cam.getLocation(), world);
+            if (animalBreedingEnabled) {
+                animalSaveClock += Math.max(0f, tpf);
+                if (animalSaveClock >= 5f) {
+                    animalSaveClock = 0f;
+                    saveAnimalDataQuietly();
+                }
+            }
             float incomingDamage = creatureManager.consumePlayerDamage();
             if (version.survival() && incomingDamage > 0f) {
                 float appliedDamage = CombatRules.applyArmor(incomingDamage, equippedArmor);
@@ -2191,6 +2214,11 @@ public final class BlockWorldGame extends SimpleApplication {
         } else if (creature.type() == com.blockworld.core.CreatureType.FOX
                 && foxCompanionsEnabled && version.survival()) {
             interactFox(creature);
+        } else if (animalBreedingEnabled && AnimalBreedingRules.isBaby(creature.type())) {
+            statusMessage = creature.type().displayName() + " растёт. Через несколько минут станет взрослым.";
+        } else if (animalBreedingEnabled && AnimalBreedingRules.isBreedableAdult(creature.type())
+                && version.survival()) {
+            breedAnimal(creature);
         } else if (creature.type() == com.blockworld.core.CreatureType.SLIME) {
             statusMessage = "Слайм подпрыгивает рядом. Он не нападает.";
         } else {
@@ -2225,6 +2253,67 @@ public final class BlockWorldGame extends SimpleApplication {
             statusMessage = "Лиса приручена! Она будет следовать за тобой. Нажми N рядом с питомцем, чтобы сменить команду.";
         }
         updateInventoryUi();
+    }
+
+    private void breedAnimal(com.blockworld.core.WorldCreature parent) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()) {
+            statusMessage = "Разведение животных пока доступно только в одиночном мире.";
+            return;
+        }
+        com.blockworld.core.WorldCreature mate = creatureManager.nearestBreedableMate(
+                parent, AnimalBreedingRules.PARTNER_DISTANCE);
+        if (mate == null) {
+            statusMessage = "Нужна ещё одна взрослая " + parent.type().displayName().toLowerCase(java.util.Locale.ROOT)
+                    + " рядом. Подойди ближе к паре и нажми F.";
+            return;
+        }
+        float cooldown = creatureManager.breedingCooldownRemaining(parent.id(), mate.id());
+        if (cooldown > 0f) {
+            statusMessage = "Эта пара пока отдыхает. Попробуй снова через "
+                    + Math.ceil(cooldown) + " сек.";
+            return;
+        }
+        ItemType feed = AnimalBreedingRules.feedFor(parent.type());
+        if (feed == null || craftedItems.getOrDefault(feed, 0) < 2) {
+            statusMessage = "Для этой пары нужно 2 предмета: "
+                    + (feed == null ? "подходящий корм" : feed.displayName()) + ".";
+            return;
+        }
+        if (world.getCreatureCount() >= 256) {
+            statusMessage = "В мире уже слишком много существ. Освободи место перед разведением.";
+            return;
+        }
+        long nextId = world.getCreatures().stream().mapToLong(com.blockworld.core.WorldCreature::id)
+                .max().orElse(0L) + 1L;
+        float babyX = (parent.x() + mate.x()) * 0.5f + 0.35f;
+        float babyY = Math.max(parent.y(), mate.y());
+        float babyZ = (parent.z() + mate.z()) * 0.5f + 0.35f;
+        com.blockworld.core.WorldCreature baby = new com.blockworld.core.WorldCreature(
+                nextId, AnimalBreedingRules.babyTypeFor(parent.type()),
+                babyX, babyY, babyZ, parent.yaw());
+        if (!creatureManager.spawnBaby(baby, world)) {
+            statusMessage = "Не удалось создать детёныша. Попробуй немного изменить место.";
+            return;
+        }
+        craftedItems.merge(feed, -2, Integer::sum);
+        creatureManager.startBreedingCooldown(parent.id(), mate.id());
+        savePlayerDataQuietly();
+        updateInventoryUi();
+        saveWorld();
+        if (!statusMessage.startsWith("Ошибка сохранения:")) {
+            statusMessage = "Появился " + baby.type().displayName().toLowerCase(java.util.Locale.ROOT)
+                    + "! Он вырастет примерно за 3 минуты. Корм: " + feed.displayName() + " ×2.";
+        }
+        updateHud();
+    }
+
+    private void saveAnimalDataQuietly() {
+        if (!animalBreedingEnabled || creatureManager == null) return;
+        try {
+            AnimalDataStore.save(saveFile, creatureManager.animalDataSnapshot());
+        } catch (IOException error) {
+            GameLog.error("Не удалось сохранить рост и разведение животных", error);
+        }
     }
 
     private void tradeWithVillager(int index) {
@@ -2450,7 +2539,9 @@ public final class BlockWorldGame extends SimpleApplication {
                     entry.getKey().y(), entry.getKey().z() + .5f);
             boolean farmerNearby = creatureManager != null
                     && creatureManager.hasFarmerNear(cropCenter, 8f);
-            float next = FarmRules.advance(previous, tpf, raining, farmerNearby);
+            boolean farmAnimalNearby = animalBreedingEnabled && creatureManager != null
+                    && creatureManager.hasDomesticAnimalNear(cropCenter, 6f);
+            float next = FarmRules.advance(previous, tpf, raining, farmerNearby, farmAnimalNearby);
             entry.setValue(next);
             if (!FarmRules.isMature(previous) && FarmRules.isMature(next)) maturityChanged = true;
         }
@@ -2849,8 +2940,10 @@ public final class BlockWorldGame extends SimpleApplication {
             if (agricultureEnabled) FarmDataStore.save(saveFile, farmGrowth);
             if (petsEnabled && creatureManager != null)
                 PetDataStore.save(saveFile, creatureManager.petModesSnapshot());
+            if (animalBreedingEnabled && creatureManager != null)
+                AnimalDataStore.save(saveFile, creatureManager.animalDataSnapshot());
             if (release100Enabled) AchievementDataStore.save(saveFile, achievements);
-            statusMessage = "Мир, инвентарь, питомцы, ферма и достижения сохранены!";
+            statusMessage = "Мир, инвентарь, питомцы, животные, ферма и достижения сохранены!";
         } catch (IOException ex) {
             statusMessage = "Ошибка сохранения: " + ex.getMessage();
             GameLog.error("Ошибка сохранения мира " + saveFile, ex);
@@ -2875,7 +2968,8 @@ public final class BlockWorldGame extends SimpleApplication {
                     + (agricultureEnabled ? "    G — ферма/печь" : "")
                     + (release100Enabled ? "    P — рыбалка    M — достижения" : "")
                     + (explorationEnabled ? "    B — карта/компас" : "")
-                    + (petsEnabled ? "    N — команда псу" : "") + "    ESC — пауза"
+                    + (petsEnabled ? "    N — команда питомцу" : "")
+                    + (animalBreedingEnabled ? "    F — разведение животных" : "") + "    ESC — пауза"
                 : "WASD — движение    Мышь — обзор    Колесо мыши — выбор слота    F — общение/контакт"
                     + (explorationEnabled ? "    B — карта/компас" : "")
                     + (petsEnabled ? "    N — команда псу" : "") + "    ESC — пауза";
@@ -3031,7 +3125,9 @@ public final class BlockWorldGame extends SimpleApplication {
                     if (release100Enabled) AchievementDataStore.save(saveFile, achievements);
                     if (petsEnabled && creatureManager != null)
                         PetDataStore.save(saveFile, creatureManager.petModesSnapshot());
-                    GameLog.info("Мир, инвентарь, питомцы, ферма и достижения автоматически сохранены при закрытии: " + saveFile.toAbsolutePath());
+                    if (animalBreedingEnabled && creatureManager != null)
+                        AnimalDataStore.save(saveFile, creatureManager.animalDataSnapshot());
+                    GameLog.info("Мир, инвентарь, питомцы, животные, ферма и достижения автоматически сохранены при закрытии: " + saveFile.toAbsolutePath());
                 } catch (Throwable error) {
                     GameLog.error("Не удалось сохранить мир при закрытии", error);
                 }

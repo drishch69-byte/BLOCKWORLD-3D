@@ -7,6 +7,8 @@ import com.blockworld.core.VoxelWorld;
 import com.blockworld.core.WorldCreature;
 import com.blockworld.core.PetMode;
 import com.blockworld.core.PetRules;
+import com.blockworld.core.AnimalBreedingRules;
+import com.blockworld.core.AnimalDataStore;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
@@ -30,7 +32,10 @@ public final class CreatureManager {
     private final Node node = new Node("WorldCreatures");
     private final Map<Long, Visual> visuals = new HashMap<>();
     private final Map<Long, PetMode> petModes = new HashMap<>();
+    private final Map<Long, Float> babyGrowthSeconds = new HashMap<>();
+    private final Map<Long, Float> breedingCooldowns = new HashMap<>();
     private boolean foxCompanionsEnabled;
+    private boolean animalBreedingEnabled;
 
     public CreatureManager(AssetManager assets) {
         this.assets = assets;
@@ -54,6 +59,110 @@ public final class CreatureManager {
 
     public Node getNode() { return node; }
     public int size() { return visuals.size(); }
+
+    public void setAnimalData(AnimalDataStore.State state, boolean enabled) {
+        animalBreedingEnabled = enabled;
+        babyGrowthSeconds.clear();
+        breedingCooldowns.clear();
+        if (!enabled) return;
+        if (state != null) {
+            for (Map.Entry<Long, Float> entry : state.babyAges().entrySet()) {
+                Visual visual = visuals.get(entry.getKey());
+                if (visual != null && AnimalBreedingRules.isBaby(visual.state.type())
+                        && entry.getValue() != null && Float.isFinite(entry.getValue())) {
+                    babyGrowthSeconds.put(entry.getKey(), Math.max(0f,
+                            Math.min(AnimalBreedingRules.GROWTH_SECONDS, entry.getValue())));
+                }
+            }
+            for (Map.Entry<Long, Float> entry : state.cooldowns().entrySet()) {
+                Visual visual = visuals.get(entry.getKey());
+                if (visual != null && AnimalBreedingRules.isBreedableAdult(visual.state.type())
+                        && entry.getValue() != null && Float.isFinite(entry.getValue())
+                        && entry.getValue() > 0f) {
+                    breedingCooldowns.put(entry.getKey(), Math.min(
+                            AnimalBreedingRules.BREEDING_COOLDOWN_SECONDS, entry.getValue()));
+                }
+            }
+        }
+        for (Visual visual : visuals.values()) {
+            if (AnimalBreedingRules.isBaby(visual.state.type())) {
+                babyGrowthSeconds.putIfAbsent(visual.state.id(), 0f);
+            }
+        }
+    }
+
+    public AnimalDataStore.State animalDataSnapshot() {
+        Map<Long, Float> ages = new HashMap<>();
+        Map<Long, Float> cooldowns = new HashMap<>();
+        if (!animalBreedingEnabled) return AnimalDataStore.State.empty();
+        babyGrowthSeconds.forEach((id, age) -> {
+            Visual visual = visuals.get(id);
+            if (visual != null && AnimalBreedingRules.isBaby(visual.state.type())) ages.put(id, age);
+        });
+        breedingCooldowns.forEach((id, time) -> {
+            Visual visual = visuals.get(id);
+            if (visual != null && AnimalBreedingRules.isBreedableAdult(visual.state.type())
+                    && time > 0f) cooldowns.put(id, time);
+        });
+        return new AnimalDataStore.State(ages, cooldowns);
+    }
+
+    public WorldCreature nearestBreedableMate(WorldCreature parent, float maxDistance) {
+        if (!animalBreedingEnabled || parent == null
+                || !AnimalBreedingRules.isBreedableAdult(parent.type())
+                || !Float.isFinite(maxDistance) || maxDistance < 0f) return null;
+        float bestDistance = maxDistance * maxDistance;
+        WorldCreature nearest = null;
+        for (Visual visual : visuals.values()) {
+            WorldCreature candidate = visual.state;
+            if (candidate.id() == parent.id()
+                    || !AnimalBreedingRules.canBreedTogether(parent.type(), candidate.type())) continue;
+            float dx = candidate.x() - parent.x();
+            float dy = candidate.y() - parent.y();
+            float dz = candidate.z() - parent.z();
+            float distance = dx * dx + dy * dy + dz * dz;
+            if (distance <= bestDistance) {
+                bestDistance = distance;
+                nearest = candidate;
+            }
+        }
+        return nearest;
+    }
+
+    public float breedingCooldownRemaining(long firstId, long secondId) {
+        return Math.max(breedingCooldowns.getOrDefault(firstId, 0f),
+                breedingCooldowns.getOrDefault(secondId, 0f));
+    }
+
+    public void startBreedingCooldown(long firstId, long secondId) {
+        if (!animalBreedingEnabled) return;
+        breedingCooldowns.put(firstId, AnimalBreedingRules.BREEDING_COOLDOWN_SECONDS);
+        breedingCooldowns.put(secondId, AnimalBreedingRules.BREEDING_COOLDOWN_SECONDS);
+    }
+
+    public boolean spawnBaby(WorldCreature baby, VoxelWorld world) {
+        if (!animalBreedingEnabled || baby == null || world == null
+                || !AnimalBreedingRules.isBaby(baby.type()) || visuals.containsKey(baby.id())
+                || !world.addCreature(baby)) return false;
+        Visual visual = createVisual(baby);
+        visuals.put(baby.id(), visual);
+        node.attachChild(visual.root);
+        babyGrowthSeconds.put(baby.id(), 0f);
+        return true;
+    }
+
+    public boolean hasDomesticAnimalNear(Vector3f position, float radius) {
+        if (position == null || !Float.isFinite(radius) || radius < 0f) return false;
+        float limit = radius * radius;
+        for (Visual visual : visuals.values()) {
+            if (!AnimalBreedingRules.isFarmAnimal(visual.state.type())) continue;
+            float dx = visual.state.x() - position.x;
+            float dy = visual.state.y() - position.y;
+            float dz = visual.state.z() - position.z;
+            if (dx * dx + dy * dy + dz * dz <= limit) return true;
+        }
+        return false;
+    }
 
     public void setPetModes(Map<Long, PetMode> savedModes) {
         setPetModes(savedModes, true);
@@ -159,6 +268,8 @@ public final class CreatureManager {
             long id = target.state.id();
             target.root.removeFromParent();
             visuals.remove(id);
+            babyGrowthSeconds.remove(id);
+            breedingCooldowns.remove(id);
             world.removeCreature(id);
             return target.state.type().displayName() + " побеждён!";
         }
@@ -255,13 +366,15 @@ public final class CreatureManager {
                     : visual.walking ? Math.abs(gaitSwing(visual.animationClock, true)) * 0.025f : 0f;
             visual.root.setLocalTranslation(visual.state.x(), visual.state.y() + bob, visual.state.z());
             visual.root.setLocalRotation(new Quaternion().fromAngleAxis(visual.state.yaw(), Vector3f.UNIT_Y));
-            visual.root.setLocalScale(1f, visual.state.type() == CreatureType.SLIME
-                    ? 0.82f + 0.18f * (float) Math.abs(Math.sin(visual.animationClock * 1.6f)) : 1f, 1f);
+            float scale = AnimalBreedingRules.isBaby(visual.state.type()) ? 0.55f : 1f;
+            visual.root.setLocalScale(scale, scale * (visual.state.type() == CreatureType.SLIME
+                    ? 0.82f + 0.18f * (float) Math.abs(Math.sin(visual.animationClock * 1.6f)) : 1f), scale);
             animateLimbs(visual);
         }
     }
 
     public void update(float tpf, Vector3f playerPosition, VoxelWorld world) {
+        if (animalBreedingEnabled) advanceAnimalTimers(tpf);
         List<Long> defeated = new ArrayList<>();
         // Determine which hostiles threaten a village once per tick, not once per guardian.
         List<Visual> protectedHostiles = findVillageThreats();
@@ -361,14 +474,49 @@ public final class CreatureManager {
                     : walking ? Math.abs(gaitSwing(visual.animationClock, true)) * .025f : 0f;
             visual.root.setLocalTranslation(state.x(), state.y() + bob, state.z());
             visual.root.setLocalRotation(new Quaternion().fromAngleAxis(state.yaw(), Vector3f.UNIT_Y));
-            visual.root.setLocalScale(1f, state.type() == CreatureType.SLIME
-                    ? .82f + .18f * (float) Math.abs(Math.sin(visual.animationClock * 1.6f)) : 1f, 1f);
+            float scale = AnimalBreedingRules.isBaby(state.type()) ? 0.55f : 1f;
+            visual.root.setLocalScale(scale, scale * (state.type() == CreatureType.SLIME
+                    ? .82f + .18f * (float) Math.abs(Math.sin(visual.animationClock * 1.6f)) : 1f), scale);
             animateLimbs(visual);
         }
         for (Long id : defeated) {
             Visual removed = visuals.remove(id);
             if (removed != null) removed.root.removeFromParent();
+            babyGrowthSeconds.remove(id);
+            breedingCooldowns.remove(id);
             world.removeCreature(id);
+        }
+        if (animalBreedingEnabled) matureBabies(world);
+    }
+
+    private void advanceAnimalTimers(float tpf) {
+        float elapsed = Float.isFinite(tpf) ? Math.max(0f, tpf) : 0f;
+        if (elapsed <= 0f) return;
+        babyGrowthSeconds.replaceAll((id, age) ->
+                AnimalBreedingRules.advanceGrowth(age, elapsed));
+        breedingCooldowns.replaceAll((id, cooldown) ->
+                AnimalBreedingRules.advanceCooldown(cooldown, elapsed));
+        breedingCooldowns.values().removeIf(value -> value <= 0f);
+    }
+
+    private void matureBabies(VoxelWorld world) {
+        List<WorldCreature> ready = new ArrayList<>();
+        for (Map.Entry<Long, Float> entry : babyGrowthSeconds.entrySet()) {
+            if (!AnimalBreedingRules.isMature(entry.getValue())) continue;
+            Visual visual = visuals.get(entry.getKey());
+            if (visual == null || !AnimalBreedingRules.isBaby(visual.state.type())) continue;
+            CreatureType adultType = AnimalBreedingRules.adultTypeFor(visual.state.type());
+            WorldCreature baby = visual.state;
+            ready.add(new WorldCreature(baby.id(), adultType, baby.x(), baby.y(), baby.z(), baby.yaw()));
+        }
+        for (WorldCreature grown : ready) {
+            Visual previous = visuals.remove(grown.id());
+            if (previous != null) previous.root.removeFromParent();
+            world.updateCreature(grown);
+            Visual adult = createVisual(grown);
+            visuals.put(grown.id(), adult);
+            node.attachChild(adult.root);
+            babyGrowthSeconds.remove(grown.id());
         }
     }
 
@@ -465,10 +613,10 @@ public final class CreatureManager {
     private Visual createVisual(WorldCreature creature) {
         Node root = new Node("Creature-" + creature.type().id() + "-" + creature.id());
         switch (creature.type()) {
-            case COW -> buildCow(root);
-            case SHEEP -> buildSheep(root);
-            case PIG -> buildPig(root);
-            case CHICKEN -> buildChicken(root);
+            case COW, CALF -> buildCow(root);
+            case SHEEP, LAMB -> buildSheep(root);
+            case PIG, PIGLET -> buildPig(root);
+            case CHICKEN, CHICK -> buildChicken(root);
             case VILLAGER, VILLAGER_FARMER, VILLAGER_BLACKSMITH,
                     VILLAGER_LIBRARIAN, VILLAGER_GUARD -> buildVillager(root, creature.type());
             case SLIME -> buildSlime(root);
@@ -492,6 +640,7 @@ public final class CreatureManager {
         }
         root.setLocalTranslation(creature.x(), creature.y(), creature.z());
         root.setLocalRotation(new Quaternion().fromAngleAxis(creature.yaw(), Vector3f.UNIT_Y));
+        if (AnimalBreedingRules.isBaby(creature.type())) root.setLocalScale(0.55f, 0.55f, 0.55f);
         return new Visual(creature, root, animationParts);
     }
 
@@ -731,6 +880,11 @@ public final class CreatureManager {
         String rootName = parent.getName();
         String textureId = rootName != null && rootName.startsWith("Creature-")
                 ? rootName.substring("Creature-".length()).split("-", 2)[0] : "";
+        try {
+            textureId = AnimalBreedingRules.textureTypeFor(CreatureType.fromId(textureId)).id();
+        } catch (IllegalArgumentException ignored) {
+            // Keep a plain material if an optional creature texture cannot be mapped.
+        }
         Texture skin = creatureTextures.get(textureId);
         if (skin != null) material.setTexture("ColorMap", skin);
         material.setColor("Color", color);

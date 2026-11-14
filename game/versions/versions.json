@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.10",
+  "defaultVersion": "1.9.11",
   "versions": [
     {
       "id": "0.1.0",
@@ -184,6 +184,11 @@
     {
       "id": "1.9.10",
       "name": "Fox Companions & Taming",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.11",
+      "name": "Farm Life & Baby Animals",
       "status": "current"
     }
   ]

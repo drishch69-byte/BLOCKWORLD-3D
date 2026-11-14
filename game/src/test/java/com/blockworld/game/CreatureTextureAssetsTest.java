@@ -18,7 +18,8 @@ class CreatureTextureAssetsTest {
     @Test
     void everyCreatureHasAValidPixelTexture() throws IOException {
         for (CreatureType type : CreatureType.values()) {
-            String path = "Textures/Creatures/" + type.id() + ".png";
+            CreatureType textureType = AnimalBreedingRules.textureTypeFor(type);
+            String path = "Textures/Creatures/" + textureType.id() + ".png";
             try (InputStream input = getClass().getClassLoader().getResourceAsStream(path)) {
                 assertNotNull(input, "Не найден PNG для существа: " + type.id());
                 BufferedImage image = ImageIO.read(input);

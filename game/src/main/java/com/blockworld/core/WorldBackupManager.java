@@ -25,7 +25,8 @@ import java.util.stream.Stream;
 public final class WorldBackupManager {
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSS");
     private static final List<String> SIDECAR_SUFFIXES = List.of(
-            ".player.properties", ".farm.properties", ".achievements.properties", ".pets.properties");
+            ".player.properties", ".farm.properties", ".achievements.properties", ".pets.properties",
+            ".animals.properties");
     private static final String MANIFEST_SUFFIX = ".manifest";
     private static final String MANIFEST_FORMAT = "1";
 
@@ -197,7 +198,8 @@ public final class WorldBackupManager {
         Set<String> included = new HashSet<>();
         for (String suffix : SIDECAR_SUFFIXES) {
             String value = metadata.getProperty("sidecar." + suffix.substring(1));
-            if (value == null && ".pets.properties".equals(suffix)) value = "false";
+            if (value == null && (".pets.properties".equals(suffix)
+                    || ".animals.properties".equals(suffix))) value = "false";
             if (!"true".equals(value) && !"false".equals(value)) {
                 throw new IOException("Манифест резервной копии неполный.");
             }

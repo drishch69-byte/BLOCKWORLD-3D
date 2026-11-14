@@ -42,10 +42,12 @@ class WorldBackupManagerTest {
         Path farm = FarmDataStore.sidecar(world);
         Path achievements = AchievementDataStore.sidecar(world);
         Path pets = PetDataStore.sidecar(world);
+        Path animals = AnimalDataStore.sidecar(world);
         Files.writeString(player, "inventory=old\n");
         Files.writeString(farm, "farm=old\n");
         Files.writeString(achievements, "achievement=old\n");
         Files.writeString(pets, "pet.17=stay\n");
+        Files.writeString(animals, "baby.30=12.5\n");
 
         Path backup = WorldBackupManager.create(world);
         Files.writeString(world, worldState("new"));
@@ -53,6 +55,7 @@ class WorldBackupManagerTest {
         Files.writeString(farm, "farm=new\n");
         Files.writeString(achievements, "achievement=new\n");
         Files.writeString(pets, "pet.17=follow\n");
+        Files.writeString(animals, "baby.30=80.0\n");
 
         WorldBackupManager.restore(world, backup);
 
@@ -60,6 +63,7 @@ class WorldBackupManagerTest {
         assertEquals("farm=old\n", Files.readString(farm));
         assertEquals("achievement=old\n", Files.readString(achievements));
         assertEquals("pet.17=stay\n", Files.readString(pets));
+        assertEquals("baby.30=12.5\n", Files.readString(animals));
         assertEquals(2, WorldBackupManager.list(world).size());
     }
 
@@ -88,14 +92,17 @@ class WorldBackupManagerTest {
         Files.writeString(world, worldState("old"));
         Files.writeString(PlayerDataStore.sidecar(world), "inventory=old\n");
         Files.writeString(PetDataStore.sidecar(world), "pet.3=stay\n");
+        Files.writeString(AnimalDataStore.sidecar(world), "baby.3=10\n");
         Path backup = WorldBackupManager.create(world);
 
         assertEquals(List.of(backup), WorldBackupManager.list(world));
         Path backupSidecar = backup.resolveSibling(backup.getFileName() + ".player.properties");
         Path manifest = backup.resolveSibling(backup.getFileName() + ".manifest");
         Path backupPets = backup.resolveSibling(backup.getFileName() + ".pets.properties");
+        Path backupAnimals = backup.resolveSibling(backup.getFileName() + ".animals.properties");
         assertTrue(Files.exists(backupSidecar));
         assertTrue(Files.exists(backupPets));
+        assertTrue(Files.exists(backupAnimals));
         assertTrue(Files.exists(manifest));
 
         WorldBackupManager.delete(world, backup);
@@ -103,6 +110,7 @@ class WorldBackupManagerTest {
         assertFalse(Files.exists(backup));
         assertFalse(Files.exists(backupSidecar));
         assertFalse(Files.exists(backupPets));
+        assertFalse(Files.exists(backupAnimals));
         assertFalse(Files.exists(manifest));
         assertTrue(WorldBackupManager.list(world).isEmpty());
     }

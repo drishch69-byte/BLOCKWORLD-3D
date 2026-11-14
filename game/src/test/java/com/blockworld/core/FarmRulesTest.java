@@ -17,6 +17,10 @@ class FarmRulesTest {
         float farmer = FarmRules.advance(10f, 10f, false, true);
         assertTrue(rain > normal);
         assertTrue(farmer > normal);
+        float animal = FarmRules.advance(10f, 10f, false, false, true);
+        assertTrue(animal > normal);
+        assertEquals(FarmRules.MATURATION_SECONDS,
+                FarmRules.advance(44f, 20f, true, true, true));
     }
 
     @Test void harvestSeedCountIsBounded() {

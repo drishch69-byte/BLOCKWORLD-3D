@@ -14,7 +14,14 @@ public final class FarmRules {
     /** Rain and nearby farmers provide gentle crop-growth bonuses. */
     public static float advance(float currentSeconds, float elapsedSeconds,
                                 boolean raining, boolean farmerNearby) {
-        float multiplier = (raining ? 1.25f : 1f) * (farmerNearby ? 1.15f : 1f);
+        return advance(currentSeconds, elapsedSeconds, raining, farmerNearby, false);
+    }
+
+    /** Nearby farm animals provide a small additional growth bonus in the 1.9.11 profile. */
+    public static float advance(float currentSeconds, float elapsedSeconds,
+                                boolean raining, boolean farmerNearby, boolean farmAnimalNearby) {
+        float multiplier = (raining ? 1.25f : 1f) * (farmerNearby ? 1.15f : 1f)
+                * (farmAnimalNearby ? 1.10f : 1f);
         return advance(currentSeconds, elapsedSeconds * multiplier);
     }
 

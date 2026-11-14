@@ -21,7 +21,11 @@ public enum CreatureType {
     SPIDER("spider", "Паук", 0.52f),
     RABBIT("rabbit", "Кролик", 0.72f),
     CRYSTAL_SENTINEL("crystal_sentinel", "Кристальный страж", 0.42f),
-    TEMPLE_WARDEN("temple_warden", "Страж храма", 0.38f);
+    TEMPLE_WARDEN("temple_warden", "Страж храма", 0.38f),
+    CALF("calf", "Теленок", 0.34f),
+    LAMB("lamb", "Ягненок", 0.32f),
+    PIGLET("piglet", "Поросенок", 0.36f),
+    CHICK("chick", "Цыпленок", 0.40f);
 
     private final String id;
     private final String displayName;
@@ -51,6 +55,7 @@ public enum CreatureType {
             case IRON_GOLEM -> 100f;
             case CRYSTAL_SENTINEL -> 70f;
             case TEMPLE_WARDEN -> 95f;
+            case CALF, LAMB, PIGLET, CHICK -> 6f;
             case ZOMBIE -> 16f;
             case SKELETON -> 14f;
             case SPIDER -> 12f;
