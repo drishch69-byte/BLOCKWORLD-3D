@@ -17,11 +17,11 @@
   <a href="PROMOTE.md">Share the project</a>
 </p>
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.24 — Living Villages & Creature AI.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.25 — Villager Workplaces.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
-**Project website:** the multilingual site source is in [docs/index.html](docs/index.html), with a separate [version history](docs/versions.html) covering updates from 1.1.0 to 1.9.24. To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
+**Project website:** the multilingual site source is in [docs/index.html](docs/index.html), with a separate [version history](docs/versions.html) covering updates from 1.1.0 to 1.9.25. To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
 
 **Want to help?** Share [the project](https://github.com/drishch69-byte/BLOCKWORLD-3D), try a build, [report a bug](https://github.com/drishch69-byte/BLOCKWORLD-3D/issues/new/choose), or suggest a feature.
 
@@ -29,7 +29,15 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current version
 
-**1.9.24 — Living Villages & Creature AI (development)**
+**1.9.25 — Villager Workplaces (development)**
+
+- Farmers look for nearby farmland and wheat, blacksmiths seek furnaces, and librarians visit village archive chests.
+- Professioned villagers walk to their closest matching workplace during daytime and perform a small working animation.
+- Workplace discovery is cached to keep per-frame world scans low.
+- The feature is enabled only in profile 1.9.25 and newer; earlier profiles keep their previous behavior.
+- Workplaces are temporary AI state, so world save format 2 and creature records remain unchanged.
+
+**Previous: 1.9.24 — Living Villages & Creature AI**
 
 - Villagers follow a day schedule: non-guard villagers rest at night and resume roaming after dawn.
 - Ordinary villagers try to move away from nearby hostile creatures; guards remain on duty and protect the village.
@@ -256,7 +264,7 @@ A portable **Windows x64** preview build is included in the [Cross-platform Port
 - The package includes its Java runtime; Java and Maven do not need to be installed.
 - Keep the extracted folder intact. Worlds and settings are stored separately in `%USERPROFILE%\\.blockworld3d`.
 
-Pushing a matching version tag such as `v1.9.24` starts the cross-platform release workflow. It waits for all four builds and attaches Windows, Linux, macOS Apple silicon and macOS Intel archives to one permanent GitHub Release.
+Pushing a matching version tag such as `v1.9.25` starts the cross-platform release workflow. It waits for all four builds and attaches Windows, Linux, macOS Apple silicon and macOS Intel archives to one permanent GitHub Release.
 
 ## Linux and macOS downloads
 
@@ -279,7 +287,7 @@ Preview workflow artifacts are retained for 30 days. GitHub Release assets remai
 - **Permanent versioned builds:** [GitHub Releases](https://github.com/drishch69-byte/BLOCKWORLD-3D/releases) — choose one of the four platform archives attached to a release.
 - **Latest source code:** [Download source ZIP](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip).
 
-[**Download latest source ZIP (1.9.24 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.25 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
