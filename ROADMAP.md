@@ -1,6 +1,6 @@
 # Minecraft 3D — Roadmap
 
-This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.13 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
+This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.14 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
 
 ## 1.1.0 — Wildlands & Crystal Caves (released)
 - Added taiga and swamp biomes, crystal-lined underground caves, and underground water pools.
@@ -8,6 +8,11 @@ This roadmap records implemented releases and future proposals. Versions 1.1.0, 
 - Expanded villages with a market stall and garden.
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
+
+## 1.9.14 — Gates & Smarter Animal Pens (in progress)
+- Add a wooden gate with persistent open and closed states.
+- Let players and penned animals move through an open gate.
+- Improve animal turn behavior at pen boundaries.
 
 ## 1.9.13 — Farm Pens & Smart Feeders (released)
 - Craft and place wooden fence blocks to build animal pens.
