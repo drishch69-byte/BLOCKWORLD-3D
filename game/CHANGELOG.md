@@ -1,6 +1,15 @@
 # Changelog
 
 ## 1.9.14 — Gates & Smarter Animal Pens
+- Added craftable wooden gates for animal enclosures (4 planks and 2 sticks).
+- Press **F** while aiming at a gate to open or close it.
+- Open gates swing to the side and remain visible without blocking player or creature movement; closed gates block the doorway.
+- Saved gate state in the regular world file without changing world save format 2.
+- Improved farm-animal movement near enclosure walls so animals turn away sooner instead of continually walking into fences.
+- Added **Y** selection for fence, feeder, and gate building pieces; **G** places the selected piece.
+- Gate toggling remains single-player-only until its state is synchronized in multiplayer.
+
+## 1.9.14 — Gates & Smarter Animal Pens
 - Added a craftable wooden gate (4 planks + 2 sticks) with separate closed and open block IDs.
 - Press **F** while targeting a gate to open or close it; the open panel is drawn swung against the side post.
 - Open gates are non-solid for player collision and creature navigation; closed gates remain barriers.
