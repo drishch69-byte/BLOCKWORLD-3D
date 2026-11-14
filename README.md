@@ -262,6 +262,8 @@ Launch scripts are provided for Windows (run.bat) and Linux/macOS (run.sh).
 
 - [Multilingual project website](docs/index.html) — English, Ukrainian and Russian landing page.
 - [Version history](docs/versions.html) — changelog and feature summaries from 1.1.0 through 1.9.18.
+- [Media gallery](docs/gallery.html) — original creature, block and item textures; gameplay screenshot and video areas.
+- [Screenshot and video guide](docs/SHOWCASE_GUIDE.md) — how to add genuine captures from the running game.
 - [Promotion kit](PROMOTE.md) — ready-to-share descriptions and official project links.
 - [Player guide](docs/PLAYER_GUIDE.md) — controls, survival loop, and save reminders.
 - [Roadmap](ROADMAP.md) — proposed features for versions 1.1.0 through 2.0.0.
