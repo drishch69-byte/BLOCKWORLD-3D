@@ -1,6 +1,7 @@
 package com.blockworld.game;
 
 import com.blockworld.core.CreatureType;
+import com.blockworld.core.AnimalBreedingRules;
 import com.blockworld.core.ItemType;
 import org.junit.jupiter.api.Test;
 
