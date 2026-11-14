@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.24
-Codename: Living Villages & Creature AI
+Version: 1.9.25
+Codename: Villager Workplaces
 Status: Development Build

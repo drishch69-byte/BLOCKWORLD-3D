@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.25 — Villager Workplaces
+- Farmers search for nearby farmland or wheat, blacksmiths seek furnaces, and librarians visit village archive chests.
+- Professioned villagers approach their nearest matching workplace during daytime and use a subtle working-arm animation.
+- Workplace search is cached between checks instead of scanning nearby blocks every frame.
+- The feature is gated to 1.9.25+ profiles, preserving earlier profile behavior.
+- Workplace targets are ephemeral AI state; world save format 2 and existing creature records remain unchanged.
+
 ## 1.9.24 — Living Villages & Creature AI
 - Villagers follow a simple day schedule: ordinary villagers rest at night and resume roaming after dawn.
 - Non-guard villagers notice nearby hostile creatures and move away from danger using collision-aware navigation.
