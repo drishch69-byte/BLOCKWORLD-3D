@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.12 — Farm Products & Harvest.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.13 — Farm Pens & Smart Feeders.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,7 +10,18 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.12 — Farm Products & Harvest**
+**1.9.13 — Farm Pens & Smart Feeders**
+
+- Craft wooden fence blocks and use them to build animal pens.
+- Craft a feeder, place it with **G**, then aim at it and press **F** to load wheat and wheat seeds.
+- Feeders store up to 64 wheat and 64 seeds; cows, sheep and pigs eat wheat, while chickens and chicks eat seeds.
+- Nearby animals are fed automatically, one matching portion every 45 seconds.
+- Feeding speeds up baby growth and helps animals recover from breeding or product cooldowns.
+- Press **Y** to switch the selected building between fence and feeder. Breaking a feeder returns its remaining feed.
+- Feeder stock is saved with animal progression in the existing sidecar and kept in world backups; world save format remains 2.
+- Feeder placement and stock management are single-player only until multiplayer feeder state is synchronized.
+
+**Previous: 1.9.12 — Farm Products & Harvest**
 
 - Press **U** near a cow with an empty bucket to collect a milk bucket; cows need 90 seconds before producing milk again.
 - Press **U** near a sheep with shears to collect two wool; wool regrows in three minutes.
@@ -136,7 +147,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.9.12)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.13)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

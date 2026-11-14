@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.13 — Farm Pens & Smart Feeders
+- Added wooden fence and feed trough block/item types with stable appended IDs and original texture patterns.
+- Added crafting recipes: four fence blocks for 6 planks and 2 sticks; one feed trough for 5 planks and 2 sticks.
+- Added automatic feeders with separate wheat and seed stock (up to 64 of each), stored in the existing animal sidecar.
+- Nearby cows, sheep and pigs consume wheat; chickens and chicks consume seeds. One matching portion is consumed every 45 seconds when an eligible animal is nearby.
+- Feeding advances baby growth or reduces a relevant breeding/product cooldown by 25 seconds.
+- Added **Y** to switch selected building, **G** to place it, and **F** while aiming at a trough to refill it.
+- Mining a trough returns its remaining wheat and seeds; removing a fence returns a fence item.
+- Added save/load and rule tests for feeder stock and new blocks; world save format remains 2.
+- Feeder placement and stock changes are single-player-only until these states are synchronized in multiplayer.
+
 ## 1.9.12 — Farm Products & Harvest
 - Added separate **U** interaction for product collection, leaving **F** for animal breeding.
 - Cows produce a milk bucket when the player has an empty bucket; they have a 90-second cooldown.
