@@ -461,6 +461,18 @@ public final class VoxelWorld {
             ColorRGBA base = blockPalette.getOrDefault(type, type.color());
             int localX = pos.x() - baseX;
             int localZ = pos.z() - baseZ;
+            if (type == BlockType.WOODEN_FENCE) {
+                appendFenceModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits);
+                continue;
+            }
+            if (type == BlockType.LANTERN) {
+                appendLanternModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits);
+                continue;
+            }
+            if (type == BlockType.SCARECROW) {
+                appendScarecrowModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits);
+                continue;
+            }
             for (Face face : FACES) {
                 BlockPos neighbor = pos.add(face.nx, face.ny, face.nz);
                 BlockType neighborType = blocks.get(neighbor);
@@ -544,6 +556,116 @@ public final class VoxelWorld {
         node.attachChild(geometry);
         chunkGeometries.put(chunk, geometry);
         triangleHits.put(geometry, hits);
+    }
+
+
+    /** A fence is a post plus horizontal rails that connect to adjacent fences or gates. */
+    private void appendFenceModel(BlockPos pos, int localX, int localZ, ColorRGBA base,
+                                  FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
+                                  IntBuilder indices, List<BlockHit> hits) {
+        appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                0.40f, 0f, 0.40f, 0.60f, 1.12f, 0.60f, positions, colors, texCoords, indices, hits);
+        if (connectsFence(pos.add(-1, 0, 0))) {
+            appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                    0f, 0.27f, 0.42f, 0.50f, 0.39f, 0.58f, positions, colors, texCoords, indices, hits);
+            appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                    0f, 0.69f, 0.42f, 0.50f, 0.81f, 0.58f, positions, colors, texCoords, indices, hits);
+        }
+        if (connectsFence(pos.add(1, 0, 0))) {
+            appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                    0.50f, 0.27f, 0.42f, 1f, 0.39f, 0.58f, positions, colors, texCoords, indices, hits);
+            appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                    0.50f, 0.69f, 0.42f, 1f, 0.81f, 0.58f, positions, colors, texCoords, indices, hits);
+        }
+        if (connectsFence(pos.add(0, 0, -1))) {
+            appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                    0.42f, 0.27f, 0f, 0.58f, 0.39f, 0.50f, positions, colors, texCoords, indices, hits);
+            appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                    0.42f, 0.69f, 0f, 0.58f, 0.81f, 0.50f, positions, colors, texCoords, indices, hits);
+        }
+        if (connectsFence(pos.add(0, 0, 1))) {
+            appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                    0.42f, 0.27f, 0.50f, 0.58f, 0.39f, 1f, positions, colors, texCoords, indices, hits);
+            appendCuboidFaces(pos, localX, localZ, BlockType.WOODEN_FENCE, base,
+                    0.42f, 0.69f, 0.50f, 0.58f, 0.81f, 1f, positions, colors, texCoords, indices, hits);
+        }
+    }
+
+    private boolean connectsFence(BlockPos position) {
+        BlockType neighbor = blocks.get(position);
+        return neighbor == BlockType.WOODEN_FENCE
+                || neighbor == BlockType.WOODEN_GATE
+                || neighbor == BlockType.OPEN_WOODEN_GATE;
+    }
+
+    /** Decorative lantern assembled from a glass body, foot and roof. */
+    private void appendLanternModel(BlockPos pos, int localX, int localZ, ColorRGBA base,
+                                    FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
+                                    IntBuilder indices, List<BlockHit> hits) {
+        appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
+                0.30f, 0.25f, 0.30f, 0.70f, 0.70f, 0.70f, positions, colors, texCoords, indices, hits);
+        appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
+                0.22f, 0.17f, 0.22f, 0.78f, 0.27f, 0.78f, positions, colors, texCoords, indices, hits);
+        appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
+                0.22f, 0.69f, 0.22f, 0.78f, 0.80f, 0.78f, positions, colors, texCoords, indices, hits);
+        appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
+                0.43f, 0.80f, 0.43f, 0.57f, 0.94f, 0.57f, positions, colors, texCoords, indices, hits);
+        appendCuboidFaces(pos, localX, localZ, BlockType.LANTERN, base,
+                0.34f, 0.92f, 0.34f, 0.66f, 1.00f, 0.66f, positions, colors, texCoords, indices, hits);
+    }
+
+    /** Simple wooden scarecrow silhouette with a post, crossbar and straw head. */
+    private void appendScarecrowModel(BlockPos pos, int localX, int localZ, ColorRGBA base,
+                                      FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
+                                      IntBuilder indices, List<BlockHit> hits) {
+        appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
+                0.44f, 0f, 0.44f, 0.56f, 0.98f, 0.56f, positions, colors, texCoords, indices, hits);
+        appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
+                0.12f, 0.62f, 0.40f, 0.88f, 0.74f, 0.60f, positions, colors, texCoords, indices, hits);
+        appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
+                0.30f, 0.76f, 0.30f, 0.70f, 1.08f, 0.70f, positions, colors, texCoords, indices, hits);
+        appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
+                0.34f, 0.48f, 0.36f, 0.66f, 0.62f, 0.64f, positions, colors, texCoords, indices, hits);
+    }
+
+    /** Adds six textured faces of a model cuboid to the shared chunk mesh. */
+    private void appendCuboidFaces(BlockPos pos, int localX, int localZ, BlockType type, ColorRGBA base,
+                                   float minX, float minY, float minZ, float maxX, float maxY, float maxZ,
+                                   FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
+                                   IntBuilder indices, List<BlockHit> hits) {
+        float sizeX = maxX - minX, sizeY = maxY - minY, sizeZ = maxZ - minZ;
+        for (Face face : FACES) {
+            int firstVertex = positions.size() / 3;
+            int faceVariant = face.ny > 0 ? 0 : face.ny < 0 ? 2 : 1;
+            int tileIndex = ResourcePackManager.textureTileIndex(type, faceVariant);
+            int tileX = tileIndex % ResourcePackManager.ATLAS_COLUMNS;
+            int tileY = tileIndex / ResourcePackManager.ATLAS_COLUMNS;
+            float inset = 0.5f / ResourcePackManager.ATLAS_SIZE;
+            float u0 = tileX / (float) ResourcePackManager.ATLAS_COLUMNS + inset;
+            float u1 = (tileX + 1) / (float) ResourcePackManager.ATLAS_COLUMNS - inset;
+            float vTop = 1f - tileY / (float) ResourcePackManager.ATLAS_COLUMNS - inset;
+            float vBottom = 1f - (tileY + 1) / (float) ResourcePackManager.ATLAS_COLUMNS + inset;
+            for (int vertex = 0; vertex < 4; vertex++) {
+                int offset = vertex * 3;
+                positions.add(localX + minX + face.vertices[offset] * sizeX);
+                positions.add(pos.y() + minY + face.vertices[offset + 1] * sizeY);
+                positions.add(localZ + minZ + face.vertices[offset + 2] * sizeZ);
+                if (texturedChunks) {
+                    colors.add(clamp(face.shade)); colors.add(clamp(face.shade));
+                    colors.add(clamp(face.shade)); colors.add(1f);
+                    texCoords.add(QUAD_UV_CORNERS[vertex][0] == 0 ? u0 : u1);
+                    texCoords.add(QUAD_UV_CORNERS[vertex][1] == 0 ? vTop : vBottom);
+                } else {
+                    colors.add(clamp(base.r * face.shade));
+                    colors.add(clamp(base.g * face.shade));
+                    colors.add(clamp(base.b * face.shade));
+                    colors.add(1f);
+                }
+            }
+            indices.add(firstVertex); indices.add(firstVertex + 1); indices.add(firstVertex + 2);
+            indices.add(firstVertex); indices.add(firstVertex + 2); indices.add(firstVertex + 3);
+            hits.add(new BlockHit(pos, face.nx, face.ny, face.nz));
+        }
     }
 
     private float clamp(float value) { return Math.max(0f, Math.min(1f, value)); }

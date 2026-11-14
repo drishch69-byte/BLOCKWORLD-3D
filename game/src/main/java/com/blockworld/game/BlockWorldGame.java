@@ -288,7 +288,8 @@ public final class BlockWorldGame extends SimpleApplication {
                 || "1.9.14".equals(version.id());
         this.animalProductsEnabled = "1.9.12".equals(version.id())
                 || "1.9.13".equals(version.id()) || "1.9.14".equals(version.id());
-        this.animalFeedersEnabled = "1.9.13".equals(version.id()) || "1.9.14".equals(version.id());
+        this.animalFeedersEnabled = "1.9.13".equals(version.id()) || "1.9.14".equals(version.id())
+                || "1.9.15".equals(version.id());
         List<CraftingRecipe> allRecipes = release100Enabled
                 ? animalFeedersEnabled ? CraftingRecipe.farmBuildingRecipes()
                 : animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
@@ -2075,6 +2076,11 @@ public final class BlockWorldGame extends SimpleApplication {
                         && (removed == BlockType.WOODEN_GATE || removed == BlockType.OPEN_WOODEN_GATE)) {
                     craftedItems.merge(ItemType.WOODEN_GATE, 1, Integer::sum);
                     statusMessage = "Калитка возвращена в инвентарь.";
+                } else if (animalFeedersEnabled
+                        && (removed == BlockType.LANTERN || removed == BlockType.SCARECROW)) {
+                    ItemType decoration = removed == BlockType.LANTERN ? ItemType.LANTERN : ItemType.SCARECROW;
+                    craftedItems.merge(decoration, 1, Integer::sum);
+                    statusMessage = decoration.displayName() + " возвращено в инвентарь.";
                 } else if (animalFeedersEnabled && removed == BlockType.FEED_TROUGH) {
                     craftedItems.merge(ItemType.FEED_TROUGH, 1, Integer::sum);
                     if (creatureManager != null) {
@@ -2686,6 +2692,8 @@ public final class BlockWorldGame extends SimpleApplication {
         BlockType block = switch (selectedFarmBuilding) {
             case FEED_TROUGH -> BlockType.FEED_TROUGH;
             case WOODEN_GATE -> BlockType.WOODEN_GATE;
+            case LANTERN -> BlockType.LANTERN;
+            case SCARECROW -> BlockType.SCARECROW;
             default -> BlockType.WOODEN_FENCE;
         };
         BlockPos place = hit.adjacentPosition();
@@ -2700,9 +2708,13 @@ public final class BlockWorldGame extends SimpleApplication {
                 creatureManager.setFeederStock(place, AnimalFeederRules.Stock.empty());
                 saveAnimalDataQuietly();
             }
-            statusMessage = block == BlockType.FEED_TROUGH
-                    ? "Кормушка установлена. Наведи на неё прицел и нажми F, чтобы добавить корм."
-                    : "Ограждение установлено. Продолжай строить загон для животных.";
+            statusMessage = switch (block) {
+                case FEED_TROUGH -> "Кормушка установлена. Наведи на неё прицел и нажми F, чтобы добавить корм.";
+                case WOODEN_GATE -> "Калитка установлена. Наведи на неё прицел и нажми F, чтобы открыть.";
+                case LANTERN -> "Фонарь установлен. Он украшает ферму и деревню.";
+                case SCARECROW -> "Пугало установлено. Ферма стала уютнее!";
+                default -> "Забор установлен. Продолжай строить загон для животных.";
+            };
         } else {
             statusMessage = "Место занято: постройка не установлена.";
         }
@@ -2713,6 +2725,8 @@ public final class BlockWorldGame extends SimpleApplication {
         selectedFarmBuilding = switch (selectedFarmBuilding) {
             case WOODEN_FENCE -> ItemType.FEED_TROUGH;
             case FEED_TROUGH -> ItemType.WOODEN_GATE;
+            case WOODEN_GATE -> ItemType.LANTERN;
+            case LANTERN -> ItemType.SCARECROW;
             default -> ItemType.WOODEN_FENCE;
         };
         statusMessage = "Выбрана постройка: " + selectedFarmBuilding.displayName()

@@ -36,7 +36,9 @@ public enum BlockType {
     WOODEN_FENCE("wooden_fence", "Деревянное ограждение", 0.48f, 0.30f, 0.13f),
     FEED_TROUGH("feed_trough", "Кормушка", 0.56f, 0.36f, 0.17f),
     WOODEN_GATE("wooden_gate", "Закрытая деревянная калитка", 0.53f, 0.34f, 0.16f),
-    OPEN_WOODEN_GATE("open_wooden_gate", "Открытая деревянная калитка", 0.61f, 0.40f, 0.20f);
+    OPEN_WOODEN_GATE("open_wooden_gate", "Открытая деревянная калитка", 0.61f, 0.40f, 0.20f),
+    LANTERN("lantern", "Фонарь", 0.82f, 0.58f, 0.19f),
+    SCARECROW("scarecrow", "Пугало", 0.61f, 0.42f, 0.22f);
 
     private final String id;
     private final String displayName;
@@ -96,6 +98,8 @@ public enum BlockType {
             case FEED_TROUGH -> 30;
             case WOODEN_GATE -> 31;
             case OPEN_WOODEN_GATE -> 32;
+            case LANTERN -> 33;
+            case SCARECROW -> 34;
         };
     }
 
