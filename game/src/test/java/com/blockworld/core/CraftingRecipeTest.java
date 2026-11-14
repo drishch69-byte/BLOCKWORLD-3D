@@ -74,6 +74,16 @@ class CraftingRecipeTest {
         assertEquals(ItemType.FISHING_ROD, recipes.get(15).result());
     }
 
+    @Test void farmBuildingCatalogAddsFenceAndAutomaticFeederRecipes() {
+        var recipes = CraftingRecipe.farmBuildingRecipes();
+        assertEquals(20, recipes.size());
+        assertEquals(ItemType.WOODEN_FENCE, recipes.get(18).result());
+        assertEquals(4, recipes.get(18).resultCount());
+        assertEquals(ItemType.FEED_TROUGH, recipes.get(19).result());
+        assertEquals(5, recipes.get(19).itemCosts().get(ItemType.PLANKS));
+        assertEquals(2, recipes.get(19).itemCosts().get(ItemType.STICKS));
+    }
+
     @Test void farmProductCatalogAddsBucketAndShearsRecipesAfterExistingRecipes() {
         var recipes = CraftingRecipe.farmProductRecipes();
         assertEquals(18, recipes.size());

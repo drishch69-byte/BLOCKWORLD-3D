@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class VersionManagerTest {
     @Test
     void includesAllProfilesAndDefaultsToEnchantedGrove() {
-        assertEquals(39, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.12", VersionManager.getDefaultVersion().id());
+        assertEquals(40, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.13", VersionManager.getDefaultVersion().id());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());
@@ -51,6 +51,9 @@ class VersionManagerTest {
         assertEquals("Farm Products & Harvest", VersionManager.find("1.9.12").displayName());
         assertEquals(144, VersionManager.find("1.9.12").worldRadius());
         assertTrue(VersionManager.find("1.9.12").survival());
+        assertEquals("Farm Pens & Smart Feeders", VersionManager.find("1.9.13").displayName());
+        assertEquals(144, VersionManager.find("1.9.13").worldRadius());
+        assertTrue(VersionManager.find("1.9.13").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());

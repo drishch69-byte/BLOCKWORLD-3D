@@ -341,6 +341,27 @@ public final class ResourcePackManager {
             for (int x = 0; x < BLOCK_TEXTURE_SIZE; x++) {
                 int noise = random.nextInt(31) - 15;
                 int detail = 0;
+                if (type == BlockType.WOODEN_FENCE) {
+                    boolean post = x <= 3 || x >= 12 || y <= 2 || y >= 13;
+                    boolean rail = y == 6 || y == 7 || y == 10 || y == 11;
+                    boolean nail = (x == 2 || x == 13) && (y == 4 || y == 9);
+                    int r = post || rail ? 126 + noise / 2 : 92 + noise;
+                    int g = post || rail ? 77 + noise / 2 : 55 + noise / 2;
+                    int b = post || rail ? 34 + noise / 3 : 27 + noise / 3;
+                    if (nail) { r = 194; g = 190; b = 170; }
+                    image.setRGB(x, y, 0xFF000000 | (clamp255(r) << 16) | (clamp255(g) << 8) | clamp255(b));
+                    continue;
+                }
+                if (type == BlockType.FEED_TROUGH) {
+                    boolean rim = x <= 2 || x >= 13 || y <= 2 || y >= 13;
+                    boolean hay = x >= 4 && x <= 11 && y >= 4 && y <= 11;
+                    int r = rim ? 132 + noise / 2 : hay ? 184 + noise : 92 + noise;
+                    int g = rim ? 82 + noise / 2 : hay ? 149 + noise : 55 + noise / 2;
+                    int b = rim ? 39 + noise / 3 : hay ? 57 + noise / 3 : 27 + noise / 3;
+                    if (hay && (x + y) % 4 == 0) { r += 22; g += 19; }
+                    image.setRGB(x, y, 0xFF000000 | (clamp255(r) << 16) | (clamp255(g) << 8) | clamp255(b));
+                    continue;
+                }
                 if (type == BlockType.ANCIENT_CACHE) {
                     boolean rune = (x >= 5 && x <= 10 && y >= 5 && y <= 10)
                             || (x == 7 && y >= 2 && y <= 13) || (y == 7 && x >= 2 && x <= 13);

@@ -32,7 +32,9 @@ public enum ItemType {
     SHEARS("shears", "Ножницы"),
     MILK_BUCKET("milk_bucket", "Ведро молока"),
     WOOL("wool", "Шерсть"),
-    EGG("egg", "Яйцо");
+    EGG("egg", "Яйцо"),
+    WOODEN_FENCE("wooden_fence", "Деревянное ограждение"),
+    FEED_TROUGH("feed_trough", "Кормушка");
 
     private final String id;
     private final String displayName;

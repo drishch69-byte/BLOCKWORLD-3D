@@ -32,7 +32,9 @@ public enum BlockType {
     CAVE_MOSS("cave_moss", "Пещерный мох", 0.18f, 0.42f, 0.22f),
     CAVE_FERN("cave_fern", "Пещерный папоротник", 0.22f, 0.64f, 0.31f),
     CRYSTAL_CACHE("crystal_cache", "Кристальный тайник", 0.55f, 0.36f, 0.82f),
-    ANCIENT_CACHE("ancient_cache", "Древний тайник", 0.72f, 0.58f, 0.31f);
+    ANCIENT_CACHE("ancient_cache", "Древний тайник", 0.72f, 0.58f, 0.31f),
+    WOODEN_FENCE("wooden_fence", "Деревянное ограждение", 0.48f, 0.30f, 0.13f),
+    FEED_TROUGH("feed_trough", "Кормушка", 0.56f, 0.36f, 0.17f);
 
     private final String id;
     private final String displayName;
@@ -88,6 +90,8 @@ public enum BlockType {
             case CAVE_FERN -> 26;
             case CRYSTAL_CACHE -> 27;
             case ANCIENT_CACHE -> 28;
+            case WOODEN_FENCE -> 29;
+            case FEED_TROUGH -> 30;
         };
     }
 

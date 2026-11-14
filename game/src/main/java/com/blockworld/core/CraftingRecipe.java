@@ -67,6 +67,16 @@ public record CraftingRecipe(int number, String name, Map<BlockType, Integer> bl
         return java.util.List.copyOf(recipes);
     }
 
+    /** Recipes for fencing and animal feeders, added without renumbering earlier recipes. */
+    public static java.util.List<CraftingRecipe> farmBuildingRecipes() {
+        java.util.List<CraftingRecipe> recipes = new java.util.ArrayList<>(farmProductRecipes());
+        recipes.add(new CraftingRecipe(19, "Деревянное ограждение", Map.of(),
+                Map.of(ItemType.PLANKS, 6, ItemType.STICKS, 2), ItemType.WOODEN_FENCE, 4));
+        recipes.add(new CraftingRecipe(20, "Кормушка", Map.of(),
+                Map.of(ItemType.PLANKS, 5, ItemType.STICKS, 2), ItemType.FEED_TROUGH, 1));
+        return java.util.List.copyOf(recipes);
+    }
+
     public boolean canCraft(Map<BlockType, Integer> blocks, Map<ItemType, Integer> items) {
         return blockCosts.entrySet().stream().allMatch(e -> blocks.getOrDefault(e.getKey(), 0) >= e.getValue())
                 && itemCosts.entrySet().stream().allMatch(e -> items.getOrDefault(e.getKey(), 0) >= e.getValue());
