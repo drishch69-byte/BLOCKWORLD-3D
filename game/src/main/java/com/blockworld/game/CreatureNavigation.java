@@ -58,7 +58,7 @@ final class CreatureNavigation {
                     || surface == BlockType.GLOWING_CRYSTAL || surface == BlockType.RUBY_ORE
                     || surface == BlockType.SAPPHIRE_ORE
                 : surface == BlockType.GRASS || surface == BlockType.DIRT
-                    || surface == BlockType.SAND || surface == BlockType.PODZOL
+                    || surface == BlockType.WOOD || surface == BlockType.SAND || surface == BlockType.PODZOL
                     || surface == BlockType.MUD || surface == BlockType.SNOW
                     || (templeWarden && surface == BlockType.SANDSTONE);
         if (!safeSurface) return INVALID_SURFACE;

@@ -43,6 +43,24 @@ class CreatureNavigationTest {
     }
 
     @Test
+    void villagersCanWalkAcrossWoodenVillageFloors() {
+        VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
+        for (int x = -1; x <= 2; x++) {
+            for (int z = -1; z <= 1; z++) {
+                world.addBlock(new BlockPos(x, 0, z), BlockType.WOOD);
+            }
+        }
+
+        CreatureNavigation.Step step = CreatureNavigation.resolveStep(
+                CreatureType.VILLAGER_LIBRARIAN, 0.5f, 1f, 0.5f, 1.1f, 0.5f, world);
+
+        assertNotNull(step);
+        assertEquals(1.1f, step.x(), 0.0001f);
+        assertEquals(1f, step.y(), 0.0001f);
+        assertEquals(0.5f, step.z(), 0.0001f);
+    }
+
+    @Test
     void hostileCreatureSlidesAlongOpenAxisWhenDiagonalIsBlockedByWall() {
         AssetManager assets = new DesktopAssetManager(true);
         VoxelWorld world = new VoxelWorld(assets);
