@@ -8,8 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class VersionManagerTest {
     @Test
     void includesAllProfilesAndDefaultsToLatestStableProfile() {
-        assertEquals(48, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.21", VersionManager.getDefaultVersion().id());
+        assertEquals(49, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.22", VersionManager.getDefaultVersion().id());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());
@@ -78,6 +78,9 @@ class VersionManagerTest {
         assertEquals("Launcher & Log Stability Fix", VersionManager.find("1.9.21").displayName());
         assertEquals(144, VersionManager.find("1.9.21").worldRadius());
         assertTrue(VersionManager.find("1.9.21").survival());
+        assertEquals("Chunk Streaming Priority", VersionManager.find("1.9.22").displayName());
+        assertEquals(144, VersionManager.find("1.9.22").worldRadius());
+        assertTrue(VersionManager.find("1.9.22").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());

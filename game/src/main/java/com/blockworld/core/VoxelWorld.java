@@ -389,10 +389,17 @@ public final class VoxelWorld {
                     pendingChunks.add(chunk);
                 }
             }
+
+            // Re-prioritize pending meshes after camera movement so nearby chunks appear first.
+            List<ChunkPos> prioritized = new ArrayList<>(pendingChunks);
+            prioritized.sort(Comparator.comparingInt((ChunkPos c) -> distanceSquared(c, center))
+                    .thenComparingInt(ChunkPos::x).thenComparingInt(ChunkPos::z));
+            pendingChunks.clear();
+            pendingChunks.addAll(prioritized);
         }
 
         int built = 0;
-        int budget = Math.max(1, maxChunkBuilds);
+        int budget = Math.max(0, maxChunkBuilds);
         while (built < budget && !pendingChunks.isEmpty()) {
             ChunkPos chunk = pendingChunks.iterator().next();
             pendingChunks.remove(chunk);

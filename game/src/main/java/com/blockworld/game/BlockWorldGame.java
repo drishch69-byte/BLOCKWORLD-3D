@@ -31,7 +31,6 @@ import com.blockworld.core.AnimalBreedingRules;
 import com.blockworld.core.AnimalDataStore;
 import com.blockworld.core.AnimalProductRules;
 import com.blockworld.core.AnimalFeederRules;
-import com.blockworld.core.AnimalFeederRules;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;

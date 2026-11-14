@@ -8,9 +8,48 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class VoxelWorldChunkTest {
+    @Test
+    void defersChunkMeshingWhenFrameBudgetIsZero() {
+        VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
+        assertTrue(world.addBlock(new BlockPos(0, 0, 0), BlockType.GRASS));
+
+        world.updateStreaming(new Vector3f(0f, 4f, 0f), 0);
+
+        assertEquals(0, world.getRenderedChunkCount());
+        assertEquals(1, world.getPendingChunkCount());
+
+        world.updateStreaming(new Vector3f(0f, 4f, 0f), 1);
+        assertEquals(1, world.getRenderedChunkCount());
+    }
+
+    @Test
+    void prioritizesChunksNearTheNewCameraPositionAfterRapidMovement() {
+        VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
+        assertTrue(world.addBlock(new BlockPos(0, 0, 0), BlockType.GRASS));
+        assertTrue(world.addBlock(new BlockPos(16, 0, 0), BlockType.GRASS));
+        assertTrue(world.addBlock(new BlockPos(32, 0, 0), BlockType.GRASS));
+        world.setRenderDistanceChunks(4);
+
+        world.updateStreaming(new Vector3f(0f, 4f, 0f), 1);
+        assertEquals("Chunk[0,0]", world.getNode().getChild(0).getName());
+
+        world.updateStreaming(new Vector3f(32f, 4f, 0f), 1);
+
+        boolean renderedNearestChunk = false;
+        boolean renderedFartherChunk = false;
+        for (int i = 0; i < world.getNode().getQuantity(); i++) {
+            String name = world.getNode().getChild(i).getName();
+            if ("Chunk[2,0]".equals(name)) renderedNearestChunk = true;
+            if ("Chunk[1,0]".equals(name)) renderedFartherChunk = true;
+        }
+        assertTrue(renderedNearestChunk, "The newly nearby chunk should be built first");
+        assertFalse(renderedFartherChunk, "A farther queued chunk should wait for the next budget");
+    }
+
     @Test
     void storesBlocksInSixteenBySixteenChunksIncludingNegativeCoordinates() {
         AssetManager assets = new DesktopAssetManager(true);
