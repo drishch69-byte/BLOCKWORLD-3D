@@ -35,8 +35,8 @@ class AnimalDataStoreTest {
                         + "cooldown.3=-1\ncooldown.9=Infinity\ncooldown.10=12\n"
                         + "production.2=-4\nproduction.bad=5\nproduction.9=Infinity\n"
                         + "production.10=120\nproduction.11=0\n"
-                        + "feeder:4,2,-3=8,5,30\nfeeder:1,1,1=99,0,30\n"
-                        + "feeder:0,0,0=bad,2,10\n");
+                        + "feeder.4,2,-3=8,5,30\nfeeder.1,1,1=99,0,30\n"
+                        + "feeder.0,0,0=bad,2,10\n");
         AnimalDataStore.State loaded = AnimalDataStore.load(world);
         assertEquals(Map.of(8L, 45f), loaded.babyAges());
         assertEquals(Map.of(10L, 12f), loaded.cooldowns());

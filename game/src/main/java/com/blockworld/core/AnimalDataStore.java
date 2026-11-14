@@ -103,10 +103,10 @@ public final class AnimalDataStore {
 
     private static void loadFeeders(Properties properties,
                                     Map<BlockPos, AnimalFeederRules.Stock> destination) {
-        properties.stringPropertyNames().stream().filter(key -> key.startsWith("feeder:"))
+        properties.stringPropertyNames().stream().filter(key -> key.startsWith("feeder."))
                 .sorted().limit(MAX_ENTRIES).forEach(key -> {
                     try {
-                        String[] coordinates = key.substring("feeder:".length()).split(",");
+                        String[] coordinates = key.substring("feeder.".length()).split(",");
                         String[] values = properties.getProperty(key, "").split(",");
                         if (coordinates.length != 3 || values.length != 3) return;
                         int x = Integer.parseInt(coordinates[0]);
@@ -131,7 +131,7 @@ public final class AnimalDataStore {
                 .limit(MAX_ENTRIES).forEach(entry -> {
                     BlockPos pos = entry.getKey();
                     AnimalFeederRules.Stock stock = entry.getValue();
-                    properties.setProperty("feeder:" + pos.x() + "," + pos.y() + "," + pos.z(),
+                    properties.setProperty("feeder." + pos.x() + "," + pos.y() + "," + pos.z(),
                             stock.wheat() + "," + stock.seeds() + "," + Float.toString(stock.secondsUntilFeed()));
                 });
     }

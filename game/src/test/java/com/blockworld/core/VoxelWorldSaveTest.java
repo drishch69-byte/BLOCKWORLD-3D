@@ -96,8 +96,8 @@ class VoxelWorldSaveTest {
         GameVersion version = VersionManager.find("1.9.13");
         VoxelWorld source = new VoxelWorld(assets);
         source.generate(version, 8675309L, 24);
-        BlockPos fence = new BlockPos(2, 4, 3);
-        BlockPos trough = new BlockPos(3, 4, 3);
+        BlockPos fence = new BlockPos(2, 30, 3);
+        BlockPos trough = new BlockPos(3, 30, 3);
         assertTrue(source.addBlock(fence, BlockType.WOODEN_FENCE));
         assertTrue(source.addBlock(trough, BlockType.FEED_TROUGH));
 
@@ -105,8 +105,8 @@ class VoxelWorldSaveTest {
         source.save(file, version);
         String saved = Files.readString(file);
         assertTrue(saved.contains("format=2"));
-        assertTrue(saved.contains("2,4,3,wooden_fence"));
-        assertTrue(saved.contains("3,4,3,feed_trough"));
+        assertTrue(saved.contains("2,30,3,wooden_fence"));
+        assertTrue(saved.contains("3,30,3,feed_trough"));
 
         VoxelWorld restored = new VoxelWorld(assets);
         assertEquals(version.id(), restored.load(file));
