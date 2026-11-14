@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.25",
+  "defaultVersion": "1.9.26",
   "versions": [
     {
       "id": "0.1.0",
@@ -259,6 +259,11 @@
     {
       "id": "1.9.25",
       "name": "Villager Workplaces",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.26",
+      "name": "Village Homes & Social Life",
       "status": "current"
     }
   ]

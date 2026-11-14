@@ -164,7 +164,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.25  •  VILLAGER WORKPLACES");
+        JLabel release = new JLabel("1.9.26  •  VILLAGE HOMES & SOCIAL LIFE");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);
@@ -247,6 +247,10 @@ public final class Launcher {
         center.add(selectionArea, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
+                "ДОМА ДЕРЕВНИ И СОЦИАЛЬНАЯ ЖИЗНЬ — 1.9.26\n\n" +
+                "• В домах появились книжные полки, печи и кровати.\n" +
+                "• Ночью жители ищут кровати и отдыхают, днём навещают другие рабочие места.\n" +
+                "• Формат сохранения мира остаётся 2.\n\n" +
                 "РАБОЧИЕ МЕСТА ЖИТЕЛЕЙ — 1.9.25\n\n" +
                 "• Фермеры ищут поля и пшеницу, кузнецы — печи.\n" +
                 "• Библиотекари посещают деревенские сундуки-архивы.\n" +
