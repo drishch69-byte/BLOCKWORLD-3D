@@ -13,7 +13,11 @@ public final class PetRules {
     }
 
     public static boolean isCompanion(CreatureType type, boolean tamed) {
-        return type == CreatureType.DOG || (type == CreatureType.FOX && tamed);
+        return isCompanion(type, tamed, true);
+    }
+
+    public static boolean isCompanion(CreatureType type, boolean tamed, boolean foxCompanionsEnabled) {
+        return type == CreatureType.DOG || (type == CreatureType.FOX && tamed && foxCompanionsEnabled);
     }
 
     /** Dogs only need a saved entry when stopped; fox entries also record that they are tamed. */

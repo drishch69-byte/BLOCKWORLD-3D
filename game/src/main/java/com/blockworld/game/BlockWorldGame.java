@@ -854,7 +854,7 @@ public final class BlockWorldGame extends SimpleApplication {
             if (!worldNodeAttached) {
                 rootNode.attachChild(world.getNode());
                 creatureManager.sync(world);
-                if (petsEnabled) creatureManager.setPetModes(pendingPetModes);
+                if (petsEnabled) creatureManager.setPetModes(pendingPetModes, foxCompanionsEnabled);
                 rootNode.attachChild(creatureManager.getNode());
                 natureDecorations.rebuild(world);
                 rootNode.attachChild(natureDecorations.getNode());

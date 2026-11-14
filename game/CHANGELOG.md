@@ -4,7 +4,7 @@
 - Added fox taming in survival mode: interact with a nearby fox using **F** while carrying cooked fish.
 - Tamed foxes follow the player and can be told to **Stay** or **Follow** again with **N**, alongside existing dog companions.
 - Saved tamed-fox state and companion commands in the existing pets sidecar; old dog commands and world save format 2 remain compatible.
-- Kept fox taming disabled in earlier version profiles and unavailable in multiplayer until companion tame-state synchronization is supported.
+- Kept fox taming disabled in earlier version profiles while preserving saved fox records when opening/saving a world in an older profile; multiplayer taming remains unavailable until companion-state synchronization is supported.
 - Added regression tests for taming rules, companion eligibility, profile registration, and persistence of a tamed fox in Follow mode.
 
 # Changelog

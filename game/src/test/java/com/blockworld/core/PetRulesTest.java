@@ -19,6 +19,8 @@ class PetRulesTest {
         assertTrue(PetRules.isCompanion(CreatureType.DOG, true));
         assertFalse(PetRules.isCompanion(CreatureType.FOX, false));
         assertTrue(PetRules.isCompanion(CreatureType.FOX, true));
+        assertFalse(PetRules.isCompanion(CreatureType.FOX, true, false));
+        assertTrue(PetRules.isCompanion(CreatureType.FOX, true, true));
         assertFalse(PetRules.isCompanion(CreatureType.COW, true));
     }
 

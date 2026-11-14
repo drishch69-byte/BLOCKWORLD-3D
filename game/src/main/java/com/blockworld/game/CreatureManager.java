@@ -30,6 +30,7 @@ public final class CreatureManager {
     private final Node node = new Node("WorldCreatures");
     private final Map<Long, Visual> visuals = new HashMap<>();
     private final Map<Long, PetMode> petModes = new HashMap<>();
+    private boolean foxCompanionsEnabled;
 
     public CreatureManager(AssetManager assets) {
         this.assets = assets;
@@ -55,11 +56,17 @@ public final class CreatureManager {
     public int size() { return visuals.size(); }
 
     public void setPetModes(Map<Long, PetMode> savedModes) {
+        setPetModes(savedModes, true);
+    }
+
+    public void setPetModes(Map<Long, PetMode> savedModes, boolean allowFoxCompanions) {
+        foxCompanionsEnabled = allowFoxCompanions;
         petModes.clear();
         if (savedModes == null) return;
         for (Map.Entry<Long, PetMode> entry : savedModes.entrySet()) {
             Visual visual = visuals.get(entry.getKey());
             if (visual != null && PetRules.shouldPersistMode(visual.state.type(), entry.getValue())) {
+                // Keep fox records even in older profiles so saving there cannot erase newer data.
                 petModes.put(entry.getKey(), entry.getValue());
             }
         }
@@ -78,13 +85,13 @@ public final class CreatureManager {
 
     public boolean isTamedFox(long creatureId) {
         Visual visual = visuals.get(creatureId);
-        return visual != null && visual.state.type() == CreatureType.FOX
+        return foxCompanionsEnabled && visual != null && visual.state.type() == CreatureType.FOX
                 && petModes.containsKey(creatureId);
     }
 
     public boolean tameFox(long creatureId) {
         Visual visual = visuals.get(creatureId);
-        if (visual == null || !PetRules.isTameable(visual.state.type())
+        if (!foxCompanionsEnabled || visual == null || !PetRules.isTameable(visual.state.type())
                 || petModes.containsKey(creatureId)) return false;
         petModes.put(creatureId, PetMode.FOLLOW);
         return true;
@@ -97,7 +104,8 @@ public final class CreatureManager {
         Visual nearestPet = null;
         float bestDistance = limit;
         for (Visual visual : visuals.values()) {
-            if (!PetRules.isCompanion(visual.state.type(), petModes.containsKey(visual.state.id()))) continue;
+            if (!PetRules.isCompanion(visual.state.type(), petModes.containsKey(visual.state.id()),
+                    foxCompanionsEnabled)) continue;
             float dx = visual.state.x() - position.x;
             float dy = visual.state.y() - position.y;
             float dz = visual.state.z() - position.z;
@@ -307,8 +315,8 @@ public final class CreatureManager {
                     nextX = visual.nextX;
                     nextZ = visual.nextZ;
                 }
-            } else if (PetRules.isCompanion(state.type(), petModes.containsKey(state.id()))
-                    && playerPosition != null) {
+            } else if (PetRules.isCompanion(state.type(), petModes.containsKey(state.id()),
+                    foxCompanionsEnabled) && playerPosition != null) {
                 if (petModes.getOrDefault(state.id(), PetMode.FOLLOW) == PetMode.FOLLOW) {
                     float dx = playerPosition.x - state.x();
                     float dz = playerPosition.z - state.z();
