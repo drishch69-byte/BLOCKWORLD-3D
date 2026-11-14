@@ -18,7 +18,7 @@
   <a href="PROMOTE.md">Share the project</a>
 </p>
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.15 — Farmstead Decorations.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.16 — Lantern Lighting.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -30,11 +30,16 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current version
 
-**1.9.15 — Farmstead Decorations (development)**
+**1.9.16 — Lantern Lighting (development)**
 
-- Wooden fences now use connected 3D posts and rails instead of solid cubes.
-- Craft a lantern with **2 copper ingots + 1 torch**.
-- Craft a scarecrow with **4 planks + 2 sticks + 1 wheat**.
+- Lanterns now cast a warm glow on nearby block surfaces, fading smoothly over a radius of about **7 blocks**.
+- Placing or mining a lantern refreshes nearby visible chunk meshes so the glow appears or disappears without reloading the world.
+- Lighting works with both PNG texture packs and the fallback color renderer; world save format remains **2**.
+
+**Previous: 1.9.15 — Farmstead Decorations**
+
+- Wooden fences use connected 3D posts and rails instead of solid cubes.
+- Craft a lantern with **2 copper ingots + 1 torch** and a scarecrow with **4 planks + 2 sticks + 1 wheat**.
 - Press **Y** to cycle through fence, feeder, gate, lantern and scarecrow; press **G** to place the selected building.
 - Lanterns and scarecrows have their own 3D models and return to the inventory when mined.
 - New blocks are saved with the existing world format **2**.
@@ -212,7 +217,7 @@ Workflow artifacts are retained for 30 days. A fresh package is generated when c
 
 ## Download
 
-[**Download latest source ZIP (1.9.15 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.16 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

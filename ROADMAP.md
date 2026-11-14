@@ -1,6 +1,6 @@
 # Minecraft 3D — Roadmap
 
-This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.15 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
+This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.16 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
 
 ## 1.1.0 — Wildlands & Crystal Caves (released)
 - Added taiga and swamp biomes, crystal-lined underground caves, and underground water pools.
@@ -9,7 +9,12 @@ This roadmap records implemented releases and future proposals. Versions 1.1.0, 
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
 
-## 1.9.15 — Farmstead Decorations (in progress)
+## 1.9.16 — Lantern Lighting (in progress)
+- Make placed lanterns cast warm, distance-attenuated light onto nearby block surfaces.
+- Refresh nearby visible chunk meshes when a lantern is placed or mined.
+- Support textured and color-only rendering without changing world save format 2.
+
+## 1.9.15 — Farmstead Decorations (released)
 - Build connected 3D wooden fences with visible posts and rails.
 - Add a decorative lantern and a wooden scarecrow for farmyards and villages.
 - Expand the building selector and preserve compatibility with world save format 2.
