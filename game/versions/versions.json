@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.22",
+  "defaultVersion": "1.9.23",
   "versions": [
     {
       "id": "0.1.0",
@@ -244,6 +244,11 @@
     {
       "id": "1.9.22",
       "name": "Chunk Streaming Priority",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.23",
+      "name": "Feature Progression Fix",
       "status": "current"
     }
   ]

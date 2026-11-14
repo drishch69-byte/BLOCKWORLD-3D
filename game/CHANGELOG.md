@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.23 — Feature Progression Fix
+- Newer profiles now inherit fox companions, animal breeding, animal products and smart feeders from the versions that introduced those features.
+- Replaced fragile text-based version checks for pets, nature and progressive mining with numeric version comparisons.
+- Added tests for feature introduction thresholds, newer-profile inheritance, numeric version ordering and malformed versions.
+- World save format remains 2; existing creature and item IDs are unchanged.
+
 ## 1.9.22 — Chunk Streaming Priority
 - Pending chunk meshes are re-sorted around the latest camera chunk whenever the player moves, so nearby terrain is built before stale work from the previous direction.
 - A frame build budget of zero now correctly defers mesh generation instead of forcing one chunk to build.

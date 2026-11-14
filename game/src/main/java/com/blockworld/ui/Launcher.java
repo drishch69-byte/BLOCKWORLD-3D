@@ -164,7 +164,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.22  •  CHUNK STREAMING PRIORITY");
+        JLabel release = new JLabel("1.9.23  •  FEATURE PROGRESSION FIX");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);
@@ -247,10 +247,13 @@ public final class Launcher {
         center.add(selectionArea, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
-                "ОБНОВЛЕНИЕ ДВИЖКА ЧАНКОВ — 1.9.22\n\n" +
+                "ИСПРАВЛЕНИЕ ПРОГРЕССИИ ФУНКЦИЙ — 1.9.23\n\n" +
+                "• Новые версии сохраняют приручение лис, разведение животных и сбор продукции.\n" +
+                "• Кормушки и возможности животных больше не отключаются в поздних профилях.\n" +
+                "• Проверки возможностей используют числовые номера версий.\n\n" +
+                "ДВИЖОК ЧАНКОВ — 1.9.22\n\n" +
                 "• После перемещения игрока ближайшие чанки подгружаются в первую очередь.\n" +
-                "• Очередь загрузки перестраивается вокруг новой позиции камеры.\n" +
-                "• Лимит 0 чанков за кадр теперь действительно откладывает построение мешей.\n\n" +
+                "• Очередь загрузки перестраивается вокруг новой позиции камеры.\n\n" +
                 "ОБНОВЛЕНИЕ СТАБИЛЬНОСТИ — 1.9.21 / 1.9.20\n\n" +
                 "• Исправлена версия в заголовке лаунчера и запись диагностических логов.\n" +
                 "• Журнал ограничен 1 МиБ, предыдущий запуск сохраняется для диагностики.\n\n" +
