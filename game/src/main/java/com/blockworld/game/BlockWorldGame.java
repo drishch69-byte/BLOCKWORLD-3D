@@ -31,6 +31,7 @@ import com.blockworld.core.AnimalBreedingRules;
 import com.blockworld.core.AnimalDataStore;
 import com.blockworld.core.AnimalProductRules;
 import com.blockworld.core.AnimalFeederRules;
+import com.blockworld.core.AnimalFeederRules;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
@@ -280,11 +281,14 @@ public final class BlockWorldGame extends SimpleApplication {
         this.explorationEnabled = WorldNavigation.supportsExploration(version.id());
         this.petsEnabled = version.id().compareTo("1.9.0") >= 0;
         this.foxCompanionsEnabled = "1.9.10".equals(version.id()) || "1.9.11".equals(version.id())
-                || "1.9.12".equals(version.id()) || "1.9.13".equals(version.id());
+                || "1.9.12".equals(version.id()) || "1.9.13".equals(version.id())
+                || "1.9.14".equals(version.id());
         this.animalBreedingEnabled = "1.9.11".equals(version.id())
-                || "1.9.12".equals(version.id()) || "1.9.13".equals(version.id());
-        this.animalProductsEnabled = "1.9.12".equals(version.id()) || "1.9.13".equals(version.id());
-        this.animalFeedersEnabled = "1.9.13".equals(version.id());
+                || "1.9.12".equals(version.id()) || "1.9.13".equals(version.id())
+                || "1.9.14".equals(version.id());
+        this.animalProductsEnabled = "1.9.12".equals(version.id())
+                || "1.9.13".equals(version.id()) || "1.9.14".equals(version.id());
+        this.animalFeedersEnabled = "1.9.13".equals(version.id()) || "1.9.14".equals(version.id());
         List<CraftingRecipe> allRecipes = release100Enabled
                 ? animalFeedersEnabled ? CraftingRecipe.farmBuildingRecipes()
                 : animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
@@ -2067,6 +2071,10 @@ public final class BlockWorldGame extends SimpleApplication {
                 } else if (animalFeedersEnabled && removed == BlockType.WOODEN_FENCE) {
                     craftedItems.merge(ItemType.WOODEN_FENCE, 1, Integer::sum);
                     statusMessage = "Ограждение возвращено в инвентарь.";
+                } else if (animalFeedersEnabled
+                        && (removed == BlockType.WOODEN_GATE || removed == BlockType.OPEN_WOODEN_GATE)) {
+                    craftedItems.merge(ItemType.WOODEN_GATE, 1, Integer::sum);
+                    statusMessage = "Калитка возвращена в инвентарь.";
                 } else if (animalFeedersEnabled && removed == BlockType.FEED_TROUGH) {
                     craftedItems.merge(ItemType.FEED_TROUGH, 1, Integer::sum);
                     if (creatureManager != null) {
@@ -2227,6 +2235,13 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         if (animalFeedersEnabled && hit != null
+                && (world.getBlock(hit.position()) == BlockType.WOODEN_GATE
+                    || world.getBlock(hit.position()) == BlockType.OPEN_WOODEN_GATE)) {
+            toggleWoodenGate(hit.position());
+            updateHud();
+            return;
+        }
+        if (animalFeedersEnabled && hit != null
                 && world.getBlock(hit.position()) == BlockType.FEED_TROUGH) {
             refillAnimalFeeder(hit.position());
             updateHud();
@@ -2288,6 +2303,29 @@ public final class BlockWorldGame extends SimpleApplication {
             statusMessage = "Лиса приручена! Она будет следовать за тобой. Нажми N рядом с питомцем, чтобы сменить команду.";
         }
         updateInventoryUi();
+    }
+
+    private void toggleWoodenGate(BlockPos position) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()) {
+            statusMessage = "Переключение калиток пока доступно только в одиночном мире.";
+            return;
+        }
+        BlockType current = world.getBlock(position);
+        if (current != BlockType.WOODEN_GATE && current != BlockType.OPEN_WOODEN_GATE) return;
+        BlockType next = current == BlockType.WOODEN_GATE
+                ? BlockType.OPEN_WOODEN_GATE : BlockType.WOODEN_GATE;
+        if (!world.removeBlock(position)) {
+            statusMessage = "Не удалось изменить калитку.";
+            return;
+        }
+        if (!world.addBlock(position, next)) {
+            world.addBlock(position, current);
+            statusMessage = "Не удалось изменить калитку: место занято.";
+            return;
+        }
+        statusMessage = next == BlockType.OPEN_WOODEN_GATE
+                ? "Калитка открыта. Через неё могут пройти игрок и животные."
+                : "Калитка закрыта. Загон снова ограждён.";
     }
 
     private void refillAnimalFeeder(BlockPos position) {
@@ -2644,8 +2682,11 @@ public final class BlockWorldGame extends SimpleApplication {
             statusMessage = "Кормушки пока устанавливаются только в одиночном мире.";
             return;
         }
-        BlockType block = selectedFarmBuilding == ItemType.FEED_TROUGH
-                ? BlockType.FEED_TROUGH : BlockType.WOODEN_FENCE;
+        BlockType block = switch (selectedFarmBuilding) {
+            case FEED_TROUGH -> BlockType.FEED_TROUGH;
+            case WOODEN_GATE -> BlockType.WOODEN_GATE;
+            default -> BlockType.WOODEN_FENCE;
+        };
         BlockPos place = hit.adjacentPosition();
         Vector3f center = new Vector3f(place.x(), place.y(), place.z());
         if (playerEyePosition.distance(center) < 1.45f) {
@@ -2668,8 +2709,11 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void cycleFarmBuilding() {
         if (!animalFeedersEnabled || !version.survival()) return;
-        selectedFarmBuilding = selectedFarmBuilding == ItemType.WOODEN_FENCE
-                ? ItemType.FEED_TROUGH : ItemType.WOODEN_FENCE;
+        selectedFarmBuilding = switch (selectedFarmBuilding) {
+            case WOODEN_FENCE -> ItemType.FEED_TROUGH;
+            case FEED_TROUGH -> ItemType.WOODEN_GATE;
+            default -> ItemType.WOODEN_FENCE;
+        };
         statusMessage = "Выбрана постройка: " + selectedFarmBuilding.displayName()
                 + " ×" + craftedItems.getOrDefault(selectedFarmBuilding, 0) + ". Нажми G, чтобы установить.";
         updateHud();
@@ -3156,7 +3200,7 @@ public final class BlockWorldGame extends SimpleApplication {
                     + (petsEnabled ? "    N — команда питомцу" : "")
                     + (animalBreedingEnabled ? "    F — разведение животных" : "")
                     + (animalProductsEnabled ? "    U — молоко, шерсть и яйца" : "")
-                    + (animalFeedersEnabled ? "    Y — выбрать ограду/кормушку    G — поставить    F — пополнить кормушку" : "")
+                    + (animalFeedersEnabled ? "    Y — ограда/кормушка/калитка    G — поставить    F — калитка/кормушка" : "")
                     + "    ESC — пауза"
                 : "WASD — движение    Мышь — обзор    Колесо мыши — выбор слота    F — общение/контакт"
                     + (explorationEnabled ? "    B — карта/компас" : "")

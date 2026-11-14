@@ -522,9 +522,22 @@ public final class CreatureManager {
                     visual.pauseTimer = Math.max(visual.pauseTimer, .8f);
             }
 
+            boolean attemptedMovement = Math.abs(nextX - state.x()) > 0.00001f
+                    || Math.abs(nextZ - state.z()) > 0.00001f;
             CreatureNavigation.Step resolved = CreatureNavigation.resolveStep(
                     state.type(), state.x(), state.y(), state.z(), nextX, nextZ, world);
             if (resolved != null) {
+                boolean blockedAtPen = AnimalBreedingRules.isFarmAnimal(state.type())
+                        && attemptedMovement
+                        && Math.abs(resolved.x() - state.x()) < 0.00001f
+                        && Math.abs(resolved.z() - state.z()) < 0.00001f;
+                if (blockedAtPen) {
+                    // Turn away from a fence instead of spending several seconds walking into it.
+                    visual.yaw += visual.random.nextBoolean()
+                            ? (float) (Math.PI * 0.5) : (float) (-Math.PI * 0.5);
+                    visual.turnTimer = 0.8f + visual.random.nextFloat() * 1.2f;
+                    visual.pauseTimer = Math.max(visual.pauseTimer, 0.3f);
+                }
                 state = new WorldCreature(state.id(), state.type(),
                         resolved.x(), resolved.y(), resolved.z(), visual.yaw);
                 visual.state = state;
