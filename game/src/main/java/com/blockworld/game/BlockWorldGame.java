@@ -30,6 +30,7 @@ import com.blockworld.core.PetRules;
 import com.blockworld.core.AnimalBreedingRules;
 import com.blockworld.core.AnimalDataStore;
 import com.blockworld.core.AnimalProductRules;
+import com.blockworld.core.AnimalFeederRules;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
@@ -149,6 +150,8 @@ public final class BlockWorldGame extends SimpleApplication {
     private final boolean foxCompanionsEnabled;
     private final boolean animalBreedingEnabled;
     private final boolean animalProductsEnabled;
+    private final boolean animalFeedersEnabled;
+    private ItemType selectedFarmBuilding = ItemType.WOODEN_FENCE;
     private final List<CraftingRecipe> craftingRecipes;
     private final List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
     private final AchievementTracker achievements = new AchievementTracker();
@@ -277,11 +280,14 @@ public final class BlockWorldGame extends SimpleApplication {
         this.explorationEnabled = WorldNavigation.supportsExploration(version.id());
         this.petsEnabled = version.id().compareTo("1.9.0") >= 0;
         this.foxCompanionsEnabled = "1.9.10".equals(version.id()) || "1.9.11".equals(version.id())
-                || "1.9.12".equals(version.id());
-        this.animalBreedingEnabled = "1.9.11".equals(version.id()) || "1.9.12".equals(version.id());
-        this.animalProductsEnabled = "1.9.12".equals(version.id());
+                || "1.9.12".equals(version.id()) || "1.9.13".equals(version.id());
+        this.animalBreedingEnabled = "1.9.11".equals(version.id())
+                || "1.9.12".equals(version.id()) || "1.9.13".equals(version.id());
+        this.animalProductsEnabled = "1.9.12".equals(version.id()) || "1.9.13".equals(version.id());
+        this.animalFeedersEnabled = "1.9.13".equals(version.id());
         List<CraftingRecipe> allRecipes = release100Enabled
-                ? animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
+                ? animalFeedersEnabled ? CraftingRecipe.farmBuildingRecipes()
+                : animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
                 : agricultureEnabled ? CraftingRecipe.advancedRecipes() : CraftingRecipe.starterRecipes();
         this.craftingRecipes = equipmentEnabled ? allRecipes : List.copyOf(allRecipes.subList(0, 4));
         this.saveFile = saveFile;
@@ -702,6 +708,7 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addMapping("USE_UTILITY", new KeyTrigger(KeyInput.KEY_G));
         inputManager.addMapping("FISHING_CAST", new KeyTrigger(KeyInput.KEY_P));
         inputManager.addMapping("COLLECT_ANIMAL_PRODUCT", new KeyTrigger(KeyInput.KEY_U));
+        inputManager.addMapping("CYCLE_FARM_BUILDING", new KeyTrigger(KeyInput.KEY_Y));
         inputManager.addMapping("TOGGLE_ACHIEVEMENTS", new KeyTrigger(KeyInput.KEY_M));
         inputManager.addMapping("CRAFT_PAGE_PREV", new KeyTrigger(KeyInput.KEY_LEFT));
         inputManager.addMapping("CRAFT_PAGE_NEXT", new KeyTrigger(KeyInput.KEY_RIGHT));
@@ -786,6 +793,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 case "USE_UTILITY" -> useSelectedUtility();
                 case "FISHING_CAST" -> castFishingRod();
                 case "COLLECT_ANIMAL_PRODUCT" -> collectNearestAnimalProduct();
+                case "CYCLE_FARM_BUILDING" -> cycleFarmBuilding();
                 case "TOGGLE_ACHIEVEMENTS" -> toggleAchievements();
                 case "CRAFT_PAGE_PREV" -> { if (chestOpen) changeChestPage(-1); else if (inventoryOpen) changeInventoryPage(-1); else changeCraftPage(-1); }
                 case "CRAFT_PAGE_NEXT" -> { if (chestOpen) changeChestPage(1); else if (inventoryOpen) changeInventoryPage(1); else changeCraftPage(1); }
@@ -823,7 +831,7 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addListener(actions, BREAK, PLACE, SAVE, EAT, "EXIT_GAME", "TOGGLE_PAUSE",
                 "SLOT_1", "SLOT_2", "SLOT_3", "SLOT_4", "SLOT_5",
                 "SLOT_6", "SLOT_7", "SLOT_8", "SLOT_9", "RENDER_DISTANCE", "TOGGLE_CULLING", "WEATHER", TALK,
-                "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "COLLECT_ANIMAL_PRODUCT", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
+                "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "COLLECT_ANIMAL_PRODUCT", "CYCLE_FARM_BUILDING", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
                 "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA", "CYCLE_PLAYER_STYLE", "TOGGLE_MAP",
                 "OPEN_CHAT", "CHEST_TAKE", "CHEST_PUT", "PET_COMMAND");
     }
@@ -878,7 +886,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 creatureManager.sync(world);
                 if (petsEnabled) creatureManager.setPetModes(pendingPetModes, foxCompanionsEnabled);
                 if (animalBreedingEnabled) creatureManager.setAnimalData(
-                        pendingAnimalData, true, animalProductsEnabled);
+                        pendingAnimalData, true, animalProductsEnabled, animalFeedersEnabled);
                 rootNode.attachChild(creatureManager.getNode());
                 natureDecorations.rebuild(world);
                 rootNode.attachChild(natureDecorations.getNode());
@@ -2056,6 +2064,14 @@ public final class BlockWorldGame extends SimpleApplication {
                 if (agricultureEnabled && removed == BlockType.FURNACE) {
                     craftedItems.merge(ItemType.FURNACE, 1, Integer::sum);
                     statusMessage = "Печь возвращена в инвентарь.";
+                } else if (animalFeedersEnabled && removed == BlockType.WOODEN_FENCE) {
+                    craftedItems.merge(ItemType.WOODEN_FENCE, 1, Integer::sum);
+                    statusMessage = "Ограждение возвращено в инвентарь.";
+                } else if (animalFeedersEnabled && removed == BlockType.FEED_TROUGH) {
+                    craftedItems.merge(ItemType.FEED_TROUGH, 1, Integer::sum);
+                    if (creatureManager != null) creatureManager.removeFeeder(pos);
+                    saveAnimalDataQuietly();
+                    statusMessage = "Кормушка разобрана; остаток корма возвращён в инвентарь.";
                 } else if (release100Enabled && removed == BlockType.EMERALD_ORE) {
                     int drops = 1 + (selectedTool == ToolType.IRON_PICKAXE ? 1 : 0);
                     craftedItems.merge(ItemType.EMERALD, drops, Integer::sum);
@@ -2205,6 +2221,12 @@ public final class BlockWorldGame extends SimpleApplication {
             updateHud();
             return;
         }
+        if (animalFeedersEnabled && hit != null
+                && world.getBlock(hit.position()) == BlockType.FEED_TROUGH) {
+            refillAnimalFeeder(hit.position());
+            updateHud();
+            return;
+        }
         if (creatureManager == null) return;
         com.blockworld.core.WorldCreature creature = creatureManager.nearest(version.survival() ? playerEyePosition : cam.getLocation(), 3.2f);
         if (creature == null) {
@@ -2261,6 +2283,35 @@ public final class BlockWorldGame extends SimpleApplication {
             statusMessage = "Лиса приручена! Она будет следовать за тобой. Нажми N рядом с питомцем, чтобы сменить команду.";
         }
         updateInventoryUi();
+    }
+
+    private void refillAnimalFeeder(BlockPos position) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()) {
+            statusMessage = "Пополнение кормушек пока доступно только в одиночном мире.";
+            return;
+        }
+        if (creatureManager == null || position == null
+                || world.getBlock(position) != BlockType.FEED_TROUGH) return;
+        AnimalFeederRules.Stock current = creatureManager.feederStockAt(position);
+        int wheat = Math.min(AnimalFeederRules.MAX_STOCK_PER_FOOD - current.wheat(),
+                Math.max(0, craftedItems.getOrDefault(ItemType.WHEAT, 0)));
+        int seeds = Math.min(AnimalFeederRules.MAX_STOCK_PER_FOOD - current.seeds(),
+                Math.max(0, craftedItems.getOrDefault(ItemType.WHEAT_SEEDS, 0)));
+        if (wheat + seeds <= 0) {
+            statusMessage = current.isEmpty()
+                    ? "Кормушка пуста. Нужна пшеница для коров, овец и свиней или семена для кур."
+                    : "Кормушка заполнена или в инвентаре нет подходящего корма.";
+            return;
+        }
+        AnimalFeederRules.Stock updated = AnimalFeederRules.refill(current, wheat, seeds);
+        creatureManager.setFeederStock(position, updated);
+        if (wheat > 0) craftedItems.merge(ItemType.WHEAT, -wheat, Integer::sum);
+        if (seeds > 0) craftedItems.merge(ItemType.WHEAT_SEEDS, -seeds, Integer::sum);
+        savePlayerDataQuietly();
+        saveAnimalDataQuietly();
+        updateInventoryUi();
+        statusMessage = "Кормушка пополнена: пшеница " + updated.wheat()
+                + "/64, семена " + updated.seeds() + "/64. Животные рядом будут есть автоматически.";
     }
 
     private void collectNearestAnimalProduct() {
@@ -2558,6 +2609,8 @@ public final class BlockWorldGame extends SimpleApplication {
                 sendMultiplayerBlockAdd(position, BlockType.FARMLAND);
                 statusMessage = "Грядка создана. Наведи прицел на неё и нажми G, чтобы посадить семена.";
             }
+        } else if (animalFeedersEnabled && craftedItems.getOrDefault(selectedFarmBuilding, 0) > 0) {
+            placeFarmBuilding(hit);
         } else if (craftedItems.getOrDefault(ItemType.FURNACE, 0) > 0) {
             BlockPos place = hit.adjacentPosition();
             Vector3f center = new Vector3f(place.x(), place.y(), place.z());
@@ -2577,6 +2630,43 @@ public final class BlockWorldGame extends SimpleApplication {
             statusMessage = "Нужна мотыга для грядки или печь в инвентаре.";
         }
         updateInventoryUi();
+        updateHud();
+    }
+
+    private void placeFarmBuilding(BlockHit hit) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()
+                && selectedFarmBuilding == ItemType.FEED_TROUGH) {
+            statusMessage = "Кормушки пока устанавливаются только в одиночном мире.";
+            return;
+        }
+        BlockType block = selectedFarmBuilding == ItemType.FEED_TROUGH
+                ? BlockType.FEED_TROUGH : BlockType.WOODEN_FENCE;
+        BlockPos place = hit.adjacentPosition();
+        Vector3f center = new Vector3f(place.x(), place.y(), place.z());
+        if (playerEyePosition.distance(center) < 1.45f) {
+            statusMessage = "Слишком близко: постройку нельзя поставить внутри игрока.";
+        } else if (world.addBlock(place, block)) {
+            sendMultiplayerBlockAdd(place, block);
+            craftedItems.merge(selectedFarmBuilding, -1, Integer::sum);
+            savePlayerDataQuietly();
+            if (block == BlockType.FEED_TROUGH && creatureManager != null) {
+                creatureManager.setFeederStock(place, AnimalFeederRules.Stock.empty());
+                saveAnimalDataQuietly();
+            }
+            statusMessage = block == BlockType.FEED_TROUGH
+                    ? "Кормушка установлена. Наведи на неё прицел и нажми F, чтобы добавить корм."
+                    : "Ограждение установлено. Продолжай строить загон для животных.";
+        } else {
+            statusMessage = "Место занято: постройка не установлена.";
+        }
+    }
+
+    private void cycleFarmBuilding() {
+        if (!animalFeedersEnabled || !version.survival()) return;
+        selectedFarmBuilding = selectedFarmBuilding == ItemType.WOODEN_FENCE
+                ? ItemType.FEED_TROUGH : ItemType.WOODEN_FENCE;
+        statusMessage = "Выбрана постройка: " + selectedFarmBuilding.displayName()
+                + " ×" + craftedItems.getOrDefault(selectedFarmBuilding, 0) + ". Нажми G, чтобы установить.";
         updateHud();
     }
 
@@ -2913,7 +3003,7 @@ public final class BlockWorldGame extends SimpleApplication {
         index = craftingPage * 9 + index;
         if (!craftingOpen || index < 0 || index >= craftingRecipes.size()) return;
         CraftingRecipe recipe = craftingRecipes.get(index);
-        if (animalProductsEnabled && recipe.number() > 16
+        if ((animalProductsEnabled || animalFeedersEnabled) && recipe.number() > 16
                 && multiplayerClient != null && multiplayerClient.isConnected()) {
             statusMessage = "Новые фермерские инструменты пока создаются только в одиночном мире.";
             updateInventoryUi();
@@ -3060,7 +3150,9 @@ public final class BlockWorldGame extends SimpleApplication {
                     + (explorationEnabled ? "    B — карта/компас" : "")
                     + (petsEnabled ? "    N — команда питомцу" : "")
                     + (animalBreedingEnabled ? "    F — разведение животных" : "")
-                    + (animalProductsEnabled ? "    U — молоко, шерсть и яйца" : "") + "    ESC — пауза"
+                    + (animalProductsEnabled ? "    U — молоко, шерсть и яйца" : "")
+                    + (animalFeedersEnabled ? "    Y — выбрать ограду/кормушку    G — поставить    F — пополнить кормушку" : "")
+                    + "    ESC — пауза"
                 : "WASD — движение    Мышь — обзор    Колесо мыши — выбор слота    F — общение/контакт"
                     + (explorationEnabled ? "    B — карта/компас" : "")
                     + (petsEnabled ? "    N — команда псу" : "") + "    ESC — пауза";
