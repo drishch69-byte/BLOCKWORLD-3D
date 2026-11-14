@@ -40,6 +40,8 @@ import javax.swing.JTextField;
 import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
@@ -160,7 +162,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.17  •  MELEE COMBAT UPDATE");
+        JLabel release = new JLabel("1.9.18  •  LAUNCHER BACKUP UPDATE");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);
@@ -243,15 +245,18 @@ public final class Launcher {
         center.add(selectionArea, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
-                "ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ — 1.9.14\n\n" +
-                "• Деревянные калитки для загонов: F открывает и закрывает калитку.\n" +
-                "• Открытая калитка видна, но больше не мешает проходу игрока и животных.\n" +
-                "• Животные лучше разворачиваются у стен загонов.\n" +
-                "• Включены ограждения, кормушки, разведение и уход за животными.\n\n" +
+                "ОБНОВЛЕНИЕ ЛАУНЧЕРА — 1.9.18\n\n" +
+                "• В окне резервных копий появилась кнопка ручного создания копии мира.\n" +
+                "• Копия включает сохранение и дополнительные файлы прогресса игрока.\n" +
+                "• F5 быстро обновляет список миров.\n\n" +
+                "ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ ИГРЫ — 1.9.17\n\n" +
+                "• ЛКМ наносит удары мобам и игрокам в пределах дистанции.\n" +
+                "• Удар не проходит сквозь стены; броня уменьшает урон в PvP.\n" +
+                "• Если под прицелом нет цели, ЛКМ продолжает добывать блоки.\n\n" +
                 "ВОЗМОЖНОСТИ ЛАУНЧЕРА\n" +
                 "• Общий список миров, избранное, поиск и миниатюры сохранений.\n" +
                 "• Создание миров с выбором размера и seed.\n" +
-                "• Настройки графики с автоподбором, моды и PNG-ресурс-паки.\n" +
+                "• Настройки графики, моды и PNG-ресурс-паки.\n" +
                 "• Резервные копии, профиль игрока и диагностический журнал.\n\n" +
                 "Миры доступны из разных профилей игры. Перед заменой существующего мира\n" +
                 "лаунчер предлагает создать резервную копию.");
@@ -325,7 +330,15 @@ public final class Launcher {
         bottom.add(status, BorderLayout.SOUTH);
         frame.add(bottom, BorderLayout.SOUTH);
 
+        installKeyboardShortcuts();
         frame.setVisible(true);
+    }
+
+    private void installKeyboardShortcuts() {
+        frame.getRootPane().registerKeyboardAction(
+                event -> refreshWorldList(selectedWorldPath()),
+                KeyStroke.getKeyStroke("F5"),
+                JComponent.WHEN_IN_FOCUSED_WINDOW);
     }
 
     private String systemSummary() {
@@ -576,6 +589,7 @@ public final class Launcher {
         dialog.add(info, BorderLayout.NORTH);
         dialog.add(new JScrollPane(backups), BorderLayout.CENTER);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton create = new JButton("СОЗДАТЬ КОПИЮ");
         JButton restore = new JButton("ВОССТАНОВИТЬ");
         JButton delete = new JButton("УДАЛИТЬ КОПИЮ");
         JButton refresh = new JButton("ОБНОВИТЬ");
@@ -590,6 +604,21 @@ public final class Launcher {
                 info.setText("Не удалось прочитать копии: " + error.getMessage());
             }
         };
+        create.addActionListener(event -> {
+            try {
+                Path backup = WorldBackupManager.create(selected.file());
+                reload.run();
+                backups.setSelectedValue(backup, true);
+                info.setText("Резервная копия создана: " + backup.getFileName());
+                refreshWorldList(selected.file());
+                status.setText("Создана резервная копия мира: " + backup.getFileName());
+            } catch (IOException error) {
+                GameLog.error("Не удалось создать резервную копию мира", error);
+                JOptionPane.showMessageDialog(dialog,
+                        "Не удалось создать резервную копию:\n" + error.getMessage(),
+                        "Ошибка резервного копирования", JOptionPane.ERROR_MESSAGE);
+            }
+        });
         restore.addActionListener(event -> {
             Path backup = backups.getSelectedValue();
             if (backup == null) return;
@@ -625,10 +654,10 @@ public final class Launcher {
         });
         refresh.addActionListener(event -> reload.run());
         close.addActionListener(event -> dialog.dispose());
-        buttons.add(restore); buttons.add(delete); buttons.add(refresh); buttons.add(close);
+        buttons.add(create); buttons.add(restore); buttons.add(delete); buttons.add(refresh); buttons.add(close);
         dialog.add(buttons, BorderLayout.SOUTH);
         reload.run();
-        dialog.setSize(680, 420);
+        dialog.setSize(760, 420);
         dialog.setLocationRelativeTo(frame);
         dialog.setVisible(true);
     }

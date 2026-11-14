@@ -50,7 +50,8 @@ public final class VersionManager {
             new GameVersion("1.9.14", "Gates & Smarter Animal Pens", "Открывающиеся калитки, проход через открытые двери и более умное поведение животных в загонах", 144, true, true, true, true, true),
             new GameVersion("1.9.15", "Farmstead Decorations", "Объёмные деревянные заборы, декоративные фонари и пугала для фермы и деревни", 144, true, true, true, true, true),
             new GameVersion("1.9.16", "Lantern Lighting", "Тёплое локальное освещение от фонарей с затуханием и обновлением соседних чанков", 144, true, true, true, true, true),
-            new GameVersion("1.9.17", "Melee Combat Update", "Удары по мобам и игрокам мышью, проверка дальности и направления, синхронизация ударов в мультиплеере", 144, true, true, true, true, true)
+            new GameVersion("1.9.17", "Melee Combat Update", "Удары по мобам и игрокам мышью, проверка дальности и направления, синхронизация ударов в мультиплеере", 144, true, true, true, true, true),
+            new GameVersion("1.9.18", "Launcher Backup Update", "Ручное создание резервных копий миров, обновлённая главная страница лаунчера и обновление списка клавишей F5", 144, true, true, true, true, true)
     );
 
     private VersionManager() {

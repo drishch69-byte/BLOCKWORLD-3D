@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.18 — Launcher Backup Update
+- Added a manual **Create Backup** action to the launcher's world backup window.
+- Manual backups include the world save and its player, achievement, pet, and animal progress sidecars.
+- Added **F5** as a shortcut to refresh the launcher's saved-world list.
+- Refreshed the launcher home screen to show the current 1.9.18 launcher changes and 1.9.17 combat highlights.
+- Added the 1.9.18 selectable profile; world format remains 2.
+
 ## 1.9.17 — Melee Combat Update
 - Left-click now hits a mob when the mob is in front of the player and no world block is between them.
 - Multiplayer left-click can attack a nearby player; the server checks reach, facing direction and armor.

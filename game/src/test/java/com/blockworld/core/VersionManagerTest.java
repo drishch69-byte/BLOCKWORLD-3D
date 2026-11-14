@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionManagerTest {
     @Test
-    void includesAllProfilesAndDefaultsToMeleeCombat() {
-        assertEquals(44, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.17", VersionManager.getDefaultVersion().id());
+    void includesAllProfilesAndDefaultsToLauncherBackupUpdate() {
+        assertEquals(45, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.18", VersionManager.getDefaultVersion().id());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());
@@ -66,6 +66,9 @@ class VersionManagerTest {
         assertEquals("Melee Combat Update", VersionManager.find("1.9.17").displayName());
         assertEquals(144, VersionManager.find("1.9.17").worldRadius());
         assertTrue(VersionManager.find("1.9.17").survival());
+        assertEquals("Launcher Backup Update", VersionManager.find("1.9.18").displayName());
+        assertEquals(144, VersionManager.find("1.9.18").worldRadius());
+        assertTrue(VersionManager.find("1.9.18").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());

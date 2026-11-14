@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.17",
+  "defaultVersion": "1.9.18",
   "versions": [
     {
       "id": "0.1.0",
@@ -219,6 +219,11 @@
     {
       "id": "1.9.17",
       "name": "Melee Combat Update",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.18",
+      "name": "Launcher Backup Update",
       "status": "current"
     }
   ]

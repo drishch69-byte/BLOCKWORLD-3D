@@ -17,7 +17,7 @@
   <a href="PROMOTE.md">Share the project</a>
 </p>
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.17 — Melee Combat Update.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.18 — Launcher Backup Update.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -29,7 +29,14 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current version
 
-**1.9.17 — Melee Combat Update (development)**
+**1.9.18 — Launcher Backup Update (development)**
+
+- The launcher now lets you create a manual backup from the selected world's backup window.
+- Backups include the world save and companion progress files for the player, achievements, pets, and animals.
+- Press **F5** to refresh the saved-world list without restarting the launcher.
+- The home screen now displays the current launcher release notes and the latest game highlights.
+
+**Previous: 1.9.17 — Melee Combat Update**
 
 - **ЛКМ** наносит удар мобам, если они находятся перед игроком и ничто не закрывает цель.
 - В мультиплеере ЛКМ позволяет ударить другого игрока рядом; сервер проверяет дистанцию, направление и броню.
