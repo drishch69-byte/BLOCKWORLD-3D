@@ -1,0 +1,185 @@
+name: Linux and macOS Portable Builds
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }} portable game
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: Linux-x64
+            artifact_name: linux-package
+            archive_extension: tar.gz
+          - os: macos-15
+            platform: macOS-arm64
+            artifact_name: macos-arm64-package
+            archive_extension: zip
+          - os: macos-15-intel
+            platform: macOS-x64
+            artifact_name: macos-x64-package
+            archive_extension: zip
+
+    defaults:
+      run:
+        working-directory: game
+        shell: bash
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: game/pom.xml
+
+      - name: Read application version
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="$(awk -F': ' '$1 == "Version" { print $2; exit }' VERSION.txt)"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "Unsupported application version: $VERSION" >&2
+            exit 1
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build and run tests
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Create portable application and archive
+        id: package
+        env:
+          APP_VERSION: ${{ steps.version.outputs.value }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          set -euo pipefail
+
+          JAR_PATH="$(find target -maxdepth 1 -type f -name 'blockworld-3d-*.jar' ! -name 'original-*' -print -quit)"
+          if [[ -z "$JAR_PATH" ]]; then
+            echo "The Maven shaded application JAR was not produced." >&2
+            exit 1
+          fi
+
+          JAR_NAME="$(basename "$JAR_PATH")"
+          INPUT_DIR="$PWD/package-input"
+          DIST_DIR="$PWD/dist"
+          mkdir -p "$INPUT_DIR" "$DIST_DIR"
+          cp "$JAR_PATH" "$INPUT_DIR/$JAR_NAME"
+
+          jpackage \
+            --type app-image \
+            --name "BLOCKWORLD 3D" \
+            --input "$INPUT_DIR" \
+            --main-jar "$JAR_NAME" \
+            --main-class com.blockworld.ui.Launcher \
+            --app-version "$APP_VERSION" \
+            --dest "$DIST_DIR"
+
+          ARCHIVE_NAME="BLOCKWORLD-3D-$APP_VERSION-$PLATFORM"
+          APP_IMAGE="$DIST_DIR/BLOCKWORLD 3D"
+
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            LAUNCHER="$APP_IMAGE/bin/BLOCKWORLD 3D"
+            if [[ ! -x "$LAUNCHER" ]]; then
+              echo "Linux launcher was not created: $LAUNCHER" >&2
+              exit 1
+            fi
+
+            cat > "$APP_IMAGE/run-game.sh" <<'RUNNER'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          APP_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
+          exec "$APP_DIR/bin/BLOCKWORLD 3D" "$@"
+          RUNNER
+            chmod +x "$APP_IMAGE/run-game.sh"
+
+            cat > "$APP_IMAGE/README-LINUX.txt" <<'README'
+          BLOCKWORLD 3D — Linux x64 (portable)
+          Extract the complete archive, open the BLOCKWORLD 3D folder, then run:
+              ./run-game.sh
+
+          The Java runtime is included. Java and Maven do not need to be installed.
+          Keep the complete folder intact. A desktop environment and compatible
+          graphics drivers/OpenGL support are required.
+
+          Worlds and settings are stored in:
+              ~/.blockworld3d
+
+          Project:
+          https://github.com/drishch69-byte/BLOCKWORLD-3D
+          README
+
+            ARCHIVE="$PWD/$ARCHIVE_NAME.tar.gz"
+            tar -czf "$ARCHIVE" -C "$DIST_DIR" "BLOCKWORLD 3D"
+
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            APP_BUNDLE="$DIST_DIR/BLOCKWORLD 3D.app"
+            LAUNCHER="$APP_BUNDLE/Contents/MacOS/BLOCKWORLD 3D"
+            if [[ ! -d "$APP_BUNDLE" || ! -x "$LAUNCHER" || ! -d "$APP_BUNDLE/Contents/runtime" ]]; then
+              echo "macOS application bundle or bundled runtime was not created." >&2
+              exit 1
+            fi
+
+            PACKAGE_ROOT="$PWD/macos-package/BLOCKWORLD 3D"
+            mkdir -p "$PACKAGE_ROOT"
+            ditto "$APP_BUNDLE" "$PACKAGE_ROOT/BLOCKWORLD 3D.app"
+
+            cat > "$PACKAGE_ROOT/README-macOS.txt" <<'README'
+          BLOCKWORLD 3D — macOS (portable app)
+          1. Extract the complete ZIP archive.
+          2. Move "BLOCKWORLD 3D.app" to Applications or another folder.
+          3. Open the app from Finder.
+
+          The Java runtime is included. Java and Maven do not need to be installed.
+          Keep the complete .app bundle intact.
+
+          This community build is not signed or notarized by Apple. Download it
+          only from the official project repository. macOS may display a security
+          notice for applications from unidentified developers.
+
+          Worlds and settings are stored in:
+              ~/.blockworld3d
+
+          Project:
+          https://github.com/drishch69-byte/BLOCKWORLD-3D
+          README
+
+            ARCHIVE="$PWD/$ARCHIVE_NAME.zip"
+            ditto -c -k --sequesterRsrc --keepParent "$PACKAGE_ROOT" "$ARCHIVE"
+          else
+            echo "Unsupported runner operating system: $RUNNER_OS" >&2
+            exit 1
+          fi
+
+          if [[ ! -s "$ARCHIVE" ]]; then
+            echo "Portable archive was not created: $ARCHIVE" >&2
+            exit 1
+          fi
+
+          echo "archive_name=$(basename "$ARCHIVE")" >> "$GITHUB_OUTPUT"
+          echo "Created $ARCHIVE"
+
+      - name: Upload portable download
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: game/${{ steps.package.outputs.archive_name }}
+          if-no-files-found: error
+          retention-days: 30
