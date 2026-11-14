@@ -17,11 +17,11 @@
   <a href="PROMOTE.md">Share the project</a>
 </p>
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.22 — Chunk Streaming Priority.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.23 — Feature Progression Fix.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
-**Project website:** the multilingual site source is in [docs/index.html](docs/index.html), with a separate [version history](docs/versions.html) covering updates from 1.1.0 to 1.9.22. To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
+**Project website:** the multilingual site source is in [docs/index.html](docs/index.html), with a separate [version history](docs/versions.html) covering updates from 1.1.0 to 1.9.23. To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
 
 **Want to help?** Share [the project](https://github.com/drishch69-byte/BLOCKWORLD-3D), try a build, [report a bug](https://github.com/drishch69-byte/BLOCKWORLD-3D/issues/new/choose), or suggest a feature.
 
@@ -29,7 +29,14 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current version
 
-**1.9.22 — Chunk Streaming Priority (development)**
+**1.9.23 — Feature Progression Fix (development)**
+
+- Newer profiles retain fox companions, animal breeding, animal products and smart feeders introduced in earlier updates.
+- Gameplay feature gates now use numeric version comparison instead of fragile text matching.
+- Added regression coverage for feature thresholds, newer profiles and numeric version ordering.
+- Existing world format 2 saves, creature IDs and item IDs remain compatible.
+
+**Previous: 1.9.22 — Chunk Streaming Priority**
 
 - Chunk mesh work is re-prioritized after player movement so the terrain nearest the new camera position appears first.
 - A zero per-frame build budget now pauses mesh creation as requested instead of forcing a build.
@@ -242,7 +249,7 @@ A portable **Windows x64** preview build is included in the [Cross-platform Port
 - The package includes its Java runtime; Java and Maven do not need to be installed.
 - Keep the extracted folder intact. Worlds and settings are stored separately in `%USERPROFILE%\\.blockworld3d`.
 
-Pushing a matching version tag such as `v1.9.22` starts the cross-platform release workflow. It waits for all four builds and attaches Windows, Linux, macOS Apple silicon and macOS Intel archives to one permanent GitHub Release.
+Pushing a matching version tag such as `v1.9.23` starts the cross-platform release workflow. It waits for all four builds and attaches Windows, Linux, macOS Apple silicon and macOS Intel archives to one permanent GitHub Release.
 
 ## Linux and macOS downloads
 
@@ -265,7 +272,7 @@ Preview workflow artifacts are retained for 30 days. GitHub Release assets remai
 - **Permanent versioned builds:** [GitHub Releases](https://github.com/drishch69-byte/BLOCKWORLD-3D/releases) — choose one of the four platform archives attached to a release.
 - **Latest source code:** [Download source ZIP](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip).
 
-[**Download latest source ZIP (1.9.22 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.23 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
@@ -290,7 +297,7 @@ Launch scripts are provided for Windows (run.bat) and Linux/macOS (run.sh).
 ## Project documentation
 
 - [Multilingual project website](docs/index.html) — English, Ukrainian and Russian landing page.
-- [Version history](docs/versions.html) — changelog and feature summaries from 1.1.0 through 1.9.22.
+- [Version history](docs/versions.html) — changelog and feature summaries from 1.1.0 through 1.9.23.
 - [Media gallery](docs/gallery.html) — original creature, block and item textures; gameplay screenshot and video areas.
 - [Screenshot and video guide](docs/SHOWCASE_GUIDE.md) — how to add genuine captures from the running game.
 - [Promotion kit](PROMOTE.md) — ready-to-share descriptions and official project links.
