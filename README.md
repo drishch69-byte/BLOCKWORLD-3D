@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.13 — Farm Pens & Smart Feeders.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.14 — Gates & Smarter Animal Pens.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,7 +10,17 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.13 — Farm Pens & Smart Feeders**
+**1.9.14 — Gates & Smarter Animal Pens**
+
+- Craft and place wooden gates as part of animal enclosures.
+- Aim at a gate and press **F** to open or close it. The open gate swings to the side and no longer blocks the doorway.
+- Open gate state is saved directly in the world file, alongside the block, without changing world format 2.
+- Farm animals turn away sooner when they reach a fence, reducing the time spent walking into enclosure walls.
+- **Y** cycles between fence, feeder and gate; **G** places the selected building.
+- All 1.9.13 feeders, animal products, breeding and save compatibility remain included.
+- Gate toggling and feeder stock management remain single-player only until their multiplayer interactions are synchronized.
+
+**Previous: 1.9.13 — Farm Pens & Smart Feeders**
 
 - Craft wooden fence blocks and use them to build animal pens.
 - Craft a feeder, place it with **G**, then aim at it and press **F** to load wheat and wheat seeds.
@@ -159,7 +169,7 @@ When a version tag beginning with `v` is pushed, the workflow also attaches the 
 
 ## Download
 
-[**Download latest source ZIP (1.9.13)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.14)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
