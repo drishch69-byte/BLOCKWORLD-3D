@@ -46,7 +46,8 @@ public final class VersionManager {
             new GameVersion("1.9.10", "Fox Companions & Taming", "Приручение лис приготовленной рыбой, команды питомцам и сохранение приручения", 144, true, true, true, true, true),
             new GameVersion("1.9.11", "Farm Life & Baby Animals", "Разведение коров, овец, свиней и кур, детёныши, рост животных и улучшенный урожай", 144, true, true, true, true, true),
             new GameVersion("1.9.12", "Farm Products & Harvest", "Молоко, шерсть и яйца, ведро, ножницы и сохраняемые таймеры продукции животных", 144, true, true, true, true, true),
-            new GameVersion("1.9.13", "Farm Pens & Smart Feeders", "Деревянные загоны, кормушки с запасом пшеницы и семян, автоматическое кормление и ускорение роста животных", 144, true, true, true, true, true)
+            new GameVersion("1.9.13", "Farm Pens & Smart Feeders", "Деревянные загоны, кормушки с запасом пшеницы и семян, автоматическое кормление и ускорение роста животных", 144, true, true, true, true, true),
+            new GameVersion("1.9.14", "Gates & Smarter Animal Pens", "Открывающиеся калитки, проход через открытые двери и более умное поведение животных в загонах", 144, true, true, true, true, true)
     );
 
     private VersionManager() {

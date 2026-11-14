@@ -74,6 +74,8 @@ public record CraftingRecipe(int number, String name, Map<BlockType, Integer> bl
                 Map.of(ItemType.PLANKS, 6, ItemType.STICKS, 2), ItemType.WOODEN_FENCE, 4));
         recipes.add(new CraftingRecipe(20, "Кормушка", Map.of(),
                 Map.of(ItemType.PLANKS, 5, ItemType.STICKS, 2), ItemType.FEED_TROUGH, 1));
+        recipes.add(new CraftingRecipe(21, "Деревянная калитка", Map.of(),
+                Map.of(ItemType.PLANKS, 4, ItemType.STICKS, 2), ItemType.WOODEN_GATE, 1));
         return java.util.List.copyOf(recipes);
     }
 

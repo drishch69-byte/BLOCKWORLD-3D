@@ -34,7 +34,9 @@ public enum BlockType {
     CRYSTAL_CACHE("crystal_cache", "Кристальный тайник", 0.55f, 0.36f, 0.82f),
     ANCIENT_CACHE("ancient_cache", "Древний тайник", 0.72f, 0.58f, 0.31f),
     WOODEN_FENCE("wooden_fence", "Деревянное ограждение", 0.48f, 0.30f, 0.13f),
-    FEED_TROUGH("feed_trough", "Кормушка", 0.56f, 0.36f, 0.17f);
+    FEED_TROUGH("feed_trough", "Кормушка", 0.56f, 0.36f, 0.17f),
+    WOODEN_GATE("wooden_gate", "Закрытая деревянная калитка", 0.53f, 0.34f, 0.16f),
+    OPEN_WOODEN_GATE("open_wooden_gate", "Открытая деревянная калитка", 0.61f, 0.40f, 0.20f);
 
     private final String id;
     private final String displayName;
@@ -92,6 +94,8 @@ public enum BlockType {
             case ANCIENT_CACHE -> 28;
             case WOODEN_FENCE -> 29;
             case FEED_TROUGH -> 30;
+            case WOODEN_GATE -> 31;
+            case OPEN_WOODEN_GATE -> 32;
         };
     }
 

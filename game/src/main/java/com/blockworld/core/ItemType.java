@@ -34,7 +34,8 @@ public enum ItemType {
     WOOL("wool", "Шерсть"),
     EGG("egg", "Яйцо"),
     WOODEN_FENCE("wooden_fence", "Деревянное ограждение"),
-    FEED_TROUGH("feed_trough", "Кормушка");
+    FEED_TROUGH("feed_trough", "Кормушка"),
+    WOODEN_GATE("wooden_gate", "Деревянная калитка");
 
     private final String id;
     private final String displayName;
