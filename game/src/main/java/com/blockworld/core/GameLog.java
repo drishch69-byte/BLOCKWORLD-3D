@@ -35,7 +35,8 @@ public final class GameLog {
             text.append(trace).append(System.lineSeparator());
         }
         try {
-            Files.createDirectories(file.getParent());
+            Path parent = file.toAbsolutePath().getParent();
+            if (parent != null) Files.createDirectories(parent);
             rotateIfNeeded(file, text.toString().getBytes(StandardCharsets.UTF_8).length);
             Files.writeString(file, text, StandardCharsets.UTF_8,
                     StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND);

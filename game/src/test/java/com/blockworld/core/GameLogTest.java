@@ -26,6 +26,18 @@ class GameLogTest {
     }
 
     @Test
+    void writesToRelativeFileWithoutParentDirectory() throws Exception {
+        Path log = Path.of("blockworld-game-log-parentless-test.log");
+        try {
+            Files.deleteIfExists(log);
+            GameLog.append(log, "INFO", "relative path works", null);
+            assertTrue(Files.readString(log).contains("relative path works"));
+        } finally {
+            Files.deleteIfExists(log);
+        }
+    }
+
+    @Test
     void keepsSmallLogsAndAppendsWithoutCreatingBackup() throws Exception {
         Path log = directory.resolve("latest-run.log");
         GameLog.append(log, "INFO", "first", null);
