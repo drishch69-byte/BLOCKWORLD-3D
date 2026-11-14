@@ -55,7 +55,8 @@ public final class VersionManager {
             new GameVersion("1.9.19", "Launcher UI Polish", "Обновлённые окна модов, ресурс-паков и мультиплеера, статусы дополнений, активный ресурс-пак и проверка параметров сервера", 144, true, true, true, true, true),
             new GameVersion("1.9.20", "Stability & Log Rotation", "Ограничение размера журнала, архив предыдущего запуска и тесты устойчивости диагностики", 144, true, true, true, true, true),
             new GameVersion("1.9.21", "Launcher & Log Stability Fix", "Исправление версии в заголовке лаунчера и безопасная запись журналов в пути без родительской папки", 144, true, true, true, true, true),
-            new GameVersion("1.9.22", "Chunk Streaming Priority", "Приоритетная подгрузка ближайших чанков после перемещения игрока и управляемый лимит построения за кадр", 144, true, true, true, true, true)
+            new GameVersion("1.9.22", "Chunk Streaming Priority", "Приоритетная подгрузка ближайших чанков после перемещения игрока и управляемый лимит построения за кадр", 144, true, true, true, true, true),
+            new GameVersion("1.9.23", "Feature Progression Fix", "Сохранение приручения лис, разведения и продукции животных, кормушек и корректные числовые проверки версий", 144, true, true, true, true, true)
     );
 
     private VersionManager() {

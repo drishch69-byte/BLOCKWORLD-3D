@@ -33,6 +33,7 @@ import com.blockworld.core.AnimalProductRules;
 import com.blockworld.core.AnimalFeederRules;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
+import com.blockworld.core.GameFeatureSupport;
 import com.blockworld.core.GameSettings;
 import com.blockworld.core.GamePaths;
 import com.blockworld.core.WorldCatalog;
@@ -278,17 +279,11 @@ public final class BlockWorldGame extends SimpleApplication {
         this.agricultureEnabled = supportsAgriculture(version);
         this.release100Enabled = supportsRelease100(version);
         this.explorationEnabled = WorldNavigation.supportsExploration(version.id());
-        this.petsEnabled = version.id().compareTo("1.9.0") >= 0;
-        this.foxCompanionsEnabled = "1.9.10".equals(version.id()) || "1.9.11".equals(version.id())
-                || "1.9.12".equals(version.id()) || "1.9.13".equals(version.id())
-                || "1.9.14".equals(version.id());
-        this.animalBreedingEnabled = "1.9.11".equals(version.id())
-                || "1.9.12".equals(version.id()) || "1.9.13".equals(version.id())
-                || "1.9.14".equals(version.id());
-        this.animalProductsEnabled = "1.9.12".equals(version.id())
-                || "1.9.13".equals(version.id()) || "1.9.14".equals(version.id());
-        this.animalFeedersEnabled = "1.9.13".equals(version.id()) || "1.9.14".equals(version.id())
-                || "1.9.15".equals(version.id());
+        this.petsEnabled = GameFeatureSupport.supportsPets(version);
+        this.foxCompanionsEnabled = GameFeatureSupport.supportsFoxCompanions(version);
+        this.animalBreedingEnabled = GameFeatureSupport.supportsAnimalBreeding(version);
+        this.animalProductsEnabled = GameFeatureSupport.supportsAnimalProducts(version);
+        this.animalFeedersEnabled = GameFeatureSupport.supportsAnimalFeeders(version);
         List<CraftingRecipe> allRecipes = release100Enabled
                 ? animalFeedersEnabled ? CraftingRecipe.farmBuildingRecipes()
                 : animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
@@ -874,7 +869,7 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void updateFrame(float tpf) {
         if (tpf > 0f) fpsEstimate = fpsEstimate * 0.88f + (1f / tpf) * 0.12f;
-        if (version.id().compareTo("0.6.0") >= 0) updateNature(tpf);
+        if (GameFeatureSupport.versionAtLeast(version, 0, 6, 0)) updateNature(tpf);
 
         if (worldDataReady) {
             if (!worldPreviewCaptureSetup) {
@@ -2001,7 +1996,7 @@ public final class BlockWorldGame extends SimpleApplication {
             cancelMining();
             return;
         }
-        if (!version.survival() || version.id().compareTo("1.9.4") < 0) {
+        if (!version.survival() || !GameFeatureSupport.versionAtLeast(version, 1, 9, 4)) {
             breakTargetBlock();
             return;
         }
@@ -3284,7 +3279,7 @@ public final class BlockWorldGame extends SimpleApplication {
                     + (equipmentEnabled ? "    Защита: " + armorDefense() + "/8"
                         + "    Инструмент: " + (selectedTool == null ? "нет" : selectedTool.item().displayName()) : "")
                 : "Творческий режим";
-        String nature = version.id().compareTo("0.6.0") >= 0
+        String nature = GameFeatureSupport.versionAtLeast(version, 0, 6, 0)
                 ? String.format(java.util.Locale.ROOT, "Время: %s    Погода: %s    R — сменить погоду",
                     dayClock < 0.25f ? "утро" : dayClock < 0.50f ? "день" : dayClock < 0.75f ? "вечер" : "ночь", raining ? "дождь" : "ясно")
                 : "";
