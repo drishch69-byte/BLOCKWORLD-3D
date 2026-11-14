@@ -9,6 +9,7 @@ import com.blockworld.core.PetMode;
 import com.blockworld.core.PetRules;
 import com.blockworld.core.AnimalBreedingRules;
 import com.blockworld.core.AnimalDataStore;
+import com.blockworld.core.AnimalProductRules;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;

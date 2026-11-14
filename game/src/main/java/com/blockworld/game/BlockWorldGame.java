@@ -701,6 +701,7 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addMapping("CYCLE_TOOL", new KeyTrigger(KeyInput.KEY_T));
         inputManager.addMapping("USE_UTILITY", new KeyTrigger(KeyInput.KEY_G));
         inputManager.addMapping("FISHING_CAST", new KeyTrigger(KeyInput.KEY_P));
+        inputManager.addMapping("COLLECT_ANIMAL_PRODUCT", new KeyTrigger(KeyInput.KEY_U));
         inputManager.addMapping("TOGGLE_ACHIEVEMENTS", new KeyTrigger(KeyInput.KEY_M));
         inputManager.addMapping("CRAFT_PAGE_PREV", new KeyTrigger(KeyInput.KEY_LEFT));
         inputManager.addMapping("CRAFT_PAGE_NEXT", new KeyTrigger(KeyInput.KEY_RIGHT));
@@ -784,6 +785,7 @@ public final class BlockWorldGame extends SimpleApplication {
                 case "CYCLE_TOOL" -> cycleTool();
                 case "USE_UTILITY" -> useSelectedUtility();
                 case "FISHING_CAST" -> castFishingRod();
+                case "COLLECT_ANIMAL_PRODUCT" -> collectNearestAnimalProduct();
                 case "TOGGLE_ACHIEVEMENTS" -> toggleAchievements();
                 case "CRAFT_PAGE_PREV" -> { if (chestOpen) changeChestPage(-1); else if (inventoryOpen) changeInventoryPage(-1); else changeCraftPage(-1); }
                 case "CRAFT_PAGE_NEXT" -> { if (chestOpen) changeChestPage(1); else if (inventoryOpen) changeInventoryPage(1); else changeCraftPage(1); }
@@ -821,7 +823,7 @@ public final class BlockWorldGame extends SimpleApplication {
         inputManager.addListener(actions, BREAK, PLACE, SAVE, EAT, "EXIT_GAME", "TOGGLE_PAUSE",
                 "SLOT_1", "SLOT_2", "SLOT_3", "SLOT_4", "SLOT_5",
                 "SLOT_6", "SLOT_7", "SLOT_8", "SLOT_9", "RENDER_DISTANCE", "TOGGLE_CULLING", "WEATHER", TALK,
-                "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
+                "TOGGLE_INVENTORY", "TOGGLE_CRAFTING", "CYCLE_TOOL", "USE_UTILITY", "FISHING_CAST", "COLLECT_ANIMAL_PRODUCT", "TOGGLE_ACHIEVEMENTS", "CRAFT_PAGE_PREV", "CRAFT_PAGE_NEXT",
                 "EQUIP_HELMET", "EQUIP_CHEST", "EQUIP_LEGS", "EQUIP_BOOTS", "TOGGLE_CAMERA", "CYCLE_PLAYER_STYLE", "TOGGLE_MAP",
                 "OPEN_CHAT", "CHEST_TAKE", "CHEST_PUT", "PET_COMMAND");
     }
@@ -2222,9 +2224,6 @@ public final class BlockWorldGame extends SimpleApplication {
             interactFox(creature);
         } else if (animalBreedingEnabled && AnimalBreedingRules.isBaby(creature.type())) {
             statusMessage = creature.type().displayName() + " растёт. Через несколько минут станет взрослым.";
-        } else if (animalProductsEnabled && version.survival()
-                && AnimalProductRules.produces(creature.type())) {
-            if (!collectAnimalProduct(creature)) breedAnimal(creature);
         } else if (animalBreedingEnabled && AnimalBreedingRules.isBreedableAdult(creature.type())
                 && version.survival()) {
             breedAnimal(creature);
@@ -2264,6 +2263,19 @@ public final class BlockWorldGame extends SimpleApplication {
         updateInventoryUi();
     }
 
+    private void collectNearestAnimalProduct() {
+        if (!animalProductsEnabled || !version.survival() || !worldReady
+                || inventoryOpen || craftingOpen || furnaceOpen || tradeOpen || achievementsOpen
+                || creatureManager == null) return;
+        com.blockworld.core.WorldCreature animal = creatureManager.nearest(playerEyePosition, 3.2f);
+        if (animal == null || !AnimalProductRules.produces(animal.type())) {
+            statusMessage = "Рядом нет коровы, овцы или курицы. Подойди ближе и нажми U.";
+        } else {
+            collectAnimalProduct(animal);
+        }
+        updateHud();
+    }
+
     private boolean collectAnimalProduct(com.blockworld.core.WorldCreature animal) {
         ItemType product = AnimalProductRules.productFor(animal.type());
         ItemType requiredTool = AnimalProductRules.requiredToolFor(animal.type());
@@ -2278,7 +2290,10 @@ public final class BlockWorldGame extends SimpleApplication {
         }
 
         if (requiredTool != null && craftedItems.getOrDefault(requiredTool, 0) <= 0) {
-            return false;
+            statusMessage = requiredTool == ItemType.EMPTY_BUCKET
+                    ? "Для дойки нужно пустое ведро. Создай его в мастерской."
+                    : "Чтобы стричь овцу, нужны ножницы. Создай их в мастерской.";
+            return true;
         }
 
         float remaining = creatureManager.productionCooldownRemaining(animal.id());
@@ -3033,7 +3048,8 @@ public final class BlockWorldGame extends SimpleApplication {
                     + (release100Enabled ? "    P — рыбалка    M — достижения" : "")
                     + (explorationEnabled ? "    B — карта/компас" : "")
                     + (petsEnabled ? "    N — команда питомцу" : "")
-                    + (animalBreedingEnabled ? "    F — разведение животных" : "") + "    ESC — пауза"
+                    + (animalBreedingEnabled ? "    F — разведение животных" : "")
+                    + (animalProductsEnabled ? "    U — молоко, шерсть и яйца" : "") + "    ESC — пауза"
                 : "WASD — движение    Мышь — обзор    Колесо мыши — выбор слота    F — общение/контакт"
                     + (explorationEnabled ? "    B — карта/компас" : "")
                     + (petsEnabled ? "    N — команда псу" : "") + "    ESC — пауза";

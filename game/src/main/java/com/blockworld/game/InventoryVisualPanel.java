@@ -43,8 +43,8 @@ final class InventoryVisualPanel {
             Picture picture = new Picture("InventoryItem-" + item.id(), true);
             try {
                 picture.setImage(assets, "Textures/Items/icons/" + item.id() + ".png", true);
-                picture.setWidth(22f);
-                picture.setHeight(22f);
+                picture.setWidth(18f);
+                picture.setHeight(18f);
                 picture.setQueueBucket(RenderQueue.Bucket.Gui);
                 layer.attachChild(picture);
                 itemPictures.put(item, picture);
@@ -92,10 +92,10 @@ final class InventoryVisualPanel {
 
         for (int index = 0; index < ItemType.values().length; index++) {
             ItemType item = ItemType.values()[index];
-            int column = index < 12 ? 0 : 1;
-            int row = index < 12 ? index : index - 12;
+            int column = index < 16 ? 0 : 1;
+            int row = index % 16;
             float x = left + column * 108f;
-            float y = centerY + 108f - row * 28f;
+            float y = centerY + 108f - row * 20f;
 
             Picture picture = itemPictures.get(item);
             if (picture != null) {
@@ -104,7 +104,7 @@ final class InventoryVisualPanel {
             }
 
             BitmapText label = itemLabels.get(item);
-            if (label != null) label.setLocalTranslation(x + 25f, y + 15f, 11f);
+            if (label != null) label.setLocalTranslation(x + 21f, y + 13f, 11f);
         }
     }
 
