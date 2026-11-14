@@ -387,7 +387,8 @@ public final class BlockWorldGame extends SimpleApplication {
         Path profileConfig = profileId == null ? GamePaths.configDirectory() : GamePaths.profileConfigDirectory(profileId);
         modLoader = profileId == null
                 ? new ModLoader(profileMods)
-                : new ModLoader(profileMods, GamePaths.modsDirectory());
+                : new ModLoader(profileMods, profileConfig,
+                        GamePaths.modsDirectory(), GamePaths.configDirectory());
         loadedModCount = modLoader.load(new ModContext(world, version, profileConfig));
         GameLog.info("Активных модов: " + loadedModCount);
         world.setTwoSidedRendering(twoSidedRendering);

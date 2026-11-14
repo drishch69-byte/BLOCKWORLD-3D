@@ -3,7 +3,7 @@
 ## 1.9.9 — Version Profile Manager
 - Added a manager for built-in game-version profiles, with activation, profile folder access, and shortcuts to profile-specific settings and mods.
 - Added independent settings files and enabled/disabled mod folders per version profile.
-- Kept the old shared settings as the initial fallback and preserved the legacy shared mods folder; shared mods continue loading alongside profile mods.
+- Kept the old shared settings as the initial fallback and preserved the legacy shared mods folder; shared mods continue loading alongside profile mods while retaining their original shared config directory.
 - Kept worlds, save format, profile IDs, resource packs, and existing shared user data unchanged.
 - Added tests for safe profile paths and isolated mod install/disable/enable/remove operations.
 

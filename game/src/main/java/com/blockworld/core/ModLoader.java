@@ -8,37 +8,42 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ServiceLoader;
-import java.util.Set;
 
-/** Loads enabled mod JARs from profile and compatibility folders. */
+/** Loads profile mods and legacy shared mods while keeping their config folders separate. */
 public final class ModLoader implements AutoCloseable {
     private record Loaded(BlockWorldMod mod, URLClassLoader classLoader, String source) { }
-    private final List<Loaded> loaded = new ArrayList<>();
-    private final List<Path> modsDirectories;
+    private record ModSource(Path modsDirectory, Path configDirectory) { }
 
-    public ModLoader(Path modsDirectory, Path... additionalDirectories) {
-        Set<Path> unique = new LinkedHashSet<>();
-        unique.add(modsDirectory.toAbsolutePath().normalize());
-        if (additionalDirectories != null) {
-            for (Path directory : additionalDirectories) {
-                if (directory != null) unique.add(directory.toAbsolutePath().normalize());
-            }
-        }
-        modsDirectories = List.copyOf(unique);
+    private final List<Loaded> loaded = new ArrayList<>();
+    private final List<ModSource> sources;
+
+    /** Compatibility constructor: all mods use the config directory supplied in ModContext. */
+    public ModLoader(Path modsDirectory) {
+        sources = List.of(new ModSource(modsDirectory, null));
+    }
+
+    /** Profile mods and legacy shared mods keep separate configuration folders. */
+    public ModLoader(Path profileMods, Path profileConfig, Path sharedMods, Path sharedConfig) {
+        sources = List.of(new ModSource(profileMods, profileConfig),
+                new ModSource(sharedMods, sharedConfig));
     }
 
     public int load(ModContext context) {
-        try {
-            for (Path directory : modsDirectories) Files.createDirectories(directory);
-            Files.createDirectories(context.configDirectory());
-        } catch (IOException ex) {
-            GameLog.error("Не удалось открыть папку модов/настроек", ex);
-            return 0;
+        for (ModSource source : sources) {
+            Path configDirectory = source.configDirectory() == null
+                    ? context.configDirectory() : source.configDirectory();
+            try {
+                Files.createDirectories(source.modsDirectory());
+                Files.createDirectories(configDirectory);
+            } catch (IOException ex) {
+                GameLog.error("Не удалось открыть папку модов/настроек", ex);
+                continue;
+            }
+            loadDirectory(source.modsDirectory(),
+                    new ModContext(context.world(), context.version(), configDirectory));
         }
-        for (Path directory : modsDirectories) loadDirectory(directory, context);
         return loaded.size();
     }
 

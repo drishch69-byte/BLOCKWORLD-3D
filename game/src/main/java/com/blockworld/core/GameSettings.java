@@ -60,8 +60,11 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
 
     /** Loads profile settings; before the first profile save, inherits legacy shared settings. */
     public static GameSettings load(String versionId) {
-        Path file = GamePaths.profileSettingsFile(versionId);
-        return Files.isRegularFile(file) ? loadFrom(file) : load();
+        return load(GamePaths.profileSettingsFile(versionId), GamePaths.settingsFile());
+    }
+
+    static GameSettings load(Path profileFile, Path legacyFile) {
+        return Files.isRegularFile(profileFile) ? loadFrom(profileFile) : loadFrom(legacyFile);
     }
 
     private static GameSettings loadFrom(Path file) {
@@ -92,7 +95,7 @@ public record GameSettings(int width, int height, boolean fullscreen, boolean vs
         saveTo(GamePaths.profileSettingsFile(versionId), settings);
     }
 
-    private static void saveTo(Path file, GameSettings settings) throws IOException {
+    static void saveTo(Path file, GameSettings settings) throws IOException {
         Files.createDirectories(file.getParent());
         Properties p = new Properties();
         p.setProperty("width", Integer.toString(settings.width));
