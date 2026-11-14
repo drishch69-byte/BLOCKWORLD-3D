@@ -164,7 +164,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.18  •  LAUNCHER BACKUP UPDATE");
+        JLabel release = new JLabel("1.9.19  •  LAUNCHER UI POLISH");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);
@@ -247,7 +247,11 @@ public final class Launcher {
         center.add(selectionArea, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
-                "ОБНОВЛЕНИЕ ЛАУНЧЕРА — 1.9.18\n\n" +
+                "ОБНОВЛЕНИЕ ЛАУНЧЕРА — 1.9.19\n\n" +
+                "• Новое окно модов со статусами включения и сведениями о BlockWorld API.\n" +
+                "• Ресурс-паки теперь показывают активный набор и подробное описание.\n" +
+                "• Сетевая игра получила новые окна создания сервера, подключения и чата.\n\n" +
+                "ПРЕДЫДУЩЕЕ ОБНОВЛЕНИЕ — 1.9.18\n\n" +
                 "• В окне резервных копий появилась кнопка ручного создания копии мира.\n" +
                 "• Копия включает сохранение и дополнительные файлы прогресса игрока.\n" +
                 "• F5 быстро обновляет список миров.\n\n" +
@@ -355,6 +359,24 @@ public final class Launcher {
                 event -> refreshWorldList(selectedWorldPath()),
                 KeyStroke.getKeyStroke("F5"),
                 JComponent.WHEN_IN_FOCUSED_WINDOW);
+    }
+
+    private static JPanel createSectionBanner(String title, String subtitle) {
+        JPanel banner = new JPanel(new BorderLayout(6, 4));
+        banner.setBackground(new java.awt.Color(38, 62, 48));
+        banner.setBorder(BorderFactory.createEmptyBorder(14, 18, 13, 18));
+        JLabel heading = new JLabel(title);
+        heading.setForeground(java.awt.Color.WHITE);
+        heading.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+        JLabel description = new JLabel(subtitle);
+        description.setForeground(new java.awt.Color(207, 225, 210));
+        description.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+        JPanel labels = new JPanel(new GridLayout(2, 1, 0, 3));
+        labels.setOpaque(false);
+        labels.add(heading);
+        labels.add(description);
+        banner.add(labels, BorderLayout.CENTER);
+        return banner;
     }
 
     private static JButton createLauncherButton(String text) {
@@ -1167,90 +1189,254 @@ public final class Launcher {
         String profileId = selectedProfileId();
         ModManager manager = new ModManager(profileId);
         JDialog dialog = new JDialog(frame, "Minecraft 3D — Моды " + profileId, true);
-        dialog.setLayout(new BorderLayout(8, 8));
+        dialog.setLayout(new BorderLayout(10, 10));
+
         DefaultListModel<ModManager.ModInfo> model = new DefaultListModel<>();
         JList<ModManager.ModInfo> list = new JList<>(model);
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        list.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
-        JLabel info = new JLabel("Моды профиля " + profileId + " отделены от других версий. Общие старые моды тоже загружаются. Устанавливай только доверенные JAR.");
-        info.setBorder(BorderFactory.createEmptyBorder(10, 12, 4, 12));
-        dialog.add(info, BorderLayout.NORTH);
-        dialog.add(new JScrollPane(list), BorderLayout.CENTER);
-        JPanel buttons = new JPanel(new GridLayout(3, 3, 6, 6));
+        list.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        list.setBackground(new java.awt.Color(250, 252, 250));
+        list.setSelectionBackground(new java.awt.Color(214, 232, 216));
+        list.setSelectionForeground(new java.awt.Color(30, 48, 35));
+        list.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(JList<?> source, Object value,
+                    int index, boolean selected, boolean focused) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(
+                        source, value, index, selected, focused);
+                if (value instanceof ModManager.ModInfo mod) {
+                    String state = mod.enabled() ? "● ВКЛЮЧЕН" : "○ ОТКЛЮЧЕН";
+                    String version = mod.version().isBlank() ? "версия не указана" : mod.version();
+                    String api = mod.apiProvider() ? "BlockWorld API найден" : "API provider не найден";
+                    label.setText("<html><b>" + htmlEscape(mod.title()) + "</b> &nbsp; " + state
+                            + "<br><small>" + htmlEscape(mod.fileName()) + " · "
+                            + htmlEscape(version) + " · " + api + "</small>"
+                            + "<br><small>" + htmlEscape(mod.description()) + "</small></html>");
+                    label.setBorder(BorderFactory.createEmptyBorder(9, 12, 9, 12));
+                }
+                return label;
+            }
+        });
+
+        JLabel selectionInfo = new JLabel("Выбери мод, чтобы посмотреть его состояние и описание.");
+        selectionInfo.setOpaque(true);
+        selectionInfo.setBackground(java.awt.Color.WHITE);
+        selectionInfo.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(215, 225, 215)),
+                BorderFactory.createEmptyBorder(9, 12, 9, 12)));
+
         JButton install = createLauncherButton("УСТАНОВИТЬ JAR");
-        JButton toggle = createLauncherButton("ВКЛ / ВЫКЛ");
+        JButton toggle = createLauncherButton("ВКЛЮЧИТЬ");
         JButton remove = createLauncherButton("УДАЛИТЬ");
         JButton folder = createLauncherButton("ПАПКА ПРОФИЛЯ");
         JButton sharedFolder = createLauncherButton("ОБЩИЕ МОДЫ");
         JButton refresh = createLauncherButton("ОБНОВИТЬ");
         JButton close = createLauncherButton("ЗАКРЫТЬ");
+        toggle.setEnabled(false);
+        remove.setEnabled(false);
+
+        Runnable updateSelection = () -> {
+            ModManager.ModInfo selected = list.getSelectedValue();
+            toggle.setEnabled(selected != null);
+            remove.setEnabled(selected != null);
+            toggle.setText(selected != null && selected.enabled() ? "ОТКЛЮЧИТЬ" : "ВКЛЮЧИТЬ");
+            if (selected == null) {
+                selectionInfo.setText("Выбери мод, чтобы посмотреть его состояние и описание.");
+            } else {
+                selectionInfo.setText("<html><b>" + htmlEscape(selected.title()) + "</b> · "
+                        + (selected.enabled() ? "включён" : "отключён")
+                        + " · " + (selected.apiProvider() ? "BlockWorld API найден" : "API provider не найден")
+                        + "<br>" + htmlEscape(selected.description()) + "</html>");
+            }
+        };
         Runnable reload = () -> {
             model.clear();
-            try { for (ModManager.ModInfo mod : manager.listAll()) model.addElement(mod); }
-            catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка модов", JOptionPane.ERROR_MESSAGE); }
+            try {
+                for (ModManager.ModInfo mod : manager.listAll()) model.addElement(mod);
+                if (!model.isEmpty()) list.setSelectedIndex(0);
+                updateSelection.run();
+                if (model.isEmpty()) selectionInfo.setText("Моды пока не установлены. Добавь проверенный файл .jar.");
+            } catch (IOException error) {
+                selectionInfo.setText("Не удалось прочитать моды: " + htmlEscape(error.getMessage()));
+                GameLog.error("Не удалось обновить список модов профиля " + profileId, error);
+            }
         };
-        install.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser(); chooser.setDialogTitle("Выбери мод .jar");
+        list.addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting()) updateSelection.run();
+        });
+
+        install.addActionListener(event -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Выбери мод .jar");
             chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Java mod (*.jar)", "jar"));
             if (chooser.showOpenDialog(dialog) != JFileChooser.APPROVE_OPTION) return;
             int answer = JOptionPane.showConfirmDialog(dialog,
-                    "Мод — исполняемый Java-файл. Он может получить права текущего пользователя. Устанавливать только если доверяешь автору. Продолжить?",
+                    "Мод — исполняемый Java-файл. Он может получить права текущего пользователя. "
+                            + "Устанавливай только файлы от авторов, которым доверяешь. Продолжить?",
                     "Предупреждение безопасности", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (answer != JOptionPane.YES_OPTION) return;
-            try { manager.install(chooser.getSelectedFile().toPath()); reload.run(); }
-            catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка установки", JOptionPane.ERROR_MESSAGE); }
+            try {
+                manager.install(chooser.getSelectedFile().toPath());
+                reload.run();
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(dialog, error.getMessage(),
+                        "Ошибка установки мода", JOptionPane.ERROR_MESSAGE);
+            }
         });
-        toggle.addActionListener(e -> {
-            ModManager.ModInfo selected = list.getSelectedValue(); if (selected == null) return;
+        toggle.addActionListener(event -> {
+            ModManager.ModInfo selected = list.getSelectedValue();
+            if (selected == null) return;
             if (!selected.enabled()) {
                 int answer = JOptionPane.showConfirmDialog(dialog,
                         "При включении этот мод сможет выполнять Java-код внутри игры. Продолжить?",
                         "Включить мод", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
                 if (answer != JOptionPane.YES_OPTION) return;
             }
-            try { manager.setEnabled(selected, !selected.enabled()); reload.run(); }
-            catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE); }
+            try {
+                manager.setEnabled(selected, !selected.enabled());
+                reload.run();
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(dialog, error.getMessage(),
+                        "Ошибка изменения мода", JOptionPane.ERROR_MESSAGE);
+            }
         });
-        remove.addActionListener(e -> {
-            ModManager.ModInfo selected = list.getSelectedValue(); if (selected == null) return;
-            int answer = JOptionPane.showConfirmDialog(dialog, "Удалить мод «" + selected.title() + "»?", "Удалить мод", JOptionPane.YES_NO_OPTION);
-            if (answer == JOptionPane.YES_OPTION) try { manager.remove(selected); reload.run(); }
-            catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE); }
+        remove.addActionListener(event -> {
+            ModManager.ModInfo selected = list.getSelectedValue();
+            if (selected == null) return;
+            int answer = JOptionPane.showConfirmDialog(dialog,
+                    "Удалить мод «" + selected.title() + "»?", "Удалить мод",
+                    JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (answer != JOptionPane.YES_OPTION) return;
+            try {
+                manager.remove(selected);
+                reload.run();
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(dialog, error.getMessage(),
+                        "Ошибка удаления мода", JOptionPane.ERROR_MESSAGE);
+            }
         });
-        folder.addActionListener(e -> openFolder(manager.root()));
-        sharedFolder.addActionListener(e -> openFolder(GamePaths.modsDirectory()));
-        refresh.addActionListener(e -> reload.run());
-        close.addActionListener(e -> dialog.dispose());
-        buttons.add(install); buttons.add(toggle); buttons.add(remove);
-        buttons.add(folder); buttons.add(sharedFolder); buttons.add(refresh); buttons.add(close);
+        folder.addActionListener(event -> openFolder(manager.root()));
+        sharedFolder.addActionListener(event -> openFolder(GamePaths.modsDirectory()));
+        refresh.addActionListener(event -> reload.run());
+        close.addActionListener(event -> dialog.dispose());
+
+        JPanel top = new JPanel(new BorderLayout(8, 8));
+        top.add(createSectionBanner("МОДЫ ПРОФИЛЯ " + profileId,
+                "Управление дополнениями для выбранной версии игры."), BorderLayout.NORTH);
+        JLabel warning = new JLabel("Безопасность: моды JAR исполняют Java-код. Используй только доверенные файлы.");
+        warning.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        top.add(warning, BorderLayout.SOUTH);
+        JPanel center = new JPanel(new BorderLayout(8, 8));
+        center.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
+        center.add(new JScrollPane(list), BorderLayout.CENTER);
+        center.add(selectionInfo, BorderLayout.SOUTH);
+        JPanel buttons = new JPanel(new GridLayout(2, 4, 8, 8));
+        buttons.setBorder(BorderFactory.createEmptyBorder(0, 12, 12, 12));
+        buttons.add(install);
+        buttons.add(toggle);
+        buttons.add(remove);
+        buttons.add(refresh);
+        buttons.add(folder);
+        buttons.add(sharedFolder);
+        buttons.add(close);
+        dialog.add(top, BorderLayout.NORTH);
+        dialog.add(center, BorderLayout.CENTER);
         dialog.add(buttons, BorderLayout.SOUTH);
         reload.run();
-        dialog.setSize(760, 430); dialog.setLocationRelativeTo(frame); dialog.setVisible(true);
+        dialog.getRootPane().setDefaultButton(refresh);
+        dialog.setMinimumSize(new Dimension(760, 500));
+        dialog.setSize(820, 540);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
     }
 
     private void showMultiplayerDialog() {
-        Object[] options = {"Создать LAN-сервер", "Подключиться", "Отмена"};
-        int choice = JOptionPane.showOptionDialog(frame,
-                "Совместный мир: персонажи, перемещение и блоки синхронизируются через сервер. Инвентарь и существа пока локальные.",
-                "Minecraft 3D — Multiplayer", JOptionPane.DEFAULT_OPTION,
-                JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
-        if (choice == 0) hostMultiplayerServer();
-        else if (choice == 1) joinMultiplayerServer();
+        JDialog dialog = new JDialog(frame, "Minecraft 3D — Сетевая игра", true);
+        dialog.setLayout(new BorderLayout(12, 12));
+
+        JPanel choices = new JPanel(new GridLayout(1, 2, 12, 12));
+        choices.setBorder(BorderFactory.createEmptyBorder(14, 16, 8, 16));
+
+        JPanel hostCard = new JPanel(new BorderLayout(8, 10));
+        hostCard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("СОЗДАТЬ МИР ДЛЯ ДРУЗЕЙ"),
+                BorderFactory.createEmptyBorder(12, 12, 12, 12)));
+        JLabel hostDescription = new JLabel("<html>Открой LAN-сервер на этом компьютере. "
+                + "Выбери сохранённый мир, количество игроков и пароль комнаты.</html>");
+        JButton host = createLauncherButton("СОЗДАТЬ LAN-СЕРВЕР");
+        hostCard.add(hostDescription, BorderLayout.CENTER);
+        hostCard.add(host, BorderLayout.SOUTH);
+
+        JPanel joinCard = new JPanel(new BorderLayout(8, 10));
+        joinCard.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder("ПОДКЛЮЧИТЬСЯ К ДРУГУ"),
+                BorderFactory.createEmptyBorder(12, 12, 12, 12)));
+        JLabel joinDescription = new JLabel("<html>Введи IP-адрес и порт сервера, никнейм, "
+                + "пароль комнаты и данные игрового аккаунта.</html>");
+        JButton join = createLauncherButton("ПОДКЛЮЧИТЬСЯ");
+        joinCard.add(joinDescription, BorderLayout.CENTER);
+        joinCard.add(join, BorderLayout.SOUTH);
+
+        choices.add(hostCard);
+        choices.add(joinCard);
+        JPanel top = new JPanel(new BorderLayout(8, 8));
+        top.add(createSectionBanner("СЕТЕВАЯ ИГРА",
+                "Создай комнату или присоединись к существующей игре."), BorderLayout.NORTH);
+        JLabel note = new JLabel("<html>Синхронизация: игроки, перемещение и блоки. "
+                + "Некоторые игровые системы, включая инвентарь и существ, пока работают локально.</html>");
+        note.setBorder(BorderFactory.createEmptyBorder(2, 16, 0, 16));
+        top.add(note, BorderLayout.SOUTH);
+
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton close = createLauncherButton("ЗАКРЫТЬ");
+        close.addActionListener(event -> dialog.dispose());
+        host.addActionListener(event -> {
+            dialog.dispose();
+            hostMultiplayerServer();
+        });
+        join.addActionListener(event -> {
+            dialog.dispose();
+            joinMultiplayerServer();
+        });
+        bottom.add(close);
+
+        dialog.add(top, BorderLayout.NORTH);
+        dialog.add(choices, BorderLayout.CENTER);
+        dialog.add(bottom, BorderLayout.SOUTH);
+        dialog.getRootPane().setDefaultButton(join);
+        dialog.setSize(760, 380);
+        dialog.setMinimumSize(new Dimension(680, 340));
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
     }
 
     private void hostMultiplayerServer() {
-        JTextField port = new JTextField("25575");
-        JTextField limit = new JTextField("8");
-        JPasswordField password = new JPasswordField();
-        JPasswordField accountPassword = new JPasswordField();
+        JTextField port = new JTextField("25575", 12);
+        JTextField limit = new JTextField("8", 12);
+        JPasswordField password = new JPasswordField(12);
+        JPasswordField accountPassword = new JPasswordField(12);
         JComboBox<String> accountMode = new JComboBox<>(new String[]{"Создать аккаунт", "Войти в аккаунт"});
-        JPanel form = new JPanel(new GridLayout(5, 2, 8, 8));
-        form.add(new JLabel("Порт:")); form.add(port);
-        form.add(new JLabel("Игроков (1–32):")); form.add(limit);
+        port.setToolTipText("Сетевой порт от 1 до 65535. Друзьям понадобится этот порт.");
+        limit.setToolTipText("Максимальное количество игроков: от 1 до 32.");
+        password.setToolTipText("Необязательный пароль для входа в комнату.");
+        accountPassword.setToolTipText("Пароль игрового аккаунта, не менее 8 символов.");
+
+        JPanel form = new JPanel(new GridLayout(5, 2, 10, 10));
+        form.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        form.add(new JLabel("Порт сервера:")); form.add(port);
+        form.add(new JLabel("Максимум игроков:")); form.add(limit);
         form.add(new JLabel("Пароль комнаты (необязательно):")); form.add(password);
-        form.add(new JLabel("Аккаунт ведущего (8+ символов):")); form.add(accountPassword);
-        form.add(new JLabel("Действие с аккаунтом:")); form.add(accountMode);
-        if (JOptionPane.showConfirmDialog(frame, form, "Создать LAN-сервер", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
+        form.add(new JLabel("Пароль аккаунта (8+ символов):")); form.add(accountPassword);
+        form.add(new JLabel("Аккаунт ведущего:")); form.add(accountMode);
+        JPanel content = new JPanel(new BorderLayout(8, 8));
+        content.add(createSectionBanner("СОЗДАНИЕ LAN-СЕРВЕРА",
+                "Сервер будет работать на этом компьютере, пока открыта сетевая сессия."), BorderLayout.NORTH);
+        content.add(form, BorderLayout.CENTER);
+        JLabel note = new JLabel("Выбери мир в главном окне заранее. Пароль комнаты можно оставить пустым.");
+        note.setBorder(BorderFactory.createEmptyBorder(0, 14, 8, 14));
+        content.add(note, BorderLayout.SOUTH);
+        if (JOptionPane.showConfirmDialog(frame, content, "Создать LAN-сервер",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
 
         WorldEntry selectedWorld = (WorldEntry) worldSelector.getSelectedItem();
         if (selectedWorld == null) {
@@ -1261,13 +1447,23 @@ public final class Launcher {
         MultiplayerServer server = null;
         MultiplayerClient client = null;
         try {
+            int portNumber = Integer.parseInt(port.getText().trim());
+            int playerLimit = Integer.parseInt(limit.getText().trim());
+            if (portNumber < 1 || portNumber > 65535) {
+                throw new IllegalArgumentException("Порт должен быть от 1 до 65535.");
+            }
+            if (playerLimit < 1 || playerLimit > 32) {
+                throw new IllegalArgumentException("Количество игроков должно быть от 1 до 32.");
+            }
             String secret = new String(password.getPassword());
             String accountSecret = new String(accountPassword.getPassword());
-            if (accountSecret.length() < 8) throw new IllegalArgumentException("Пароль аккаунта должен содержать минимум 8 символов.");
+            if (accountSecret.length() < 8) {
+                throw new IllegalArgumentException("Пароль аккаунта должен содержать минимум 8 символов.");
+            }
             boolean createAccount = accountMode.getSelectedIndex() == 0;
-            server = new MultiplayerServer(secret, Integer.parseInt(limit.getText().trim()),
+            server = new MultiplayerServer(secret, playerLimit,
                     GamePaths.multiplayerServerWorld(selectedWorld.file()), true);
-            int actualPort = server.start(Integer.parseInt(port.getText().trim()));
+            int actualPort = server.start(portNumber);
             client = new MultiplayerClient();
             showMultiplayerLobby("LAN-сервер запущен. Порт: " + actualPort
                     + ". Сохранение сервера: " + GamePaths.multiplayerServerWorld(selectedWorld.file()).getFileName()
@@ -1282,33 +1478,53 @@ public final class Launcher {
     }
 
     private void joinMultiplayerServer() {
-        JTextField host = new JTextField("127.0.0.1");
-        JTextField port = new JTextField("25575");
-        JTextField nickname = new JTextField("Player");
-        JPasswordField password = new JPasswordField();
-        JPasswordField accountPassword = new JPasswordField();
+        JTextField host = new JTextField("127.0.0.1", 16);
+        JTextField port = new JTextField("25575", 8);
+        JTextField nickname = new JTextField("Player", 16);
+        JPasswordField password = new JPasswordField(16);
+        JPasswordField accountPassword = new JPasswordField(16);
         JComboBox<String> accountMode = new JComboBox<>(new String[]{"Войти в аккаунт", "Создать аккаунт"});
-        JPanel form = new JPanel(new GridLayout(6, 2, 8, 8));
-        form.add(new JLabel("Адрес:")); form.add(host);
+        host.setToolTipText("IP-адрес или имя компьютера ведущего LAN-сервера.");
+        port.setToolTipText("Порт, который указал ведущий.");
+        nickname.setToolTipText("Имя, которое увидят другие игроки.");
+        password.setToolTipText("Пароль комнаты, если ведущий его установил.");
+        accountPassword.setToolTipText("Пароль игрового аккаунта, не менее 8 символов.");
+
+        JPanel form = new JPanel(new GridLayout(6, 2, 10, 10));
+        form.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+        form.add(new JLabel("Адрес сервера:")); form.add(host);
         form.add(new JLabel("Порт:")); form.add(port);
-        form.add(new JLabel("Никнейм / аккаунт:")); form.add(nickname);
+        form.add(new JLabel("Никнейм:")); form.add(nickname);
         form.add(new JLabel("Пароль комнаты:")); form.add(password);
         form.add(new JLabel("Пароль аккаунта (8+ символов):")); form.add(accountPassword);
-        form.add(new JLabel("Действие с аккаунтом:")); form.add(accountMode);
-        if (JOptionPane.showConfirmDialog(frame, form, "Подключиться к серверу", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) return;
+        form.add(new JLabel("Аккаунт:")); form.add(accountMode);
+        JPanel content = new JPanel(new BorderLayout(8, 8));
+        content.add(createSectionBanner("ПОДКЛЮЧЕНИЕ К СЕРВЕРУ",
+                "Введи адрес ведущего и свои данные для входа."), BorderLayout.NORTH);
+        content.add(form, BorderLayout.CENTER);
+        JLabel note = new JLabel("Уточни IP-адрес и пароль у владельца комнаты.");
+        note.setBorder(BorderFactory.createEmptyBorder(0, 14, 8, 14));
+        content.add(note, BorderLayout.SOUTH);
+        if (JOptionPane.showConfirmDialog(frame, content, "Подключиться к серверу",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
 
         try {
             String address = host.getText().trim();
             int portNumber = Integer.parseInt(port.getText().trim());
-            if (address.isBlank()) throw new IllegalArgumentException("Укажи адрес сервера");
-            if (portNumber < 1 || portNumber > 65535) throw new IllegalArgumentException("Порт должен быть от 1 до 65535");
+            if (address.isBlank()) throw new IllegalArgumentException("Укажи адрес сервера.");
+            if (portNumber < 1 || portNumber > 65535) {
+                throw new IllegalArgumentException("Порт должен быть от 1 до 65535.");
+            }
             String playerName = nickname.getText().trim();
             if (playerName.isBlank()) playerName = "Player";
             String accountSecret = new String(accountPassword.getPassword());
-            if (accountSecret.length() < 8) throw new IllegalArgumentException("Пароль аккаунта должен содержать минимум 8 символов.");
+            if (accountSecret.length() < 8) {
+                throw new IllegalArgumentException("Пароль аккаунта должен содержать минимум 8 символов.");
+            }
             boolean createAccount = accountMode.getSelectedIndex() == 1;
             showMultiplayerLobby("Подключение к " + address + ":" + portNumber,
-                    new MultiplayerClient(), null, playerName, new String(password.getPassword()), accountSecret, createAccount, address, portNumber, null);
+                    new MultiplayerClient(), null, playerName, new String(password.getPassword()),
+                    accountSecret, createAccount, address, portNumber, null);
         } catch (IllegalArgumentException error) {
             JOptionPane.showMessageDialog(frame, "Проверь адрес и порт: " + error.getMessage(),
                     "Неверные данные сервера", JOptionPane.WARNING_MESSAGE);
@@ -1320,21 +1536,35 @@ public final class Launcher {
                                       boolean createAccount, String host, int port, WorldEntry hostWorld) {
         JDialog dialog = new JDialog(frame, "Minecraft 3D — Сетевая комната", false);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-        dialog.setLayout(new BorderLayout(8, 8));
-        JLabel info = new JLabel(infoText + " | Подключение...");
-        info.setBorder(BorderFactory.createEmptyBorder(10, 10, 4, 10));
+        dialog.setLayout(new BorderLayout(10, 10));
+
+        JLabel info = new JLabel("Подготовка подключения...");
+        info.setOpaque(true);
+        info.setBackground(java.awt.Color.WHITE);
+        info.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+        JLabel connectionState = new JLabel("● УСТАНОВКА СОЕДИНЕНИЯ");
+        connectionState.setForeground(new java.awt.Color(130, 94, 33));
+        connectionState.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+
         JTextArea chat = new JTextArea();
         chat.setEditable(false);
         chat.setLineWrap(true);
         chat.setWrapStyleWord(true);
+        chat.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        chat.setBackground(new java.awt.Color(248, 250, 248));
+        chat.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
+        chat.setText("Сетевая комната Minecraft 3D\n" + infoText + "\n\nПодключаемся...");
         JTextField message = new JTextField();
+        message.setToolTipText("Напиши сообщение и нажми Enter или кнопку «Отправить».");
         JButton send = createLauncherButton("ОТПРАВИТЬ");
         send.setEnabled(false);
         JButton play = createLauncherButton("ЗАПУСТИТЬ ВЫБРАННЫЙ МИР");
         play.setEnabled(false);
+        play.setBackground(new java.awt.Color(195, 225, 198));
         boolean[] handedOffToGame = {false};
 
         Runnable sendMessage = () -> {
+            if (message.getText().isBlank()) return;
             try {
                 client.sendChat(message.getText());
                 message.setText("");
@@ -1346,16 +1576,24 @@ public final class Launcher {
         send.addActionListener(event -> sendMessage.run());
         message.addActionListener(event -> sendMessage.run());
 
-        JPanel compose = new JPanel(new BorderLayout(6, 6));
+        JPanel top = new JPanel(new BorderLayout(8, 8));
+        top.add(createSectionBanner("СЕТЕВАЯ КОМНАТА",
+                "Общение и вход в совместный мир."), BorderLayout.NORTH);
+        top.add(info, BorderLayout.CENTER);
+        JPanel compose = new JPanel(new BorderLayout(8, 8));
         compose.add(message, BorderLayout.CENTER);
         compose.add(send, BorderLayout.EAST);
-        JPanel bottom = new JPanel(new BorderLayout(6, 6));
+        JPanel bottom = new JPanel(new BorderLayout(8, 8));
+        bottom.setBorder(BorderFactory.createEmptyBorder(0, 12, 12, 12));
+        bottom.add(connectionState, BorderLayout.NORTH);
         bottom.add(compose, BorderLayout.CENTER);
         bottom.add(play, BorderLayout.SOUTH);
-        dialog.add(info, BorderLayout.NORTH);
+
+        dialog.add(top, BorderLayout.NORTH);
         dialog.add(new JScrollPane(chat), BorderLayout.CENTER);
         dialog.add(bottom, BorderLayout.SOUTH);
-        dialog.setSize(680, 440);
+        dialog.setSize(760, 520);
+        dialog.setMinimumSize(new Dimension(640, 440));
         dialog.setLocationRelativeTo(frame);
         dialog.addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosed(java.awt.event.WindowEvent event) {
@@ -1392,6 +1630,8 @@ public final class Launcher {
                     if (dialog.isDisplayable()) {
                         info.setText("Подключено к " + host + ":" + port
                                 + ". Нажми кнопку ниже, чтобы войти в общий мир.");
+                        connectionState.setText("● СОЕДИНЕНИЕ УСТАНОВЛЕНО");
+                        connectionState.setForeground(new java.awt.Color(43, 116, 61));
                         send.setEnabled(true);
                         play.setEnabled(true);
                         message.requestFocusInWindow();
@@ -1406,6 +1646,8 @@ public final class Launcher {
                     if (dialog.isDisplayable()) {
                         chat.append("Ошибка подключения: " + error.getMessage() + System.lineSeparator());
                         info.setText("Не удалось подключиться. Проверь адрес, порт и пароль.");
+                        connectionState.setText("● НЕТ СОЕДИНЕНИЯ");
+                        connectionState.setForeground(new java.awt.Color(170, 55, 45));
                         send.setEnabled(false);
                         play.setEnabled(false);
                     }
@@ -1419,63 +1661,170 @@ public final class Launcher {
     private void showResourcePacksDialog() {
         ResourcePackManager manager = new ResourcePackManager();
         JDialog dialog = new JDialog(frame, "Minecraft 3D — Ресурс-паки", true);
-        dialog.setLayout(new BorderLayout(8, 8));
-        JComboBox<ResourcePackManager.ResourcePackInfo> packs = new JComboBox<>();
-        JLabel description = new JLabel("PNG-текстуры 16×16: textures/blocks/<block-id>.png; доступны варианты _top, _side, _bottom.");
-        JPanel center = new JPanel(new BorderLayout(8, 8));
-        center.setBorder(BorderFactory.createEmptyBorder(18, 18, 12, 18));
-        center.add(new JLabel("Выбери набор ресурсов:"), BorderLayout.NORTH);
-        center.add(packs, BorderLayout.CENTER);
-        center.add(description, BorderLayout.SOUTH);
-        dialog.add(center, BorderLayout.CENTER);
-        packs.addActionListener(e -> {
-            Object selected = packs.getSelectedItem();
-            if (selected instanceof ResourcePackManager.ResourcePackInfo pack) {
-                description.setText("<html>" + pack.description() + "<br>PNG: textures/blocks/&lt;block-id&gt;.png (16×16; размеры 1–256 автоматически приводятся к 16×16).</html>");
+        dialog.setLayout(new BorderLayout(10, 10));
+
+        DefaultListModel<ResourcePackManager.ResourcePackInfo> model = new DefaultListModel<>();
+        JList<ResourcePackManager.ResourcePackInfo> packs = new JList<>(model);
+        packs.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        packs.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 13));
+        packs.setBackground(new java.awt.Color(250, 252, 250));
+        packs.setSelectionBackground(new java.awt.Color(214, 232, 216));
+        packs.setSelectionForeground(new java.awt.Color(30, 48, 35));
+        String[] activePackId = {"Default"};
+        packs.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(JList<?> source, Object value,
+                    int index, boolean selected, boolean focused) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(
+                        source, value, index, selected, focused);
+                if (value instanceof ResourcePackManager.ResourcePackInfo pack) {
+                    String state = pack.id().equals(activePackId[0]) ? "● АКТИВЕН" : "○ ДОСТУПЕН";
+                    String type = pack.builtIn() ? "встроенный" : "установленный";
+                    label.setText("<html><b>" + htmlEscape(pack.name()) + "</b> &nbsp; " + state
+                            + "<br><small>" + htmlEscape(pack.id()) + " · " + type + "</small></html>");
+                    label.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+                }
+                return label;
             }
         });
-        JPanel buttons = new JPanel(new GridLayout(2, 3, 6, 6));
+
+        JLabel details = new JLabel("Выбери ресурс-пак, чтобы увидеть описание.");
+        details.setOpaque(true);
+        details.setBackground(java.awt.Color.WHITE);
+        details.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(215, 225, 215)),
+                BorderFactory.createEmptyBorder(12, 14, 12, 14)));
+
         JButton apply = createLauncherButton("ПРИМЕНИТЬ");
         JButton install = createLauncherButton("ИМПОРТ ZIP");
         JButton remove = createLauncherButton("УДАЛИТЬ ПАК");
-        JButton folder = createLauncherButton("ПАПКА РЕСУРС-ПАКОВ");
+        JButton folder = createLauncherButton("ПАПКА ПАКОВ");
+        JButton refresh = createLauncherButton("ОБНОВИТЬ");
         JButton close = createLauncherButton("ЗАКРЫТЬ");
+        apply.setEnabled(false);
+        remove.setEnabled(false);
+
+        Runnable updateSelection = () -> {
+            ResourcePackManager.ResourcePackInfo selected = packs.getSelectedValue();
+            apply.setEnabled(selected != null && !selected.id().equals(activePackId[0]));
+            remove.setEnabled(selected != null && !selected.builtIn());
+            if (selected == null) {
+                details.setText("Выбери ресурс-пак, чтобы увидеть описание.");
+            } else {
+                String state = selected.id().equals(activePackId[0]) ? "Сейчас активен" : "Не активен";
+                String source = selected.builtIn() ? "Встроенный ресурс-пак" : "Установленный ресурс-пак";
+                details.setText("<html><b>" + htmlEscape(selected.name()) + "</b> · " + state
+                        + "<br>" + source
+                        + "<br><br>" + htmlEscape(selected.description())
+                        + "<br><br><small>ID: " + htmlEscape(selected.id())
+                        + "<br>Каталог: " + htmlEscape(selected.directory().toString())
+                        + "<br>Текстуры: textures/blocks/&lt;block-id&gt;.png (16×16)</small></html>");
+            }
+        };
         Runnable reload = () -> {
             try {
-                String active = manager.selectedPackId();
-                packs.removeAllItems();
-                for (var pack : manager.listPacks()) { packs.addItem(pack); if (pack.id().equals(active)) packs.setSelectedItem(pack); }
-            } catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка паков", JOptionPane.ERROR_MESSAGE); }
+                String selectedId = manager.selectedPackId();
+                activePackId[0] = selectedId;
+                model.clear();
+                for (ResourcePackManager.ResourcePackInfo pack : manager.listPacks()) {
+                    model.addElement(pack);
+                    if (pack.id().equals(selectedId)) packs.setSelectedValue(pack, true);
+                }
+                if (packs.getSelectedValue() == null && !model.isEmpty()) packs.setSelectedIndex(0);
+                packs.repaint();
+                updateSelection.run();
+            } catch (IOException error) {
+                details.setText("Не удалось прочитать ресурс-паки: " + htmlEscape(error.getMessage()));
+                GameLog.error("Не удалось обновить список ресурс-паков", error);
+            }
         };
-        apply.addActionListener(e -> {
-            Object selected = packs.getSelectedItem(); if (!(selected instanceof ResourcePackManager.ResourcePackInfo pack)) return;
-            try { manager.select(pack.id()); status.setText("Ресурс-пак «" + pack.name() + "» применится при следующем запуске мира."); dialog.dispose(); }
-            catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE); }
+        packs.addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting()) updateSelection.run();
         });
-        install.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser(); chooser.setDialogTitle("Импорт ресурс-пака ZIP");
+
+        apply.addActionListener(event -> {
+            ResourcePackManager.ResourcePackInfo selected = packs.getSelectedValue();
+            if (selected == null) return;
+            try {
+                manager.select(selected.id());
+                status.setText("Ресурс-пак «" + selected.name() + "» применится при следующем запуске мира.");
+                reload.run();
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(dialog, error.getMessage(),
+                        "Ошибка применения пакета", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+        install.addActionListener(event -> {
+            JFileChooser chooser = new JFileChooser();
+            chooser.setDialogTitle("Импорт ресурс-пака ZIP");
             chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("Resource pack (*.zip)", "zip"));
             if (chooser.showOpenDialog(dialog) != JFileChooser.APPROVE_OPTION) return;
-            try { var pack = manager.installZip(chooser.getSelectedFile().toPath()); reload.run();
-                JOptionPane.showMessageDialog(dialog, "Установлен ресурс-пак: " + pack.name() + ". PNG-текстуры ищутся в textures/blocks/. Теперь выбери его и нажми «ПРИМЕНИТЬ».", "Готово", JOptionPane.INFORMATION_MESSAGE); }
-            catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка импорта", JOptionPane.ERROR_MESSAGE); }
+            try {
+                ResourcePackManager.ResourcePackInfo installed = manager.installZip(chooser.getSelectedFile().toPath());
+                reload.run();
+                packs.setSelectedValue(installed, true);
+                updateSelection.run();
+                JOptionPane.showMessageDialog(dialog,
+                        "Установлен ресурс-пак: " + installed.name()
+                                + ". Проверь описание и нажми «ПРИМЕНИТЬ».",
+                        "Импорт завершён", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(dialog, error.getMessage(),
+                        "Ошибка импорта", JOptionPane.ERROR_MESSAGE);
+            }
         });
-        remove.addActionListener(e -> {
-            Object selected = packs.getSelectedItem();
-            if (!(selected instanceof ResourcePackManager.ResourcePackInfo pack)) return;
-            if (pack.builtIn()) {
-                JOptionPane.showMessageDialog(dialog, "Встроенный ресурс-пак нельзя удалить.", "Информация", JOptionPane.INFORMATION_MESSAGE);
+        remove.addActionListener(event -> {
+            ResourcePackManager.ResourcePackInfo selected = packs.getSelectedValue();
+            if (selected == null) return;
+            if (selected.builtIn()) {
+                JOptionPane.showMessageDialog(dialog, "Встроенный ресурс-пак нельзя удалить.",
+                        "Информация", JOptionPane.INFORMATION_MESSAGE);
                 return;
             }
-            int answer = JOptionPane.showConfirmDialog(dialog, "Удалить ресурс-пак «" + pack.name() + "»?", "Удалить пак", JOptionPane.YES_NO_OPTION);
-            if (answer == JOptionPane.YES_OPTION) try { manager.remove(pack.id()); reload.run(); }
-            catch (IOException ex) { JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Ошибка", JOptionPane.ERROR_MESSAGE); }
+            int answer = JOptionPane.showConfirmDialog(dialog,
+                    "Удалить ресурс-пак «" + selected.name() + "»?",
+                    "Удалить пак", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (answer != JOptionPane.YES_OPTION) return;
+            try {
+                manager.remove(selected.id());
+                reload.run();
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(dialog, error.getMessage(),
+                        "Ошибка удаления", JOptionPane.ERROR_MESSAGE);
+            }
         });
-        folder.addActionListener(e -> openFolder(manager.root()));
-        close.addActionListener(e -> dialog.dispose());
-        buttons.add(apply); buttons.add(install); buttons.add(remove); buttons.add(folder); buttons.add(close);
+        folder.addActionListener(event -> openFolder(manager.root()));
+        refresh.addActionListener(event -> reload.run());
+        close.addActionListener(event -> dialog.dispose());
+
+        JPanel top = new JPanel(new BorderLayout(8, 8));
+        top.add(createSectionBanner("РЕСУРС-ПАКИ",
+                "Выбери внешний вид блоков и текстур для следующего запуска мира."), BorderLayout.NORTH);
+        JLabel hint = new JLabel("Импорт ZIP: в корне архива должны находиться pack.properties и папка textures/blocks.");
+        hint.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
+        top.add(hint, BorderLayout.SOUTH);
+        JPanel center = new JPanel(new BorderLayout(8, 8));
+        center.setBorder(BorderFactory.createEmptyBorder(0, 12, 0, 12));
+        center.add(new JScrollPane(packs), BorderLayout.CENTER);
+        center.add(details, BorderLayout.SOUTH);
+        JPanel buttons = new JPanel(new GridLayout(2, 3, 8, 8));
+        buttons.setBorder(BorderFactory.createEmptyBorder(0, 12, 12, 12));
+        buttons.add(apply);
+        buttons.add(install);
+        buttons.add(remove);
+        buttons.add(folder);
+        buttons.add(refresh);
+        buttons.add(close);
+
+        dialog.add(top, BorderLayout.NORTH);
+        dialog.add(center, BorderLayout.CENTER);
         dialog.add(buttons, BorderLayout.SOUTH);
-        reload.run(); dialog.setSize(650, 260); dialog.setLocationRelativeTo(frame); dialog.setVisible(true);
+        reload.run();
+        dialog.getRootPane().setDefaultButton(apply);
+        dialog.setMinimumSize(new Dimension(700, 480));
+        dialog.setSize(760, 520);
+        dialog.setLocationRelativeTo(frame);
+        dialog.setVisible(true);
     }
 
     private void openFolder(Path folder) {

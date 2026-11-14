@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VersionManagerTest {
     @Test
-    void includesAllProfilesAndDefaultsToLauncherBackupUpdate() {
-        assertEquals(45, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.18", VersionManager.getDefaultVersion().id());
+    void includesAllProfilesAndDefaultsToLauncherUiPolish() {
+        assertEquals(46, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.19", VersionManager.getDefaultVersion().id());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());
@@ -69,6 +69,9 @@ class VersionManagerTest {
         assertEquals("Launcher Backup Update", VersionManager.find("1.9.18").displayName());
         assertEquals(144, VersionManager.find("1.9.18").worldRadius());
         assertTrue(VersionManager.find("1.9.18").survival());
+        assertEquals("Launcher UI Polish", VersionManager.find("1.9.19").displayName());
+        assertEquals(144, VersionManager.find("1.9.19").worldRadius());
+        assertTrue(VersionManager.find("1.9.19").survival());
         assertEquals("Village Defense & Combat Update", VersionManager.find("1.8.0").displayName());
         assertEquals(144, VersionManager.find("1.8.0").worldRadius());
         assertTrue(VersionManager.find("1.8.0").survival());

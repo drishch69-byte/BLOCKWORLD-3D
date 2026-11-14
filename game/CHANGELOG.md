@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.19 — Launcher UI Polish
+- Redesigned the mods manager with clear enabled/disabled states, mod versions, API-provider status and selected-mod details.
+- Redesigned the resource-pack manager as a list with active-pack markers, metadata details, and refresh controls.
+- Replaced the basic multiplayer prompt with separate host/join cards and redesigned the host, join and room windows.
+- Added connection-state feedback, cleaner chat layout and tooltips for multiplayer fields.
+- Added client-side validation for server ports and host player limits.
+- Kept the existing world format and profile-specific settings unchanged.
+
 ## 1.9.18 — Launcher Backup Update
 - Refreshed all launcher buttons with a consistent visual style, clearer tooltips and keyboard-friendly focus.
 - Reorganized settings into **Screen**, **Graphics**, and **Performance** tabs with explanations for each option and a live approximate load indicator.

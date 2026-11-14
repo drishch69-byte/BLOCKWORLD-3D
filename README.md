@@ -29,7 +29,17 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current version
 
-**1.9.18 — Launcher Backup Update (development)**
+**1.9.19 — Launcher UI Polish (development)**
+
+- The mods window now shows enabled/disabled state, mod version, BlockWorld API availability and a details panel.
+- Resource packs use a dedicated list that marks the active pack and shows its description and folder.
+- Multiplayer now has clearer host/join cards, guided connection forms and a redesigned room chat.
+- Server setup validates the port and maximum player count before starting.
+- Existing world saves and profile-specific settings remain compatible.
+
+**Previous: 1.9.18 — Launcher Backup Update**
+
+
 
 - All launcher buttons now share a consistent style and useful tooltips.
 - Settings are grouped into **Screen**, **Graphics**, and **Performance** tabs; each option includes an explanation and the dialog shows an approximate load estimate.
