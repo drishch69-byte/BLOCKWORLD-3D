@@ -19,7 +19,8 @@ class VoxelWorldVillageTest {
         long furnaces = world.snapshotBlocks().values().stream()
                 .filter(type -> type == BlockType.FURNACE).count();
 
-        assertEquals(2L, bookshelves);
+        assertEquals(12L, bookshelves,
+                "The public library has two bookcase rows, three bays long and two shelves high");
         assertEquals(4L, beds);
         assertTrue(furnaces >= 2L);
 
