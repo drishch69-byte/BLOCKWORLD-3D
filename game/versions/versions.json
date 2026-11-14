@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.24",
+  "defaultVersion": "1.9.25",
   "versions": [
     {
       "id": "0.1.0",
@@ -254,6 +254,11 @@
     {
       "id": "1.9.24",
       "name": "Living Villages & Creature AI",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.25",
+      "name": "Villager Workplaces",
       "status": "current"
     }
   ]
