@@ -9,7 +9,7 @@ This roadmap records implemented releases and future proposals. Versions 1.1.0, 
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
 
-## 1.9.13 — Farm Pens & Smart Feeders (in progress)
+## 1.9.13 — Farm Pens & Smart Feeders (released)
 - Craft and place wooden fence blocks to build animal pens.
 - Add feeders holding up to 64 wheat and 64 seeds, saved with animal sidecar data.
 - Automate species-appropriate feeding for nearby farm animals.
