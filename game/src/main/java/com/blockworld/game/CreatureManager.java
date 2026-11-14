@@ -230,6 +230,8 @@ public final class CreatureManager {
 
     public void update(float tpf, Vector3f playerPosition, VoxelWorld world) {
         List<Long> defeated = new ArrayList<>();
+        // Determine which hostiles threaten a village once per tick, not once per guardian.
+        List<Visual> protectedHostiles = findVillageThreats();
         for (Visual visual : visuals.values()) {
             WorldCreature state = visual.state;
             float previousX = state.x();
@@ -258,7 +260,7 @@ public final class CreatureManager {
                     nextZ = visual.nextZ;
                 }
             } else if (state.type().isGuardian()) {
-                Visual threat = nearestProtectedHostile(visual);
+                Visual threat = nearestProtectedHostile(visual, protectedHostiles);
                 if (threat != null) {
                     float dx = threat.state.x() - state.x();
                     float dz = threat.state.z() - state.z();
@@ -355,26 +357,36 @@ public final class CreatureManager {
         visual.nextZ = nextZ;
     }
 
-    private Visual nearestProtectedHostile(Visual guardian) {
+    private List<Visual> findVillageThreats() {
+        List<WorldCreature> villagers = new ArrayList<>();
+        List<Visual> hostiles = new ArrayList<>();
+        for (Visual visual : visuals.values()) {
+            if (visual.state.type().isVillager()) villagers.add(visual.state);
+            if (visual.state.type().isHostile() && visual.health > 0f) hostiles.add(visual);
+        }
+        if (villagers.isEmpty() || hostiles.isEmpty()) return List.of();
+
+        List<Visual> threats = new ArrayList<>();
+        for (Visual hostile : hostiles) {
+            if (CreatureThreatRules.isThreateningVillage(hostile.state, villagers, 18f)) {
+                threats.add(hostile);
+            }
+        }
+        return threats;
+    }
+
+    private Visual nearestProtectedHostile(Visual guardian, List<Visual> protectedHostiles) {
         Visual closest = null;
         float best = 14f * 14f;
-        for (Visual candidate : visuals.values()) {
-            if (!candidate.state.type().isHostile() || candidate.health <= 0f) continue;
-            boolean threatensVillage = false;
-            for (Visual villager : visuals.values()) {
-                if (!villager.state.type().isVillager()) continue;
-                float vx = candidate.state.x() - villager.state.x();
-                float vz = candidate.state.z() - villager.state.z();
-                if (vx * vx + vz * vz <= 18f * 18f) {
-                    threatensVillage = true;
-                    break;
-                }
-            }
-            if (!threatensVillage) continue;
+        for (Visual candidate : protectedHostiles) {
+            if (candidate.health <= 0f) continue;
             float dx = candidate.state.x() - guardian.state.x();
             float dz = candidate.state.z() - guardian.state.z();
             float distance = dx * dx + dz * dz;
-            if (distance < best) { best = distance; closest = candidate; }
+            if (distance < best) {
+                best = distance;
+                closest = candidate;
+            }
         }
         return closest;
     }
