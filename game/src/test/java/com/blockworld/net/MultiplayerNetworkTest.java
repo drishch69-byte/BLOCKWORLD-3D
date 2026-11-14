@@ -244,12 +244,15 @@ class MultiplayerNetworkTest {
             CountDownLatch profileSaved = new CountDownLatch(1);
             CountDownLatch crafted = new CountDownLatch(1);
             CountDownLatch traded = new CountDownLatch(1);
+            CountDownLatch professionTrade = new CountDownLatch(1);
             player.setEventListener(event -> {
                 events.add(event);
                 if (event.equals("PROFILE_EMPTY")) profileEmpty.countDown();
                 if (event.equals("PROFILE_SAVED")) profileSaved.countDown();
                 if (event.equals("CRAFT_RESULT 1 true")) crafted.countDown();
                 if (event.equals("TRADE_RESULT 1 true")) traded.countDown();
+                if (event.equals("TRADE_RESULT 1 true") && professionTrade.getCount() > 0
+                        && events.stream().filter(value -> value.equals("TRADE_RESULT 1 true")).count() >= 2) professionTrade.countDown();
             });
             player.connect("127.0.0.1", port, "profile-pass", "Alice", ignored -> { });
             assertTrue(profileEmpty.await(3, TimeUnit.SECONDS));
@@ -258,6 +261,7 @@ class MultiplayerNetworkTest {
             blocks.put(BlockType.WOOD, 2);
             EnumMap<ItemType, Integer> items = new EnumMap<>(ItemType.class);
             items.put(ItemType.WHEAT, 4);
+            items.put(ItemType.COPPER_INGOT, 2);
             player.sendPlayerProfile(blocks, items, java.util.Set.of());
             assertTrue(profileSaved.await(3, TimeUnit.SECONDS));
 
@@ -265,13 +269,16 @@ class MultiplayerNetworkTest {
             assertTrue(crafted.await(3, TimeUnit.SECONDS));
             player.sendTradeRequest(1);
             assertTrue(traded.await(3, TimeUnit.SECONDS));
+            player.sendTradeRequest(CreatureType.VILLAGER_BLACKSMITH, 1);
+            assertTrue(professionTrade.await(3, TimeUnit.SECONDS));
 
             MultiplayerPlayerStore store = new MultiplayerPlayerStore(worldFile);
             var saved = store.load("Alice").orElseThrow();
             assertEquals(0, saved.blocks().get(BlockType.WOOD));
             assertEquals(4, saved.items().get(ItemType.PLANKS));
             assertEquals(0, saved.items().get(ItemType.WHEAT));
-            assertEquals(1, saved.items().get(ItemType.EMERALD));
+            assertEquals(0, saved.items().get(ItemType.COPPER_INGOT));
+            assertEquals(2, saved.items().get(ItemType.EMERALD));
         }
 
         MultiplayerPlayerStore store = new MultiplayerPlayerStore(worldFile);

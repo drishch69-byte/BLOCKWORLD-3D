@@ -54,4 +54,8 @@ public final class GameFeatureSupport {
     public static boolean supportsVillageHomes(GameVersion version) {
         return versionAtLeast(version, 1, 9, 26);
     }
+
+    public static boolean supportsProfessionTrading(GameVersion version) {
+        return versionAtLeast(version, 1, 9, 27);
+    }
 }

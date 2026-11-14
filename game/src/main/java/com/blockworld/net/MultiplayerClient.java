@@ -2,6 +2,7 @@ package com.blockworld.net;
 
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.CreatureType;
 import com.blockworld.core.ArmorSlot;
 import com.blockworld.core.ItemType;
 import com.blockworld.core.WorldCreature;
@@ -263,6 +264,12 @@ public final class MultiplayerClient implements AutoCloseable {
     public synchronized void sendTradeRequest(int offerNumber) throws IOException {
         if (offerNumber < 1 || offerNumber > 4) throw new IllegalArgumentException("Invalid trade offer");
         sendLine("TRADE_REQUEST " + offerNumber);
+    }
+
+    public synchronized void sendTradeRequest(CreatureType profession, int offerNumber) throws IOException {
+        if (profession == null || !profession.isVillager()) throw new IllegalArgumentException("Invalid villager profession");
+        if (offerNumber < 1 || offerNumber > 4) throw new IllegalArgumentException("Invalid trade offer");
+        sendLine("TRADE_REQUEST " + profession.name() + " " + offerNumber);
     }
 
     /** Sends the host's complete current world. Call from a background thread. */

@@ -3,6 +3,7 @@ package com.blockworld.game;
 import com.blockworld.core.BlockHit;
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.CreatureType;
 import com.blockworld.core.ItemType;
 import com.blockworld.core.ToolType;
 import com.blockworld.core.MiningRules;
@@ -154,9 +155,11 @@ public final class BlockWorldGame extends SimpleApplication {
     private final boolean animalFeedersEnabled;
     private final boolean villagerWorkplacesEnabled;
     private final boolean villageHomesEnabled;
+    private final boolean professionTradingEnabled;
+    private CreatureType tradingVillagerType = CreatureType.VILLAGER;
     private ItemType selectedFarmBuilding = ItemType.WOODEN_FENCE;
     private final List<CraftingRecipe> craftingRecipes;
-    private final List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
+    private List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
     private final AchievementTracker achievements = new AchievementTracker();
     private GameSounds gameSounds;
     private float fishingCooldown;
@@ -288,6 +291,7 @@ public final class BlockWorldGame extends SimpleApplication {
         this.animalFeedersEnabled = GameFeatureSupport.supportsAnimalFeeders(version);
         this.villagerWorkplacesEnabled = GameFeatureSupport.supportsVillagerWorkplaces(version);
         this.villageHomesEnabled = GameFeatureSupport.supportsVillageHomes(version);
+        this.professionTradingEnabled = GameFeatureSupport.supportsProfessionTrading(version);
         List<CraftingRecipe> allRecipes = release100Enabled
                 ? animalFeedersEnabled ? CraftingRecipe.farmBuildingRecipes()
                 : animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
@@ -2320,9 +2324,13 @@ public final class BlockWorldGame extends SimpleApplication {
             craftingOpen = false;
             furnaceOpen = false;
             achievementsOpen = false;
+            tradingVillagerType = creature.type();
+            tradeRecipes = professionTradingEnabled
+                    ? TradeRecipe.offersFor(tradingVillagerType)
+                    : TradeRecipe.villageOffers();
             tradeOpen = true;
             showInventoryOverlay(true);
-            statusMessage = "Житель открыл торговлю. Нажми 1–4 для обмена; F — закрыть.";
+            statusMessage = tradingVillagerType.displayName() + " открыл торговлю. Нажми 1–4 для обмена; F — закрыть.";
         } else if (creature.type().isVillager()) {
             statusMessage = creature.type().displayName() + ": Добро пожаловать в нашу деревню!";
         } else if (creature.type() == com.blockworld.core.CreatureType.FOX
@@ -2559,7 +2567,8 @@ public final class BlockWorldGame extends SimpleApplication {
                 statusMessage = "Подожди синхронизации инвентаря или завершения предыдущей операции.";
             } else {
                 try {
-                    multiplayerClient.sendTradeRequest(offer.number());
+                    if (professionTradingEnabled) multiplayerClient.sendTradeRequest(tradingVillagerType, offer.number());
+                    else multiplayerClient.sendTradeRequest(offer.number());
                     multiplayerTradePending = true;
                     statusMessage = "Сервер проверяет предметы и выполняет обмен...";
                 } catch (IOException | IllegalArgumentException error) {
@@ -3006,8 +3015,10 @@ public final class BlockWorldGame extends SimpleApplication {
             text.append("Сырая рыба: ").append(craftedItems.getOrDefault(ItemType.RAW_FISH, 0)).append("\n\n");
             text.append("Нажми 1–3 для плавки, F — закрыть.");
         } else if (tradeOpen) {
-            text.append("Minecraft 3D — ТОРГОВЕЦ\n\n");
-            text.append("Обменяй ресурсы на полезные предметы.\n\n");
+            text.append("Minecraft 3D — ТОРГОВЕЦ: ").append(tradingVillagerType.displayName().toUpperCase(java.util.Locale.ROOT)).append("\n\n");
+            text.append(professionTradingEnabled
+                    ? "Предложения зависят от профессии жителя.\n\n"
+                    : "Обменяй ресурсы на полезные предметы.\n\n");
             for (int i = 0; i < tradeRecipes.size(); i++) {
                 TradeRecipe offer = tradeRecipes.get(i);
                 text.append(i + 1).append(". ").append(offer.description()).append("\n   Нужно: ")

@@ -2,6 +2,7 @@ package com.blockworld.net;
 
 import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
+import com.blockworld.core.CreatureType;
 import com.blockworld.core.CombatRules;
 import com.blockworld.core.ArmorSlot;
 import com.blockworld.core.CraftingRecipe;
@@ -490,35 +491,42 @@ public final class MultiplayerServer implements AutoCloseable {
 
     private void processTradeRequest(ClientHandler target, String[] parts) {
         synchronized (profileLock) {
-        if (parts.length != 2 || target.profile == null) {
-            target.send("TRADE_RESULT 0 false");
-            return;
-        }
-        try {
-            int number = Integer.parseInt(parts[1]);
-            TradeRecipe offer = TradeRecipe.villageOffers().stream()
-                    .filter(entry -> entry.number() == number).findFirst().orElse(null);
-            if (offer == null) {
-                target.send("TRADE_RESULT " + number + " false");
+            if ((parts.length != 2 && parts.length != 3) || target.profile == null) {
+                target.send("TRADE_RESULT 0 false");
                 return;
             }
-            EnumMap<ItemType, Integer> items = target.profile.mutableItems();
-            if (!offer.trade(items)) {
-                target.send("TRADE_RESULT " + number + " false");
-                return;
+            try {
+                CreatureType profession = CreatureType.VILLAGER;
+                int number;
+                if (parts.length == 3) {
+                    profession = CreatureType.valueOf(parts[1]);
+                    if (!profession.isVillager()) throw new IllegalArgumentException("Not a villager");
+                    number = Integer.parseInt(parts[2]);
+                } else {
+                    number = Integer.parseInt(parts[1]);
+                }
+                TradeRecipe offer = TradeRecipe.offersFor(profession).stream()
+                        .filter(entry -> entry.number() == number).findFirst().orElse(null);
+                if (offer == null) {
+                    target.send("TRADE_RESULT " + number + " false");
+                    return;
+                }
+                EnumMap<ItemType, Integer> items = target.profile.mutableItems();
+                if (!offer.trade(items)) {
+                    target.send("TRADE_RESULT " + number + " false");
+                    return;
+                }
+                MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
+                        target.profile.blocks(), items, target.profile.armor(),
+                        target.profile.health(), target.profile.hunger(), target.profile.foodCount());
+                if (playerStore != null) playerStore.save(target.name, updated);
+                target.profile = updated;
+                sendProfile(target, updated);
+                target.send("TRADE_RESULT " + number + " true");
+            } catch (IOException | IllegalArgumentException error) {
+                target.send("PROFILE_ERROR");
+                target.send("TRADE_RESULT 0 false");
             }
-            MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
-                    target.profile.blocks(), items, target.profile.armor(),
-                    target.profile.health(), target.profile.hunger(), target.profile.foodCount());
-            if (playerStore != null) playerStore.save(target.name, updated);
-            target.profile = updated;
-            sendProfile(target, updated);
-            target.send("TRADE_RESULT " + number + " true");
-        } catch (IOException | IllegalArgumentException error) {
-            target.send("PROFILE_ERROR");
-            target.send("TRADE_RESULT 0 false");
-        }
-    
         }
     }
 
