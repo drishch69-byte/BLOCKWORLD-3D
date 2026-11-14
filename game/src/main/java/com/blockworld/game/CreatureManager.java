@@ -9,6 +9,7 @@ import com.blockworld.core.PetMode;
 import com.blockworld.core.PetRules;
 import com.blockworld.core.AnimalBreedingRules;
 import com.blockworld.core.AnimalDataStore;
+import com.blockworld.core.AnimalFeederRules;
 import com.blockworld.core.AnimalProductRules;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
@@ -36,9 +37,11 @@ public final class CreatureManager {
     private final Map<Long, Float> babyGrowthSeconds = new HashMap<>();
     private final Map<Long, Float> breedingCooldowns = new HashMap<>();
     private final Map<Long, Float> productionCooldowns = new HashMap<>();
+    private final Map<BlockPos, AnimalFeederRules.Stock> feederStocks = new HashMap<>();
     private boolean foxCompanionsEnabled;
     private boolean animalBreedingEnabled;
     private boolean animalProductsEnabled;
+    private boolean animalFeedersEnabled;
 
     public CreatureManager(AssetManager assets) {
         this.assets = assets;
@@ -64,15 +67,22 @@ public final class CreatureManager {
     public int size() { return visuals.size(); }
 
     public void setAnimalData(AnimalDataStore.State state, boolean enabled) {
-        setAnimalData(state, enabled, false);
+        setAnimalData(state, enabled, false, false);
     }
 
     public void setAnimalData(AnimalDataStore.State state, boolean enabled, boolean productsEnabled) {
+        setAnimalData(state, enabled, productsEnabled, false);
+    }
+
+    public void setAnimalData(AnimalDataStore.State state, boolean enabled,
+                              boolean productsEnabled, boolean feedersEnabled) {
         animalBreedingEnabled = enabled;
         animalProductsEnabled = productsEnabled;
+        animalFeedersEnabled = feedersEnabled;
         babyGrowthSeconds.clear();
         breedingCooldowns.clear();
         productionCooldowns.clear();
+        feederStocks.clear();
         if (!enabled) return;
         if (state != null) {
             for (Map.Entry<Long, Float> entry : state.babyAges().entrySet()) {
@@ -102,6 +112,7 @@ public final class CreatureManager {
                             AnimalProductRules.MAX_COOLDOWN_SECONDS, entry.getValue()));
                 }
             }
+            feederStocks.putAll(state.feeders());
         }
         for (Visual visual : visuals.values()) {
             if (AnimalBreedingRules.isBaby(visual.state.type())) {
@@ -135,7 +146,21 @@ public final class CreatureManager {
                 productTimes.put(id, time);
             }
         });
-        return new AnimalDataStore.State(ages, cooldowns, productTimes);
+        return new AnimalDataStore.State(ages, cooldowns, productTimes, feederStocks);
+    }
+
+    public AnimalFeederRules.Stock feederStockAt(BlockPos position) {
+        return feederStocks.getOrDefault(position, AnimalFeederRules.Stock.empty());
+    }
+
+    public void setFeederStock(BlockPos position, AnimalFeederRules.Stock stock) {
+        if (position == null || stock == null) return;
+        if (stock.isEmpty()) feederStocks.remove(position);
+        else feederStocks.put(position, stock);
+    }
+
+    public void removeFeeder(BlockPos position) {
+        if (position != null) feederStocks.remove(position);
     }
 
     public float productionCooldownRemaining(long creatureId) {
@@ -533,6 +558,74 @@ public final class CreatureManager {
             world.removeCreature(id);
         }
         if (animalBreedingEnabled) matureBabies(world);
+        if (animalFeedersEnabled) advanceFeeders(tpf, world);
+    }
+
+    private void advanceFeeders(float tpf, VoxelWorld world) {
+        float elapsed = Float.isFinite(tpf) ? Math.max(0f, tpf) : 0f;
+        if (elapsed <= 0f || feederStocks.isEmpty()) return;
+        for (Map.Entry<BlockPos, AnimalFeederRules.Stock> entry
+                : new ArrayList<>(feederStocks.entrySet())) {
+            BlockPos position = entry.getKey();
+            AnimalFeederRules.Stock stock = entry.getValue();
+            if (world.getBlock(position) != BlockType.FEED_TROUGH) {
+                feederStocks.remove(position);
+                continue;
+            }
+            Visual eater = nearestFeedableAnimal(position, stock);
+            if (eater == null) continue;
+            AnimalFeederRules.Stock timed = AnimalFeederRules.advance(stock, elapsed);
+            if (timed.secondsUntilFeed() > 0f) {
+                feederStocks.put(position, timed);
+                continue;
+            }
+            AnimalFeederRules.Stock consumed = AnimalFeederRules.consume(timed, eater.state.type());
+            if (consumed.equals(timed)) {
+                feederStocks.put(position, timed);
+                continue;
+            }
+            feederStocks.put(position, consumed);
+            long animalId = eater.state.id();
+            if (AnimalBreedingRules.isBaby(eater.state.type())) {
+                babyGrowthSeconds.computeIfPresent(animalId, (id, age) ->
+                        AnimalBreedingRules.advanceGrowth(age, AnimalFeederRules.GROWTH_BOOST_SECONDS));
+            } else if (animalProductsEnabled && productionCooldowns.getOrDefault(animalId, 0f) > 0f) {
+                productionCooldowns.computeIfPresent(animalId, (id, remaining) ->
+                        AnimalBreedingRules.advanceCooldown(remaining, AnimalFeederRules.GROWTH_BOOST_SECONDS));
+            } else if (breedingCooldowns.getOrDefault(animalId, 0f) > 0f) {
+                breedingCooldowns.computeIfPresent(animalId, (id, remaining) ->
+                        AnimalBreedingRules.advanceCooldown(remaining, AnimalFeederRules.GROWTH_BOOST_SECONDS));
+            }
+        }
+    }
+
+    private Visual nearestFeedableAnimal(BlockPos trough, AnimalFeederRules.Stock stock) {
+        float bestDistance = AnimalFeederRules.FEEDING_RADIUS * AnimalFeederRules.FEEDING_RADIUS;
+        Visual best = null;
+        for (Visual visual : visuals.values()) {
+            WorldCreature animal = visual.state;
+            if (!AnimalBreedingRules.isFarmAnimal(animal.type())
+                    || !AnimalFeederRules.hasFood(stock, animal.type())) continue;
+            float dx = animal.x() - (trough.x() + .5f);
+            float dy = animal.y() - (trough.y() + .5f);
+            float dz = animal.z() - (trough.z() + .5f);
+            float distance = dx * dx + dy * dy + dz * dz;
+            if (distance > bestDistance) continue;
+            boolean canBenefit;
+            if (AnimalBreedingRules.isBaby(animal.type())) {
+                canBenefit = babyGrowthSeconds.getOrDefault(animal.id(), 0f)
+                        < AnimalBreedingRules.GROWTH_SECONDS;
+            } else {
+                canBenefit = (animalProductsEnabled
+                        && productionCooldowns.getOrDefault(animal.id(), 0f) > 0f)
+                        || breedingCooldowns.getOrDefault(animal.id(), 0f) > 0f;
+            }
+            if (canBenefit) {
+                bestDistance = distance;
+                best = visual;
+            }
+        }
+        return best;
     }
 
     private void advanceAnimalTimers(float tpf) {
