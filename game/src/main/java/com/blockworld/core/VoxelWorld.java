@@ -1492,12 +1492,12 @@ public final class VoxelWorld {
         long librarianId = id++;
         WorldCreature librarian;
         if (upgradedVillageHomes) {
-            int libraryFloorY = highestBlockY(-32, 28);
-            if (libraryFloorY >= -12
-                    && !blocks.containsKey(new BlockPos(-32, libraryFloorY + 1, 28))
-                    && !blocks.containsKey(new BlockPos(-32, libraryFloorY + 2, 28))) {
+            int libraryGroundY = terrainHeightFor(-32, 29);
+            if (libraryGroundY >= -12
+                    && !blocks.containsKey(new BlockPos(-32, libraryGroundY + 2, 28))
+                    && !blocks.containsKey(new BlockPos(-32, libraryGroundY + 3, 28))) {
                 librarian = new WorldCreature(librarianId, CreatureType.VILLAGER_LIBRARIAN,
-                        -31.5f, libraryFloorY + 1f, 28.5f, .8f);
+                        -31.5f, libraryGroundY + 2f, 28.5f, .8f);
             } else {
                 librarian = findCreatureSpawn(random, radius, librarianId, CreatureType.VILLAGER_LIBRARIAN);
             }
