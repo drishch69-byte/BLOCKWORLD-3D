@@ -15,7 +15,7 @@ if defined MAVEN_OPTS (
 )
 
 > "%LOG_FILE%" echo ============================================================
->> "%LOG_FILE%" echo Minecraft 3D 1.9.9 - ENCHANTED GROVE AND ARTIFACT COLLECTION
+>> "%LOG_FILE%" echo Minecraft 3D 1.9.14 - GATES AND SMARTER ANIMAL PENS
 >> "%LOG_FILE%" echo Started: %DATE% %TIME%
 >> "%LOG_FILE%" echo Project: %CD%
 >> "%LOG_FILE%" echo JVM fatal reports: .logs\hs_err_pid*.log
@@ -23,7 +23,7 @@ if defined MAVEN_OPTS (
 >> "%LOG_FILE%" echo ============================================================
 
 echo ============================================================
-echo Minecraft 3D 1.9.9 - ENCHANTED GROVE AND ARTIFACT COLLECTION
+echo Minecraft 3D 1.9.14 - GATES AND SMARTER ANIMAL PENS
 echo Log: %LOG_FILE%
 echo ============================================================
 echo.
