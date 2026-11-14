@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.12 — Farm Products & Harvest
+- Added separate **U** interaction for product collection, leaving **F** for animal breeding.
+- Cows produce a milk bucket when the player has an empty bucket; they have a 90-second cooldown.
+- Sheep produce two wool when the player has shears; wool regrows after 180 seconds. Shears are reusable.
+- Chickens lay one egg every 75 seconds; no tool is needed to collect it.
+- Added craftable empty buckets (3 iron ingots) and reusable shears (2 iron ingots).
+- Added original 16×16 PNG icons for the empty bucket, shears, milk bucket, wool and egg.
+- Persisted per-animal production timers in the animal sidecar and included them in world backups; world save format remains 2.
+
 ## 1.9.11 — Farm Life & Baby Animals
 - Added breeding for adult cows, sheep, pigs, and chickens in single-player survival. Bring two adults of the same species together, carry two feed items, and press **F** near either parent.
 - Cows, sheep, and pigs eat wheat; chickens eat wheat seeds.

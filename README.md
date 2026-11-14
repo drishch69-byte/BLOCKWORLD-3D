@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.11 — Farm Life & Baby Animals.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.12 — Farm Products & Harvest.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,7 +10,17 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.11 — Farm Life & Baby Animals**
+**1.9.12 — Farm Products & Harvest**
+
+- Press **U** near a cow with an empty bucket to collect a milk bucket; cows need 90 seconds before producing milk again.
+- Press **U** near a sheep with shears to collect two wool; wool regrows in three minutes.
+- Chickens lay one egg every 75 seconds; press **U** nearby to collect it.
+- Press **F** near two adult animals of the same species to breed them; product collection has its own key and does not conflict with breeding.
+- Added original 16×16 PNG inventory icons for empty buckets, shears, milk buckets, wool and eggs.
+- Added crafting recipes for empty buckets and reusable shears; animal product timers are saved and included in backups.
+- Kept world save format 2 and earlier profile behavior.
+
+**Previous: 1.9.11 — Farm Life & Baby Animals**
 
 - Breed adult cows, sheep, pigs, and chickens in single-player survival by bringing two of the same species together and pressing **F** while carrying two feed items.
 - Cows, sheep, and pigs eat wheat; chickens eat wheat seeds.
@@ -125,7 +135,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Download
 
-[**Download latest source ZIP (1.9.11)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.12)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

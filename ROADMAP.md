@@ -1,6 +1,6 @@
 # Minecraft 3D — Roadmap
 
-This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.11 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
+This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.12 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
 
 ## 1.1.0 — Wildlands & Crystal Caves (released)
 - Added taiga and swamp biomes, crystal-lined underground caves, and underground water pools.
@@ -8,6 +8,12 @@ This roadmap records implemented releases and future proposals. Versions 1.1.0, 
 - Expanded villages with a market stall and garden.
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
+
+## 1.9.12 — Farm Products & Harvest (released)
+- Collect milk from cows using empty buckets, wool from sheep using reusable shears, and eggs from chickens.
+- Save per-animal product timers with the existing animal sidecar and include them in world backups.
+- Keep product collection on U and breeding on F so the interactions do not conflict.
+- Add original pixel-art inventory icons for the five new farm items.
 
 ## 1.9.11 — Farm Life & Baby Animals (released)
 - Breed cows, sheep, pigs, and chickens using wheat or wheat seeds.
