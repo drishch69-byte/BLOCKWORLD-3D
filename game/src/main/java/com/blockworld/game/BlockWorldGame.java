@@ -2678,8 +2678,9 @@ public final class BlockWorldGame extends SimpleApplication {
 
     private void placeFarmBuilding(BlockHit hit) {
         if (multiplayerClient != null && multiplayerClient.isConnected()
-                && selectedFarmBuilding == ItemType.FEED_TROUGH) {
-            statusMessage = "Кормушки пока устанавливаются только в одиночном мире.";
+                && (selectedFarmBuilding == ItemType.FEED_TROUGH
+                    || selectedFarmBuilding == ItemType.WOODEN_GATE)) {
+            statusMessage = "Кормушки и калитки пока доступны только в одиночном мире.";
             return;
         }
         BlockType block = switch (selectedFarmBuilding) {
