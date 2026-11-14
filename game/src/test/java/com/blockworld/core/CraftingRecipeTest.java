@@ -73,4 +73,22 @@ class CraftingRecipeTest {
         assertEquals(16, recipes.size());
         assertEquals(ItemType.FISHING_ROD, recipes.get(15).result());
     }
+
+    @Test void farmProductCatalogAddsBucketAndShearsRecipesAfterExistingRecipes() {
+        var recipes = CraftingRecipe.farmProductRecipes();
+        assertEquals(18, recipes.size());
+        assertEquals(ItemType.EMPTY_BUCKET, recipes.get(16).result());
+        assertEquals(3, recipes.get(16).itemCosts().get(ItemType.IRON_INGOT));
+        assertEquals(ItemType.SHEARS, recipes.get(17).result());
+        assertEquals(2, recipes.get(17).itemCosts().get(ItemType.IRON_INGOT));
+
+        Map<BlockType, Integer> blocks = new EnumMap<>(BlockType.class);
+        Map<ItemType, Integer> items = new EnumMap<>(ItemType.class);
+        items.put(ItemType.IRON_INGOT, 5);
+        assertTrue(recipes.get(16).craft(blocks, items));
+        assertTrue(recipes.get(17).craft(blocks, items));
+        assertEquals(1, items.get(ItemType.EMPTY_BUCKET));
+        assertEquals(1, items.get(ItemType.SHEARS));
+        assertEquals(0, items.get(ItemType.IRON_INGOT));
+    }
 }

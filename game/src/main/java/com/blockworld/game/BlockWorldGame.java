@@ -29,6 +29,7 @@ import com.blockworld.core.PetMode;
 import com.blockworld.core.PetRules;
 import com.blockworld.core.AnimalBreedingRules;
 import com.blockworld.core.AnimalDataStore;
+import com.blockworld.core.AnimalProductRules;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
@@ -147,6 +148,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private final boolean petsEnabled;
     private final boolean foxCompanionsEnabled;
     private final boolean animalBreedingEnabled;
+    private final boolean animalProductsEnabled;
     private final List<CraftingRecipe> craftingRecipes;
     private final List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
     private final AchievementTracker achievements = new AchievementTracker();
@@ -274,9 +276,12 @@ public final class BlockWorldGame extends SimpleApplication {
         this.release100Enabled = supportsRelease100(version);
         this.explorationEnabled = WorldNavigation.supportsExploration(version.id());
         this.petsEnabled = version.id().compareTo("1.9.0") >= 0;
-        this.foxCompanionsEnabled = "1.9.10".equals(version.id()) || "1.9.11".equals(version.id());
-        this.animalBreedingEnabled = "1.9.11".equals(version.id());
-        List<CraftingRecipe> allRecipes = release100Enabled ? CraftingRecipe.release100Recipes()
+        this.foxCompanionsEnabled = "1.9.10".equals(version.id()) || "1.9.11".equals(version.id())
+                || "1.9.12".equals(version.id());
+        this.animalBreedingEnabled = "1.9.11".equals(version.id()) || "1.9.12".equals(version.id());
+        this.animalProductsEnabled = "1.9.12".equals(version.id());
+        List<CraftingRecipe> allRecipes = release100Enabled
+                ? animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
                 : agricultureEnabled ? CraftingRecipe.advancedRecipes() : CraftingRecipe.starterRecipes();
         this.craftingRecipes = equipmentEnabled ? allRecipes : List.copyOf(allRecipes.subList(0, 4));
         this.saveFile = saveFile;
@@ -870,7 +875,8 @@ public final class BlockWorldGame extends SimpleApplication {
                 rootNode.attachChild(world.getNode());
                 creatureManager.sync(world);
                 if (petsEnabled) creatureManager.setPetModes(pendingPetModes, foxCompanionsEnabled);
-                if (animalBreedingEnabled) creatureManager.setAnimalData(pendingAnimalData, true);
+                if (animalBreedingEnabled) creatureManager.setAnimalData(
+                        pendingAnimalData, true, animalProductsEnabled);
                 rootNode.attachChild(creatureManager.getNode());
                 natureDecorations.rebuild(world);
                 rootNode.attachChild(natureDecorations.getNode());
@@ -2216,6 +2222,9 @@ public final class BlockWorldGame extends SimpleApplication {
             interactFox(creature);
         } else if (animalBreedingEnabled && AnimalBreedingRules.isBaby(creature.type())) {
             statusMessage = creature.type().displayName() + " растёт. Через несколько минут станет взрослым.";
+        } else if (animalProductsEnabled && version.survival()
+                && AnimalProductRules.produces(creature.type())) {
+            if (!collectAnimalProduct(creature)) breedAnimal(creature);
         } else if (animalBreedingEnabled && AnimalBreedingRules.isBreedableAdult(creature.type())
                 && version.survival()) {
             breedAnimal(creature);
@@ -2253,6 +2262,54 @@ public final class BlockWorldGame extends SimpleApplication {
             statusMessage = "Лиса приручена! Она будет следовать за тобой. Нажми N рядом с питомцем, чтобы сменить команду.";
         }
         updateInventoryUi();
+    }
+
+    private boolean collectAnimalProduct(com.blockworld.core.WorldCreature animal) {
+        ItemType product = AnimalProductRules.productFor(animal.type());
+        ItemType requiredTool = AnimalProductRules.requiredToolFor(animal.type());
+        if (product == null) return false;
+
+        ItemType feed = AnimalBreedingRules.feedFor(animal.type());
+        com.blockworld.core.WorldCreature mate = creatureManager.nearestBreedableMate(
+                animal, AnimalBreedingRules.PARTNER_DISTANCE);
+        if (mate != null && feed != null && craftedItems.getOrDefault(feed, 0) >= 2
+                && creatureManager.breedingCooldownRemaining(animal.id(), mate.id()) <= 0f) {
+            return false;
+        }
+
+        if (requiredTool != null && craftedItems.getOrDefault(requiredTool, 0) <= 0) {
+            return false;
+        }
+
+        float remaining = creatureManager.productionCooldownRemaining(animal.id());
+        if (remaining > 0f) {
+            statusMessage = switch (animal.type()) {
+                case COW -> "Корова пока не готова к дойке. Подожди " + Math.ceil(remaining) + " сек.";
+                case SHEEP -> "Шерсть ещё отрастает. Подожди " + Math.ceil(remaining) + " сек.";
+                case CHICKEN -> "Курица ещё готовит яйцо. Осталось " + Math.ceil(remaining) + " сек.";
+                default -> "Животное пока не готово.";
+            };
+            return true;
+        }
+
+        if (animal.type() == com.blockworld.core.CreatureType.COW) {
+            craftedItems.merge(ItemType.EMPTY_BUCKET, -1, Integer::sum);
+        }
+        int amount = AnimalProductRules.productCount(animal.type());
+        craftedItems.merge(product, amount, Integer::sum);
+        creatureManager.startProductionCooldown(animal.id(),
+                AnimalProductRules.cooldownAfterCollection(animal.type()));
+        savePlayerDataQuietly();
+        saveAnimalDataQuietly();
+        updateInventoryUi();
+        statusMessage = switch (animal.type()) {
+            case COW -> "Получено ведро молока ×1. Корова сможет дать молоко снова через 90 секунд.";
+            case SHEEP -> "Получена шерсть ×2. Шерсть у овцы отрастёт примерно за 3 минуты.";
+            case CHICKEN -> "Собрано яйцо ×1. Следующее яйцо появится примерно через 75 секунд.";
+            default -> "Получен фермерский продукт: " + product.displayName() + " ×" + amount + ".";
+        };
+        updateHud();
+        return true;
     }
 
     private void breedAnimal(com.blockworld.core.WorldCreature parent) {
@@ -2836,6 +2893,13 @@ public final class BlockWorldGame extends SimpleApplication {
         index = craftingPage * 9 + index;
         if (!craftingOpen || index < 0 || index >= craftingRecipes.size()) return;
         CraftingRecipe recipe = craftingRecipes.get(index);
+        if (animalProductsEnabled && recipe.number() > 16
+                && multiplayerClient != null && multiplayerClient.isConnected()) {
+            statusMessage = "Новые фермерские инструменты пока создаются только в одиночном мире.";
+            updateInventoryUi();
+            updateHud();
+            return;
+        }
         if (multiplayerClient != null && multiplayerClient.isConnected()) {
             if (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending) {
                 statusMessage = "Подожди синхронизации инвентаря или завершения предыдущей операции.";

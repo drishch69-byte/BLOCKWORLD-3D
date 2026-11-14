@@ -27,7 +27,12 @@ public enum ItemType {
     COOKED_FISH("cooked_fish", "Жареная рыба"),
     ANCIENT_RELIC("ancient_relic", "Древняя реликвия"),
     SUN_SIGIL("sun_sigil", "Солнечная печать"),
-    MOON_SIGIL("moon_sigil", "Лунная печать");
+    MOON_SIGIL("moon_sigil", "Лунная печать"),
+    EMPTY_BUCKET("empty_bucket", "Пустое ведро"),
+    SHEARS("shears", "Ножницы"),
+    MILK_BUCKET("milk_bucket", "Ведро молока"),
+    WOOL("wool", "Шерсть"),
+    EGG("egg", "Яйцо");
 
     private final String id;
     private final String displayName;

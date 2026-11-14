@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.11
-Codename: Farm Life & Baby Animals
+Version: 1.9.12
+Codename: Farm Products & Harvest
 Status: Feature Release

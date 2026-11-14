@@ -57,6 +57,16 @@ public record CraftingRecipe(int number, String name, Map<BlockType, Integer> bl
         return java.util.List.copyOf(recipes);
     }
 
+    /** Farm collection tools for the 1.9.12 survival profile. */
+    public static java.util.List<CraftingRecipe> farmProductRecipes() {
+        java.util.List<CraftingRecipe> recipes = new java.util.ArrayList<>(release100Recipes());
+        recipes.add(new CraftingRecipe(17, "Пустое ведро", Map.of(),
+                Map.of(ItemType.IRON_INGOT, 3), ItemType.EMPTY_BUCKET, 1));
+        recipes.add(new CraftingRecipe(18, "Ножницы", Map.of(),
+                Map.of(ItemType.IRON_INGOT, 2), ItemType.SHEARS, 1));
+        return java.util.List.copyOf(recipes);
+    }
+
     public boolean canCraft(Map<BlockType, Integer> blocks, Map<ItemType, Integer> items) {
         return blockCosts.entrySet().stream().allMatch(e -> blocks.getOrDefault(e.getKey(), 0) >= e.getValue())
                 && itemCosts.entrySet().stream().allMatch(e -> items.getOrDefault(e.getKey(), 0) >= e.getValue());

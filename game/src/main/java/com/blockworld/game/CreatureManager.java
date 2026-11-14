@@ -34,8 +34,10 @@ public final class CreatureManager {
     private final Map<Long, PetMode> petModes = new HashMap<>();
     private final Map<Long, Float> babyGrowthSeconds = new HashMap<>();
     private final Map<Long, Float> breedingCooldowns = new HashMap<>();
+    private final Map<Long, Float> productionCooldowns = new HashMap<>();
     private boolean foxCompanionsEnabled;
     private boolean animalBreedingEnabled;
+    private boolean animalProductsEnabled;
 
     public CreatureManager(AssetManager assets) {
         this.assets = assets;
@@ -61,9 +63,15 @@ public final class CreatureManager {
     public int size() { return visuals.size(); }
 
     public void setAnimalData(AnimalDataStore.State state, boolean enabled) {
+        setAnimalData(state, enabled, false);
+    }
+
+    public void setAnimalData(AnimalDataStore.State state, boolean enabled, boolean productsEnabled) {
         animalBreedingEnabled = enabled;
+        animalProductsEnabled = productsEnabled;
         babyGrowthSeconds.clear();
         breedingCooldowns.clear();
+        productionCooldowns.clear();
         if (!enabled) return;
         if (state != null) {
             for (Map.Entry<Long, Float> entry : state.babyAges().entrySet()) {
@@ -83,10 +91,24 @@ public final class CreatureManager {
                             AnimalBreedingRules.BREEDING_COOLDOWN_SECONDS, entry.getValue()));
                 }
             }
+            // Keep newer production timers intact even when opening this world in profile 1.9.11.
+            for (Map.Entry<Long, Float> entry : state.productionCooldowns().entrySet()) {
+                Visual visual = visuals.get(entry.getKey());
+                if (visual != null && AnimalProductRules.produces(visual.state.type())
+                        && entry.getValue() != null && Float.isFinite(entry.getValue())
+                        && entry.getValue() >= 0f) {
+                    productionCooldowns.put(entry.getKey(), Math.min(
+                            AnimalProductRules.MAX_COOLDOWN_SECONDS, entry.getValue()));
+                }
+            }
         }
         for (Visual visual : visuals.values()) {
             if (AnimalBreedingRules.isBaby(visual.state.type())) {
                 babyGrowthSeconds.putIfAbsent(visual.state.id(), 0f);
+            }
+            if (productsEnabled && AnimalProductRules.produces(visual.state.type())) {
+                productionCooldowns.putIfAbsent(visual.state.id(),
+                        AnimalProductRules.initialCooldown(visual.state.type()));
             }
         }
     }
@@ -104,7 +126,27 @@ public final class CreatureManager {
             if (visual != null && AnimalBreedingRules.isBreedableAdult(visual.state.type())
                     && time > 0f) cooldowns.put(id, time);
         });
-        return new AnimalDataStore.State(ages, cooldowns);
+        Map<Long, Float> productTimes = new HashMap<>();
+        productionCooldowns.forEach((id, time) -> {
+            Visual visual = visuals.get(id);
+            if (visual != null && AnimalProductRules.produces(visual.state.type()) && time > 0f) {
+                productTimes.put(id, time);
+            }
+        });
+        return new AnimalDataStore.State(ages, cooldowns, productTimes);
+    }
+
+    public float productionCooldownRemaining(long creatureId) {
+        return Math.max(0f, productionCooldowns.getOrDefault(creatureId, 0f));
+    }
+
+    public void startProductionCooldown(long creatureId, float seconds) {
+        if (!animalProductsEnabled || !Float.isFinite(seconds) || seconds < 0f
+                || seconds > AnimalProductRules.MAX_COOLDOWN_SECONDS) return;
+        Visual visual = visuals.get(creatureId);
+        if (visual != null && AnimalProductRules.produces(visual.state.type())) {
+            productionCooldowns.put(creatureId, seconds);
+        }
     }
 
     public WorldCreature nearestBreedableMate(WorldCreature parent, float maxDistance) {
@@ -270,6 +312,7 @@ public final class CreatureManager {
             visuals.remove(id);
             babyGrowthSeconds.remove(id);
             breedingCooldowns.remove(id);
+            productionCooldowns.remove(id);
             world.removeCreature(id);
             return target.state.type().displayName() + " побеждён!";
         }
@@ -484,6 +527,7 @@ public final class CreatureManager {
             if (removed != null) removed.root.removeFromParent();
             babyGrowthSeconds.remove(id);
             breedingCooldowns.remove(id);
+            productionCooldowns.remove(id);
             world.removeCreature(id);
         }
         if (animalBreedingEnabled) matureBabies(world);
@@ -497,6 +541,11 @@ public final class CreatureManager {
         breedingCooldowns.replaceAll((id, cooldown) ->
                 AnimalBreedingRules.advanceCooldown(cooldown, elapsed));
         breedingCooldowns.values().removeIf(value -> value <= 0f);
+        if (animalProductsEnabled) {
+            productionCooldowns.replaceAll((id, cooldown) ->
+                    AnimalBreedingRules.advanceCooldown(cooldown, elapsed));
+            productionCooldowns.values().removeIf(value -> value <= 0f);
+        }
     }
 
     private void matureBabies(VoxelWorld world) {
@@ -517,6 +566,10 @@ public final class CreatureManager {
             visuals.put(grown.id(), adult);
             node.attachChild(adult.root);
             babyGrowthSeconds.remove(grown.id());
+            if (animalProductsEnabled && AnimalProductRules.produces(grown.type())) {
+                productionCooldowns.putIfAbsent(grown.id(),
+                        AnimalProductRules.initialCooldown(grown.type()));
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.11",
+  "defaultVersion": "1.9.12",
   "versions": [
     {
       "id": "0.1.0",
@@ -189,6 +189,11 @@
     {
       "id": "1.9.11",
       "name": "Farm Life & Baby Animals",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.12",
+      "name": "Farm Products & Harvest",
       "status": "current"
     }
   ]

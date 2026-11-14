@@ -15,14 +15,20 @@ import java.util.Properties;
 public final class AnimalDataStore {
     private static final String BABY_PREFIX = "baby.";
     private static final String COOLDOWN_PREFIX = "cooldown.";
+    private static final String PRODUCTION_PREFIX = "production.";
     private static final int MAX_ENTRIES = 256;
 
-    public record State(Map<Long, Float> babyAges, Map<Long, Float> cooldowns) {
+    public record State(Map<Long, Float> babyAges, Map<Long, Float> cooldowns,
+                        Map<Long, Float> productionCooldowns) {
+        public State(Map<Long, Float> babyAges, Map<Long, Float> cooldowns) {
+            this(babyAges, cooldowns, Map.of());
+        }
         public State {
             babyAges = Map.copyOf(babyAges == null ? Map.of() : babyAges);
             cooldowns = Map.copyOf(cooldowns == null ? Map.of() : cooldowns);
+            productionCooldowns = Map.copyOf(productionCooldowns == null ? Map.of() : productionCooldowns);
         }
-        public static State empty() { return new State(Map.of(), Map.of()); }
+        public static State empty() { return new State(Map.of(), Map.of(), Map.of()); }
     }
 
     private AnimalDataStore() { }
@@ -42,9 +48,11 @@ public final class AnimalDataStore {
 
         Map<Long, Float> babyAges = new HashMap<>();
         Map<Long, Float> cooldowns = new HashMap<>();
+        Map<Long, Float> productionCooldowns = new HashMap<>();
         loadValues(properties, BABY_PREFIX, AnimalBreedingRules.GROWTH_SECONDS, babyAges);
         loadValues(properties, COOLDOWN_PREFIX, AnimalBreedingRules.BREEDING_COOLDOWN_SECONDS, cooldowns);
-        return new State(babyAges, cooldowns);
+        loadValues(properties, PRODUCTION_PREFIX, AnimalProductRules.MAX_COOLDOWN_SECONDS, productionCooldowns);
+        return new State(babyAges, cooldowns, productionCooldowns);
     }
 
     private static void loadValues(Properties properties, String prefix, float maximum,
@@ -70,6 +78,8 @@ public final class AnimalDataStore {
         Properties properties = new Properties();
         storeValues(properties, BABY_PREFIX, state.babyAges(), AnimalBreedingRules.GROWTH_SECONDS);
         storeValues(properties, COOLDOWN_PREFIX, state.cooldowns(), AnimalBreedingRules.BREEDING_COOLDOWN_SECONDS);
+        storeValues(properties, PRODUCTION_PREFIX, state.productionCooldowns(),
+                AnimalProductRules.MAX_COOLDOWN_SECONDS);
 
         Path temp = file.resolveSibling(file.getFileName() + ".tmp");
         try (OutputStream output = Files.newOutputStream(temp)) {
