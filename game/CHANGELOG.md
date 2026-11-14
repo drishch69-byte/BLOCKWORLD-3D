@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.9 — Launcher Refresh
+- Refreshed the desktop launcher with a clearer release header, selected-profile details, and system/runtime summary.
+- Added live world search by save name, profile version, and integrity status; favorites filtering can be combined with search.
+- Reworked the home screen around the current 1.9.9 release and retained the existing world, mod, resource-pack, backup, multiplayer, profile, settings, and diagnostics tools.
+
 ## 1.9.9 — Enchanted Grove & Artifact Collection
 - Added a rare deterministic **Enchanted Grove** surface biome with moss-covered ground, denser tree growth and sparse glow-crystal/fern markers.
 - Added a separate 1.9.9 biome sampler and persisted `enchantedBiomes` metadata; existing 1.9.8 worlds retain their old biome layout and world save format 2.

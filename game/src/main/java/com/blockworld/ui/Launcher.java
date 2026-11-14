@@ -40,6 +40,8 @@ import javax.swing.JTextField;
 import javax.swing.JPasswordField;
 import javax.swing.SwingUtilities;
 import javax.swing.ImageIcon;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.BorderLayout;
 import java.awt.Desktop;
 import java.awt.Dimension;
@@ -59,6 +61,7 @@ import java.util.Set;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Locale;
 
 /** Desktop launcher: every saved world is visible regardless of selected game profile. */
 public final class Launcher {
@@ -68,6 +71,10 @@ public final class Launcher {
     private JComboBox<WorldEntry> worldSelector;
     private JLabel status;
     private JLabel worldInfo;
+    private JLabel versionInfo;
+    private JLabel systemInfo;
+    private JTextField worldSearch;
+    private List<WorldEntry> availableWorlds = List.of();
     private JCheckBox favoritesOnly;
     private JButton favoriteButton;
     private Set<String> favoriteNames = Set.of();
@@ -134,25 +141,44 @@ public final class Launcher {
     private void createWindow() {
         frame = new JFrame("Minecraft 3D — лаунчер");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setMinimumSize(new Dimension(760, 560));
-        frame.setSize(850, 630);
+        frame.setMinimumSize(new Dimension(780, 600));
+        frame.setSize(900, 700);
         frame.setLocationRelativeTo(null);
-        frame.setLayout(new BorderLayout(12, 12));
+        frame.setLayout(new BorderLayout(10, 10));
+        frame.getContentPane().setBackground(new java.awt.Color(238, 243, 238));
 
-        JLabel title = new JLabel("Minecraft 3D", JLabel.CENTER);
-        title.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 30));
-        title.setBorder(BorderFactory.createEmptyBorder(20, 12, 8, 12));
-        frame.add(title, BorderLayout.NORTH);
+        JPanel header = new JPanel(new BorderLayout(8, 4));
+        header.setBackground(new java.awt.Color(38, 62, 48));
+        header.setBorder(BorderFactory.createEmptyBorder(18, 24, 16, 24));
+        JLabel title = new JLabel("MINECRAFT 3D", JLabel.LEFT);
+        title.setForeground(java.awt.Color.WHITE);
+        title.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 29));
+        JLabel subtitle = new JLabel("ЛАУНЧЕР  •  ИГРОВЫЕ МИРЫ  •  ВЕРСИИ  •  НАСТРОЙКИ");
+        subtitle.setForeground(new java.awt.Color(207, 225, 210));
+        subtitle.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        JPanel heading = new JPanel(new GridLayout(2, 1, 0, 2));
+        heading.setOpaque(false);
+        heading.add(title);
+        heading.add(subtitle);
+        JLabel release = new JLabel("1.9.9  •  ENCHANTED GROVE");
+        release.setForeground(new java.awt.Color(224, 245, 226));
+        release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+        header.add(heading, BorderLayout.CENTER);
+        header.add(release, BorderLayout.EAST);
+        frame.add(header, BorderLayout.NORTH);
 
         JPanel center = new JPanel(new BorderLayout(8, 12));
-        center.setBorder(BorderFactory.createEmptyBorder(8, 24, 8, 24));
+        center.setOpaque(false);
+        center.setBorder(BorderFactory.createEmptyBorder(12, 24, 8, 24));
 
         JPanel selectors = new JPanel(new GridLayout(4, 2, 10, 8));
+        selectors.setOpaque(false);
         selectors.add(new JLabel("Версия игры:"));
         versionSelector = new JComboBox<>(VersionManager.getSupportedVersions().toArray(GameVersion[]::new));
         versionSelector.setSelectedItem(VersionManager.getDefaultVersion());
         versionSelector.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
         selectors.add(versionSelector);
+
         selectors.add(new JLabel("Сохранённый мир (общий для всех версий):"));
         worldSelector = new JComboBox<>();
         worldSelector.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
@@ -168,16 +194,31 @@ public final class Launcher {
                     label.setIcon(preview);
                     label.setIconTextGap(10);
                     label.setText(marker + entry.name() + "  |  " + entry.lastVersion()
-                            + "  |  " + entry.integrityStatus()
-                            + (preview == null ? "  |  превью появится после загрузки" : ""));
+                            + "  |  " + entry.integrityStatus());
                 }
                 return label;
             }
         });
         selectors.add(worldSelector);
+
+        selectors.add(new JLabel("Поиск миров:"));
+        worldSearch = new JTextField();
+        worldSearch.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
+        worldSearch.setToolTipText("Поиск по названию, версии и состоянию сохранения");
+        worldSearch.getDocument().addDocumentListener(new DocumentListener() {
+            private void changed() { applyWorldFilter(selectedWorldPath()); }
+            @Override public void insertUpdate(DocumentEvent event) { changed(); }
+            @Override public void removeUpdate(DocumentEvent event) { changed(); }
+            @Override public void changedUpdate(DocumentEvent event) { changed(); }
+        });
+        worldSearch.addActionListener(event -> launchSelectedWorld());
+        selectors.add(worldSearch);
+
         favoritesOnly = new JCheckBox("Показывать только избранные миры");
-        favoritesOnly.addActionListener(event -> refreshWorldList(selectedWorldPath()));
+        favoritesOnly.setOpaque(false);
+        favoritesOnly.addActionListener(event -> applyWorldFilter(selectedWorldPath()));
         selectors.add(favoritesOnly);
+
         worldInfo = new JLabel("Выбери мир, чтобы увидеть размер и состояние сохранения.");
         worldInfo.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
         selectors.add(worldInfo);
@@ -185,32 +226,35 @@ public final class Launcher {
             updateSelectedWorldInfo();
             updateFavoriteButtonText();
         });
-        center.add(selectors, BorderLayout.NORTH);
+
+        versionInfo = new JLabel();
+        versionInfo.setOpaque(true);
+        versionInfo.setBackground(java.awt.Color.WHITE);
+        versionInfo.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new java.awt.Color(210, 220, 210)),
+                BorderFactory.createEmptyBorder(9, 12, 9, 12)));
+        versionSelector.addActionListener(event -> updateSelectedVersionInfo());
+        updateSelectedVersionInfo();
+
+        JPanel selectionArea = new JPanel(new BorderLayout(8, 8));
+        selectionArea.setOpaque(false);
+        selectionArea.add(selectors, BorderLayout.NORTH);
+        selectionArea.add(versionInfo, BorderLayout.SOUTH);
+        center.add(selectionArea, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
-                "0.1.0 Classic — небольшой мир и базовое строительство.\n" +
-                "0.2.0 Builder — деревья, листья, песок и строительство.\n" +
-                "0.3.0 Adventure — пещеры, уголь, железо и золото.\n" +
-                "0.4.0 Survival — ходьба, прыжки, здоровье, голод и сбор блоков.\n" +
-                "0.5.0 Chunk Engine — чанки 16×16, потоковая загрузка мира, облегчённый рендеринг.\n" +
-                "0.5.1 Chunk Engine Hotfix — исправление камеры появления и диагностика очереди чанков.\n" +
-                "0.5.2 World Render Fix — заметный HUD, безопасное появление и журнал ошибок мешей.\n" +
-                "0.5.3 Stable Render Diagnostics — тестовая площадка, двусторонние меши и F8 для переключения режима граней.\n" +
-                "0.6.0 Nature Engine — реки, вода, подземные лавовые карманы, цикл дня/ночи и погода (R).\n" +
-                "0.6.1 Compiler Fix — исправление сборки и обновление профиля.\n" +
-                "0.6.2 Safe Launch — защита от аварийного закрытия, журнал ошибок и безопасная очистка.\n" +
-                "0.6.3 Startup Crash Diagnostics — отметки этапов запуска, JVM crash-отчёты и дампы памяти в .logs.\n" +
-                "0.7.5 Texture Pack Engine — настройки видео, API модов, менеджер модов и настоящие PNG-текстуры ресурс-паков.\n" +
-                "0.8.0 Creatures Update — коровы, овцы, свиньи, куры, жители, две маленькие деревни и блуждающие слаймы.\n" +
-                "0.8.5 Inventory & Crafting — инвентарь (I), мастерская (C), рецепты досок, палок, верстака и факелов.\n" +
-                "0.9.0 Tools & Equipment — кирки с уровнями добычи, лопата, четыре слота брони; T — выбрать инструмент, H/J/K/L — надеть или снять броню в инвентаре.\n" +
-                "1.0.0 Trading, Fishing & Achievements — торговля с жителями, рыбалка, медная и изумрудная руда, достижения и звуковые эффекты. F — открыть торговлю рядом с жителем, P — ловить рыбу при наведении на воду, M — достижения.\n" +
-                "1.9.1 World Creator & Seeds — размер мира и seed на экране создания нового мира.\n" +
-                "1.9.0 Living World & Companions — команды следовать и оставаться для пса-компаньона.\n" +
-                "1.8.1 Rabbit & Wildlife — кролики, новая модель и PNG-текстура, прыжковая анимация и появление на равнинах, в лесах, тайге и снежной тундре.\n\n" +
-                "ВАЖНО: список миров не зависит от выбранной версии. Один и тот же файл мира\n" +
-                "можно открыть в любом установленном профиле Minecraft 3D. Перед новым миром\n" +
-                "создаётся резервная копия файла с таким же названием.");
+                "ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ — 1.9.9\n\n" +
+                "• Зачарованная роща с мшистой землёй, новыми деревьями и светящимися растениями.\n" +
+                "• Два древних храма, храмовые стражи и тайники с артефактами.\n" +
+                "• Коллекция из Древней реликвии, Солнечной и Лунной печатей.\n" +
+                "• Новые достижения за сбор артефактов и исследование биомов.\n\n" +
+                "ВОЗМОЖНОСТИ ЛАУНЧЕРА\n" +
+                "• Общий список миров, избранное, поиск и миниатюры сохранений.\n" +
+                "• Создание миров с выбором размера и seed.\n" +
+                "• Настройки графики с автоподбором, моды и PNG-ресурс-паки.\n" +
+                "• Резервные копии, профиль игрока и диагностический журнал.\n\n" +
+                "Миры доступны из разных профилей игры. Перед заменой существующего мира\n" +
+                "лаунчер предлагает создать резервную копию.");
         details.setEditable(false);
         details.setFocusable(false);
         details.setOpaque(false);
@@ -221,9 +265,12 @@ public final class Launcher {
         frame.add(center, BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout(8, 8));
-        bottom.setBorder(BorderFactory.createEmptyBorder(0, 24, 18, 24));
+        bottom.setOpaque(false);
+        bottom.setBorder(BorderFactory.createEmptyBorder(0, 24, 16, 24));
         JPanel buttons = new JPanel(new GridLayout(4, 4, 7, 7));
         JButton play = new JButton("ИГРАТЬ");
+        play.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 14));
+        play.setBackground(new java.awt.Color(195, 225, 198));
         JButton newWorld = new JButton("НОВЫЙ МИР");
         JButton settings = new JButton("НАСТРОЙКИ");
         JButton mods = new JButton("МОДЫ");
@@ -263,12 +310,44 @@ public final class Launcher {
         buttons.add(profile);
         buttons.add(close);
         bottom.add(buttons, BorderLayout.CENTER);
+
+        systemInfo = new JLabel(systemSummary());
+        systemInfo.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
+        systemInfo.setForeground(new java.awt.Color(91, 105, 94));
+        systemInfo.setBorder(BorderFactory.createEmptyBorder(7, 2, 0, 2));
+        bottom.add(systemInfo, BorderLayout.NORTH);
+
         status = new JLabel("Миры общие для всех версий. Создай новый мир или выбери сохранённый.");
-        status.setBorder(BorderFactory.createEmptyBorder(8, 2, 0, 2));
+        status.setBorder(BorderFactory.createEmptyBorder(6, 2, 0, 2));
         bottom.add(status, BorderLayout.SOUTH);
         frame.add(bottom, BorderLayout.SOUTH);
 
         frame.setVisible(true);
+    }
+
+    private String systemSummary() {
+        long maxMiB = Runtime.getRuntime().maxMemory() / (1024L * 1024L);
+        return "Java " + System.getProperty("java.version")
+                + "  •  " + Runtime.getRuntime().availableProcessors() + " процессор(а)"
+                + "  •  лимит памяти JVM " + maxMiB + " MiB";
+    }
+
+    private void updateSelectedVersionInfo() {
+        if (versionInfo == null || versionSelector == null) return;
+        GameVersion selected = (GameVersion) versionSelector.getSelectedItem();
+        if (selected == null) return;
+        String mode = selected.survival() ? "Выживание" : "Творческий профиль";
+        versionInfo.setText("<html><b>Профиль " + htmlEscape(selected.id()) + " — "
+                + htmlEscape(selected.displayName()) + "</b> &nbsp; | &nbsp; "
+                + htmlEscape(selected.description()) + "<br>Размер нового мира по умолчанию: "
+                + (selected.worldRadius() * 2 + 1) + "×" + (selected.worldRadius() * 2 + 1)
+                + " блоков &nbsp; | &nbsp; Режим: " + mode + "</html>");
+    }
+
+    private static String htmlEscape(String value) {
+        if (value == null) return "";
+        return value.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private Path selectedWorldPath() {
@@ -277,45 +356,49 @@ public final class Launcher {
     }
 
     private void refreshWorldList(Path selectPath) {
-        if (worldSelector == null) {
-            return;
-        }
+        if (worldSelector == null) return;
         try {
             worldPreviewIconCache.clear();
             favoriteNames = WorldFavorites.list();
-            List<WorldEntry> allWorlds = WorldCatalog.list();
-            List<WorldEntry> worlds = allWorlds.stream()
-                    .filter(world -> !favoritesOnly.isSelected()
-                            || favoriteNames.contains(world.file().getFileName().toString()))
-                    .toList();
-            worldSelector.removeAllItems();
-            for (WorldEntry world : worlds) {
-                worldSelector.addItem(world);
-            }
-            if (selectPath != null) {
-                for (int i = 0; i < worldSelector.getItemCount(); i++) {
-                    WorldEntry entry = worldSelector.getItemAt(i);
-                    if (entry.file().equals(selectPath)) {
-                        worldSelector.setSelectedIndex(i);
-                        break;
-                    }
-                }
-            }
-            if (worlds.isEmpty()) {
-                status.setText(favoritesOnly.isSelected()
-                        ? "В избранном пока нет миров."
-                        : "Пока нет сохранённых миров. Нажми «НОВЫЙ МИР».");
-            } else {
-                long damaged = worlds.stream().filter(world ->
-                        !"ЗАГОЛОВОК В ПОРЯДКЕ".equals(world.integrityStatus())).count();
-                status.setText("Миров: " + worlds.size() + "; избранных: " + favoriteNames.size()
-                        + "; требуют проверки: " + damaged + ".");
-            }
-            updateSelectedWorldInfo();
-            updateFavoriteButtonText();
+            availableWorlds = WorldCatalog.list();
+            applyWorldFilter(selectPath);
         } catch (IOException ex) {
             status.setText("Не удалось прочитать список миров: " + ex.getMessage());
         }
+    }
+
+    private void applyWorldFilter(Path selectPath) {
+        if (worldSelector == null) return;
+        List<WorldEntry> filtered = LauncherWorldFilter.filter(
+                availableWorlds, worldSearch == null ? "" : worldSearch.getText(),
+                favoriteNames, favoritesOnly != null && favoritesOnly.isSelected());
+        worldSelector.removeAllItems();
+        for (WorldEntry world : filtered) worldSelector.addItem(world);
+        if (selectPath != null) {
+            for (int i = 0; i < worldSelector.getItemCount(); i++) {
+                if (worldSelector.getItemAt(i).file().equals(selectPath)) {
+                    worldSelector.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
+
+        if (filtered.isEmpty()) {
+            if (availableWorlds.isEmpty()) {
+                status.setText("Сохранённых миров пока нет. Нажми «НОВЫЙ МИР».");
+            } else if (favoritesOnly.isSelected() && (worldSearch == null || worldSearch.getText().isBlank())) {
+                status.setText("В избранном пока нет миров.");
+            } else {
+                status.setText("Поиск не дал результатов. Попробуй другое название, версию или сними фильтр избранного.");
+            }
+        } else {
+            long damaged = filtered.stream().filter(world ->
+                    !"ЗАГОЛОВОК В ПОРЯДКЕ".equals(world.integrityStatus())).count();
+            status.setText("Показано миров: " + filtered.size() + " из " + availableWorlds.size()
+                    + "; избранных: " + favoriteNames.size() + "; требуют проверки: " + damaged + ".");
+        }
+        updateSelectedWorldInfo();
+        updateFavoriteButtonText();
     }
 
     private void updateSelectedWorldInfo() {
