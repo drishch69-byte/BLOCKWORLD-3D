@@ -35,7 +35,7 @@ class CreatureTextureAssetsTest {
     void playerSkinAndItemAtlasHaveExpectedDimensions() throws IOException {
         assertImageSize("Textures/Player/player_skin.png", 64, 64);
         assertImageSize("Textures/Player/player_sprite.png", 32, 48);
-        assertImageSize("Textures/Items/items_atlas.png", 128, 64);
+        assertImageSize("Textures/Items/items_atlas.png", 128, 80);
         for (ItemType item : ItemType.values()) {
             assertImageSize("Textures/Items/icons/" + item.id() + ".png", 16, 16);
         }
@@ -58,7 +58,7 @@ class CreatureTextureAssetsTest {
             assertEquals(2, parts.length, "Неверная координата иконки: " + item.id());
             int x = Integer.parseInt(parts[0]);
             int y = Integer.parseInt(parts[1]);
-            assertTrue(x >= 0 && x < 8 && y >= 0 && y < 4,
+            assertTrue(x >= 0 && x < 8 && y >= 0 && y < 5,
                     "Иконка вне атласа: " + item.id());
             assertTrue(occupiedTiles.add(coordinate), "Повторяется tile: " + coordinate);
         }

@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.12",
+  "defaultVersion": "1.9.13",
   "versions": [
     {
       "id": "0.1.0",
@@ -194,6 +194,11 @@
     {
       "id": "1.9.12",
       "name": "Farm Products & Harvest",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.13",
+      "name": "Farm Pens & Smart Feeders",
       "status": "current"
     }
   ]
