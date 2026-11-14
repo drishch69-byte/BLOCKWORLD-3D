@@ -966,6 +966,7 @@ public final class VoxelWorld {
             if (version.id().compareTo("0.8.0") >= 0) {
                 addVillageHouse(-34, 27, upgradedVillageHomes);
                 addVillageHouse(29, 27, upgradedVillageHomes);
+                if (upgradedVillageHomes) addVillageLibrary(-34, 34);
                 if (supportsExtendedBiomes(version.id())) {
                     addVillageMarketStall(-34, 27);
                     addVillageGarden(29, 27);
@@ -1468,11 +1469,44 @@ public final class VoxelWorld {
             addBlock(path, BlockType.DIRT);
         }
         if (upgradedVillageHomes) {
-            // The two homes share a small library shelf, a smithing station and resident beds.
-            addBlock(new BlockPos(baseX + 1, groundY + 2, baseZ + 3), BlockType.BOOKSHELF);
+            // The homes keep their smithing station and resident beds; books are in the public library.
             addBlock(new BlockPos(baseX + 3, groundY + 2, baseZ + 3), BlockType.FURNACE);
             addBlock(new BlockPos(baseX + 2, groundY + 2, baseZ + 2), BlockType.VILLAGER_BED);
             addBlock(new BlockPos(baseX + 3, groundY + 2, baseZ + 2), BlockType.VILLAGER_BED);
+        }
+    }
+
+    private void addVillageLibrary(int baseX, int baseZ) {
+        int groundY = terrainHeightFor(baseX + 2, baseZ + 2);
+        // A compact public library with a clear central aisle and double-height bookcases.
+        for (int x = baseX; x < baseX + 5; x++) {
+            for (int z = baseZ; z < baseZ + 5; z++) {
+                for (int y = groundY + 1; y <= groundY + 5; y++) {
+                    removeBlock(new BlockPos(x, y, z));
+                }
+                addBlock(new BlockPos(x, groundY + 1, z), BlockType.WOOD);
+            }
+        }
+        for (int dx = 0; dx < 5; dx++) {
+            for (int dz = 0; dz < 5; dz++) {
+                boolean wall = dx == 0 || dx == 4 || dz == 0 || dz == 4;
+                if (wall) {
+                    for (int dy = 2; dy <= 4; dy++) {
+                        boolean doorway = dz == 0 && dx == 2 && dy <= 3;
+                        boolean window = dy == 3 && (dx == 0 || dx == 4) && dz == 2;
+                        if (!doorway && !window) {
+                            addBlock(new BlockPos(baseX + dx, groundY + dy, baseZ + dz), BlockType.WOOD);
+                        }
+                    }
+                }
+                addBlock(new BlockPos(baseX + dx, groundY + 5, baseZ + dz), BlockType.WOOD);
+            }
+        }
+        for (int z = 1; z <= 3; z++) {
+            for (int y = 2; y <= 3; y++) {
+                addBlock(new BlockPos(baseX + 1, groundY + y, baseZ + z), BlockType.BOOKSHELF);
+                addBlock(new BlockPos(baseX + 3, groundY + y, baseZ + z), BlockType.BOOKSHELF);
+            }
         }
     }
 
@@ -1492,12 +1526,12 @@ public final class VoxelWorld {
         long librarianId = id++;
         WorldCreature librarian;
         if (upgradedVillageHomes) {
-            int libraryGroundY = terrainHeightFor(-32, 29);
+            int libraryGroundY = terrainHeightFor(-32, 36);
             if (libraryGroundY >= -12
-                    && !blocks.containsKey(new BlockPos(-32, libraryGroundY + 2, 28))
-                    && !blocks.containsKey(new BlockPos(-32, libraryGroundY + 3, 28))) {
+                    && !blocks.containsKey(new BlockPos(-32, libraryGroundY + 2, 35))
+                    && !blocks.containsKey(new BlockPos(-32, libraryGroundY + 3, 35))) {
                 librarian = new WorldCreature(librarianId, CreatureType.VILLAGER_LIBRARIAN,
-                        -31.5f, libraryGroundY + 2f, 28.5f, .8f);
+                        -31.5f, libraryGroundY + 2f, 35.5f, .8f);
             } else {
                 librarian = findCreatureSpawn(random, radius, librarianId, CreatureType.VILLAGER_LIBRARIAN);
             }
