@@ -6,7 +6,7 @@ import com.blockworld.core.CreatureType;
 import com.blockworld.core.VoxelWorld;
 import com.blockworld.core.WorldCreature;
 import com.jme3.asset.AssetManager;
-import com.jme3.system.DesktopAssetManager;
+import com.jme3.asset.DesktopAssetManager;
 import com.jme3.math.Vector3f;
 import org.junit.jupiter.api.Test;
 
