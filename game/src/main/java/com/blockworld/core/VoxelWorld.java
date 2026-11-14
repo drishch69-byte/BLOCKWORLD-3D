@@ -962,8 +962,8 @@ public final class VoxelWorld {
             if (supportsAncientTemples(version.id())) {
                 addAncientTemples(radius);
             }
+            boolean upgradedVillageHomes = GameFeatureSupport.supportsVillageHomes(version);
             if (version.id().compareTo("0.8.0") >= 0) {
-                boolean upgradedVillageHomes = GameFeatureSupport.supportsVillageHomes(version);
                 addVillageHouse(-34, 27, upgradedVillageHomes);
                 addVillageHouse(29, 27, upgradedVillageHomes);
                 if (supportsExtendedBiomes(version.id())) {
@@ -984,7 +984,7 @@ public final class VoxelWorld {
                 }
             }
             if (version.id().compareTo("0.8.0") >= 0) {
-                spawnCreatures(random, radius);
+                spawnCreatures(random, radius, upgradedVillageHomes);
             }
         } finally {
             bulkUpdate = false;
@@ -1476,7 +1476,7 @@ public final class VoxelWorld {
         }
     }
 
-    private void spawnCreatures(Random random, int radius) {
+    private void spawnCreatures(Random random, int radius, boolean upgradedVillageHomes) {
         long id = 1L;
         // A villager is placed outside each simple wooden village house.
         int firstY = terrainHeightFor(-32, 26);
@@ -1489,7 +1489,21 @@ public final class VoxelWorld {
                 && !blocks.containsKey(new BlockPos(-29, farmerY + 2, 24))) {
             addCreature(new WorldCreature(id++, CreatureType.VILLAGER_FARMER, -28.5f, farmerY + 1f, 24.5f, .4f));
         }
-        WorldCreature librarian = findCreatureSpawn(random, radius, id++, CreatureType.VILLAGER_LIBRARIAN);
+        long librarianId = id++;
+        WorldCreature librarian;
+        if (upgradedVillageHomes) {
+            int libraryFloorY = highestBlockY(-31, 29);
+            if (libraryFloorY >= -12
+                    && !blocks.containsKey(new BlockPos(-31, libraryFloorY + 1, 29))
+                    && !blocks.containsKey(new BlockPos(-31, libraryFloorY + 2, 29))) {
+                librarian = new WorldCreature(librarianId, CreatureType.VILLAGER_LIBRARIAN,
+                        -30.5f, libraryFloorY + 1f, 29.5f, .8f);
+            } else {
+                librarian = findCreatureSpawn(random, radius, librarianId, CreatureType.VILLAGER_LIBRARIAN);
+            }
+        } else {
+            librarian = findCreatureSpawn(random, radius, librarianId, CreatureType.VILLAGER_LIBRARIAN);
+        }
         if (librarian != null) addCreature(librarian);
         WorldCreature guard = findCreatureSpawn(random, radius, id++, CreatureType.VILLAGER_GUARD);
         if (guard != null) addCreature(guard);

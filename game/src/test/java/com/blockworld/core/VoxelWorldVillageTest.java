@@ -22,6 +22,17 @@ class VoxelWorldVillageTest {
         assertEquals(2L, bookshelves);
         assertEquals(4L, beds);
         assertTrue(furnaces >= 2L);
+
+        WorldCreature librarian = world.getCreatures().stream()
+                .filter(creature -> creature.type() == CreatureType.VILLAGER_LIBRARIAN)
+                .findFirst().orElseThrow();
+        BlockPos library = world.snapshotBlocks().entrySet().stream()
+                .filter(entry -> entry.getValue() == BlockType.BOOKSHELF)
+                .map(java.util.Map.Entry::getKey).findFirst().orElseThrow();
+        float dx = librarian.x() - (library.x() + 0.5f);
+        float dz = librarian.z() - (library.z() + 0.5f);
+        assertTrue(dx * dx + dz * dz <= 4f * 4f,
+                "The librarian should start close to the generated village library");
     }
 
     @Test
