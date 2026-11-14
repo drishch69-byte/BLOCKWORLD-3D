@@ -2069,9 +2069,14 @@ public final class BlockWorldGame extends SimpleApplication {
                     statusMessage = "Ограждение возвращено в инвентарь.";
                 } else if (animalFeedersEnabled && removed == BlockType.FEED_TROUGH) {
                     craftedItems.merge(ItemType.FEED_TROUGH, 1, Integer::sum);
-                    if (creatureManager != null) creatureManager.removeFeeder(pos);
+                    if (creatureManager != null) {
+                        AnimalFeederRules.Stock remaining = creatureManager.feederStockAt(pos);
+                        if (remaining.wheat() > 0) craftedItems.merge(ItemType.WHEAT, remaining.wheat(), Integer::sum);
+                        if (remaining.seeds() > 0) craftedItems.merge(ItemType.WHEAT_SEEDS, remaining.seeds(), Integer::sum);
+                        creatureManager.removeFeeder(pos);
+                    }
                     saveAnimalDataQuietly();
-                    statusMessage = "Кормушка разобрана; остаток корма возвращён в инвентарь.";
+                    statusMessage = "Кормушка разобрана. Остаток пшеницы и семян возвращён в инвентарь.";
                 } else if (release100Enabled && removed == BlockType.EMERALD_ORE) {
                     int drops = 1 + (selectedTool == ToolType.IRON_PICKAXE ? 1 : 0);
                     craftedItems.merge(ItemType.EMERALD, drops, Integer::sum);

@@ -91,6 +91,30 @@ class VoxelWorldSaveTest {
     }
 
     @Test
+    void version1913WoodenFencesAndFeedTroughsRoundTripWithoutChangingWorldFormat() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion version = VersionManager.find("1.9.13");
+        VoxelWorld source = new VoxelWorld(assets);
+        source.generate(version, 8675309L, 24);
+        BlockPos fence = new BlockPos(2, 4, 3);
+        BlockPos trough = new BlockPos(3, 4, 3);
+        assertTrue(source.addBlock(fence, BlockType.WOODEN_FENCE));
+        assertTrue(source.addBlock(trough, BlockType.FEED_TROUGH));
+
+        Path file = tempDir.resolve("version-1913-farm-buildings.bwworld");
+        source.save(file, version);
+        String saved = Files.readString(file);
+        assertTrue(saved.contains("format=2"));
+        assertTrue(saved.contains("2,4,3,wooden_fence"));
+        assertTrue(saved.contains("3,4,3,feed_trough"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(version.id(), restored.load(file));
+        assertEquals(BlockType.WOODEN_FENCE, restored.getBlock(fence));
+        assertEquals(BlockType.FEED_TROUGH, restored.getBlock(trough));
+    }
+
+    @Test
     void version181SpawnsAndPersistsRabbitsOnNaturalHabitats() throws IOException {
         AssetManager assets = new DesktopAssetManager(true);
         GameVersion version = VersionManager.find("1.8.1");
