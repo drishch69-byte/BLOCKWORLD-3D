@@ -130,7 +130,8 @@ public final class CreatureManager {
         Map<Long, Float> productTimes = new HashMap<>();
         productionCooldowns.forEach((id, time) -> {
             Visual visual = visuals.get(id);
-            if (visual != null && AnimalProductRules.produces(visual.state.type()) && time > 0f) {
+            if (visual != null && AnimalProductRules.produces(visual.state.type())
+                    && Float.isFinite(time) && time >= 0f) {
                 productTimes.put(id, time);
             }
         });
@@ -543,9 +544,9 @@ public final class CreatureManager {
                 AnimalBreedingRules.advanceCooldown(cooldown, elapsed));
         breedingCooldowns.values().removeIf(value -> value <= 0f);
         if (animalProductsEnabled) {
+            // Keep zero values: they mean the animal is ready, and must survive save/reload.
             productionCooldowns.replaceAll((id, cooldown) ->
                     AnimalBreedingRules.advanceCooldown(cooldown, elapsed));
-            productionCooldowns.values().removeIf(value -> value <= 0f);
         }
     }
 
