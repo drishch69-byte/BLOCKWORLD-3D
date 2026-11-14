@@ -50,4 +50,8 @@ public final class GameFeatureSupport {
     public static boolean supportsVillagerWorkplaces(GameVersion version) {
         return versionAtLeast(version, 1, 9, 25);
     }
+
+    public static boolean supportsVillageHomes(GameVersion version) {
+        return versionAtLeast(version, 1, 9, 26);
+    }
 }

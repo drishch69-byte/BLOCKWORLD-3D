@@ -38,7 +38,9 @@ public enum BlockType {
     WOODEN_GATE("wooden_gate", "Закрытая деревянная калитка", 0.53f, 0.34f, 0.16f),
     OPEN_WOODEN_GATE("open_wooden_gate", "Открытая деревянная калитка", 0.61f, 0.40f, 0.20f),
     LANTERN("lantern", "Фонарь", 0.82f, 0.58f, 0.19f),
-    SCARECROW("scarecrow", "Пугало", 0.61f, 0.42f, 0.22f);
+    SCARECROW("scarecrow", "Пугало", 0.61f, 0.42f, 0.22f),
+    BOOKSHELF("bookshelf", "Книжная полка", 0.47f, 0.29f, 0.16f),
+    VILLAGER_BED("villager_bed", "Кровать жителя", 0.72f, 0.32f, 0.29f);
 
     private final String id;
     private final String displayName;
@@ -100,6 +102,8 @@ public enum BlockType {
             case OPEN_WOODEN_GATE -> 32;
             case LANTERN -> 33;
             case SCARECROW -> 34;
+            case BOOKSHELF -> 35;
+            case VILLAGER_BED -> 36;
         };
     }
 

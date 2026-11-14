@@ -491,6 +491,14 @@ public final class VoxelWorld {
                 appendScarecrowModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits, nearbyLanterns);
                 continue;
             }
+            if (type == BlockType.BOOKSHELF) {
+                appendBookshelfModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits, nearbyLanterns);
+                continue;
+            }
+            if (type == BlockType.VILLAGER_BED) {
+                appendVillagerBedModel(pos, localX, localZ, base, positions, colors, texCoords, indices, hits, nearbyLanterns);
+                continue;
+            }
             for (Face face : FACES) {
                 BlockPos neighbor = pos.add(face.nx, face.ny, face.nz);
                 BlockType neighborType = blocks.get(neighbor);
@@ -651,6 +659,59 @@ public final class VoxelWorld {
                 0.30f, 0.76f, 0.30f, 0.70f, 1.08f, 0.70f, positions, colors, texCoords, indices, hits, nearbyLanterns);
         appendCuboidFaces(pos, localX, localZ, BlockType.SCARECROW, base,
                 0.34f, 0.48f, 0.36f, 0.66f, 0.62f, 0.64f, positions, colors, texCoords, indices, hits, nearbyLanterns);
+    }
+
+    /** A wooden bookcase with colored spines and two shelves. */
+    private void appendBookshelfModel(BlockPos pos, int localX, int localZ, ColorRGBA base,
+                                      FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
+                                      IntBuilder indices, List<BlockHit> hits, List<BlockPos> nearbyLanterns) {
+        ColorRGBA wood = new ColorRGBA(0.34f, 0.20f, 0.11f, 1f);
+        appendCuboidFaces(pos, localX, localZ, BlockType.BOOKSHELF, wood,
+                0.06f, 0.03f, 0.08f, 0.94f, 0.97f, 0.92f, positions, colors, texCoords, indices, hits, nearbyLanterns);
+        appendCuboidFaces(pos, localX, localZ, BlockType.BOOKSHELF, base,
+                0.07f, 0.46f, 0.04f, 0.93f, 0.55f, 0.96f, positions, colors, texCoords, indices, hits, nearbyLanterns);
+        appendCuboidFaces(pos, localX, localZ, BlockType.BOOKSHELF, base,
+                0.07f, 0.89f, 0.04f, 0.93f, 0.97f, 0.96f, positions, colors, texCoords, indices, hits, nearbyLanterns);
+        ColorRGBA[] bookColors = {
+                new ColorRGBA(0.62f, 0.16f, 0.13f, 1f),
+                new ColorRGBA(0.16f, 0.35f, 0.58f, 1f),
+                new ColorRGBA(0.22f, 0.48f, 0.25f, 1f),
+                new ColorRGBA(0.74f, 0.56f, 0.19f, 1f),
+                new ColorRGBA(0.48f, 0.26f, 0.58f, 1f),
+                new ColorRGBA(0.72f, 0.38f, 0.17f, 1f)
+        };
+        float[] bookWidths = {0.10f, 0.12f, 0.09f, 0.11f, 0.10f, 0.12f};
+        float x = 0.13f;
+        for (int i = 0; i < bookColors.length; i++) {
+            float width = bookWidths[i];
+            appendCuboidFaces(pos, localX, localZ, BlockType.BOOKSHELF, bookColors[i],
+                    x, 0.13f, 0.20f, x + width, 0.45f, 0.78f,
+                    positions, colors, texCoords, indices, hits, nearbyLanterns);
+            appendCuboidFaces(pos, localX, localZ, BlockType.BOOKSHELF, bookColors[(i + 2) % bookColors.length],
+                    x, 0.58f, 0.20f, x + width, 0.88f, 0.78f,
+                    positions, colors, texCoords, indices, hits, nearbyLanterns);
+            x += width + 0.025f;
+        }
+    }
+
+    /** A compact bed made from a wooden frame, mattress, pillow and colored blanket. */
+    private void appendVillagerBedModel(BlockPos pos, int localX, int localZ, ColorRGBA base,
+                                        FloatBuilder positions, FloatBuilder colors, FloatBuilder texCoords,
+                                        IntBuilder indices, List<BlockHit> hits, List<BlockPos> nearbyLanterns) {
+        ColorRGBA frame = new ColorRGBA(0.35f, 0.22f, 0.12f, 1f);
+        ColorRGBA mattress = new ColorRGBA(0.88f, 0.86f, 0.78f, 1f);
+        ColorRGBA blanket = new ColorRGBA(0.63f, 0.20f, 0.22f, 1f);
+        ColorRGBA pillow = new ColorRGBA(0.96f, 0.93f, 0.82f, 1f);
+        appendCuboidFaces(pos, localX, localZ, BlockType.VILLAGER_BED, frame,
+                0.06f, 0.02f, 0.08f, 0.94f, 0.19f, 0.92f, positions, colors, texCoords, indices, hits, nearbyLanterns);
+        appendCuboidFaces(pos, localX, localZ, BlockType.VILLAGER_BED, mattress,
+                0.10f, 0.19f, 0.10f, 0.90f, 0.38f, 0.90f, positions, colors, texCoords, indices, hits, nearbyLanterns);
+        appendCuboidFaces(pos, localX, localZ, BlockType.VILLAGER_BED, blanket,
+                0.10f, 0.38f, 0.33f, 0.90f, 0.45f, 0.90f, positions, colors, texCoords, indices, hits, nearbyLanterns);
+        appendCuboidFaces(pos, localX, localZ, BlockType.VILLAGER_BED, pillow,
+                0.19f, 0.38f, 0.10f, 0.81f, 0.46f, 0.31f, positions, colors, texCoords, indices, hits, nearbyLanterns);
+        appendCuboidFaces(pos, localX, localZ, BlockType.VILLAGER_BED, frame,
+                0.06f, 0.18f, 0.84f, 0.94f, 0.72f, 0.94f, positions, colors, texCoords, indices, hits, nearbyLanterns);
     }
 
     /** Adds six textured faces of a model cuboid to the shared chunk mesh. */
@@ -902,8 +963,9 @@ public final class VoxelWorld {
                 addAncientTemples(radius);
             }
             if (version.id().compareTo("0.8.0") >= 0) {
-                addVillageHouse(-34, 27);
-                addVillageHouse(29, 27);
+                boolean upgradedVillageHomes = GameFeatureSupport.supportsVillageHomes(version);
+                addVillageHouse(-34, 27, upgradedVillageHomes);
+                addVillageHouse(29, 27, upgradedVillageHomes);
                 if (supportsExtendedBiomes(version.id())) {
                     addVillageMarketStall(-34, 27);
                     addVillageGarden(29, 27);
@@ -1377,7 +1439,7 @@ public final class VoxelWorld {
         }
     }
 
-    private void addVillageHouse(int baseX, int baseZ) {
+    private void addVillageHouse(int baseX, int baseZ, boolean upgradedVillageHomes) {
         int groundY = terrainHeightFor(baseX + 2, baseZ + 2);
         // Clear vegetation inside the small 5x5 footprint before placing the house.
         for (int x = baseX; x < baseX + 5; x++) {
@@ -1404,6 +1466,13 @@ public final class VoxelWorld {
             BlockPos path = new BlockPos(baseX + 2, groundY, baseZ - step);
             removeBlock(path);
             addBlock(path, BlockType.DIRT);
+        }
+        if (upgradedVillageHomes) {
+            // The two homes share a small library shelf, a smithing station and resident beds.
+            addBlock(new BlockPos(baseX + 1, groundY + 2, baseZ + 3), BlockType.BOOKSHELF);
+            addBlock(new BlockPos(baseX + 3, groundY + 2, baseZ + 3), BlockType.FURNACE);
+            addBlock(new BlockPos(baseX + 2, groundY + 2, baseZ + 2), BlockType.VILLAGER_BED);
+            addBlock(new BlockPos(baseX + 3, groundY + 2, baseZ + 2), BlockType.VILLAGER_BED);
         }
     }
 
