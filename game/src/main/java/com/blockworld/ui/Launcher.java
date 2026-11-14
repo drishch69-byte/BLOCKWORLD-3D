@@ -160,7 +160,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.9  •  ENCHANTED GROVE");
+        JLabel release = new JLabel("1.9.14  •  GATES & SMARTER ANIMAL PENS");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);
@@ -243,11 +243,11 @@ public final class Launcher {
         center.add(selectionArea, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
-                "ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ — 1.9.9\n\n" +
-                "• Зачарованная роща с мшистой землёй, новыми деревьями и светящимися растениями.\n" +
-                "• Два древних храма, храмовые стражи и тайники с артефактами.\n" +
-                "• Коллекция из Древней реликвии, Солнечной и Лунной печатей.\n" +
-                "• Новые достижения за сбор артефактов и исследование биомов.\n\n" +
+                "ПОСЛЕДНЕЕ ОБНОВЛЕНИЕ — 1.9.14\n\n" +
+                "• Деревянные калитки для загонов: F открывает и закрывает калитку.\n" +
+                "• Открытая калитка видна, но больше не мешает проходу игрока и животных.\n" +
+                "• Животные лучше разворачиваются у стен загонов.\n" +
+                "• Включены ограждения, кормушки, разведение и уход за животными.\n\n" +
                 "ВОЗМОЖНОСТИ ЛАУНЧЕРА\n" +
                 "• Общий список миров, избранное, поиск и миниатюры сохранений.\n" +
                 "• Создание миров с выбором размера и seed.\n" +
