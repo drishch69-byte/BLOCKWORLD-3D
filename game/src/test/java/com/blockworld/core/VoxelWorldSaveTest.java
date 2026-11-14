@@ -509,4 +509,27 @@ class VoxelWorldSaveTest {
         assertEquals(BiomeType.ENCHANTED_GROVE, restored.getBiomeAt(groveMarker.x(), groveMarker.z()));
     }
 
+    @Test
+    void savesAndLoadsVillageBookshelvesAndBedsWithoutChangingWorldFormat() throws IOException {
+        AssetManager assets = new DesktopAssetManager(true);
+        GameVersion version = VersionManager.find("1.9.26");
+        VoxelWorld source = new VoxelWorld(assets);
+        BlockPos shelf = new BlockPos(2, 1, 3);
+        BlockPos bed = new BlockPos(3, 1, 3);
+        assertTrue(source.addBlock(shelf, BlockType.BOOKSHELF));
+        assertTrue(source.addBlock(bed, BlockType.VILLAGER_BED));
+
+        Path file = tempDir.resolve("village-furniture.bwworld");
+        source.save(file, version);
+        String saved = Files.readString(file);
+        assertTrue(saved.contains("format=2"));
+        assertTrue(saved.contains(",bookshelf"));
+        assertTrue(saved.contains(",villager_bed"));
+
+        VoxelWorld restored = new VoxelWorld(assets);
+        assertEquals(version.id(), restored.load(file));
+        assertEquals(BlockType.BOOKSHELF, restored.getBlock(shelf));
+        assertEquals(BlockType.VILLAGER_BED, restored.getBlock(bed));
+    }
+
 }

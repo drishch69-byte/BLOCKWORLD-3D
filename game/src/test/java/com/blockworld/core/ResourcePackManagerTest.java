@@ -160,6 +160,12 @@ class ResourcePackManagerTest {
         assertEquals(16, BlockType.COPPER_ORE.textureSlot());
         assertEquals(17, BlockType.EMERALD_ORE.textureSlot());
         assertEquals(21, BlockType.TREASURE_CHEST.textureSlot());
+        assertEquals(35, BlockType.BOOKSHELF.textureSlot());
+        assertEquals(36, BlockType.VILLAGER_BED.textureSlot());
+        assertTrue(ResourcePackManager.textureTileIndex(BlockType.BOOKSHELF, 2)
+                < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
+        assertTrue(ResourcePackManager.textureTileIndex(BlockType.VILLAGER_BED, 2)
+                < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
         assertTrue(ResourcePackManager.textureTileIndex(BlockType.TREASURE_CHEST, 2)
                 < ResourcePackManager.ATLAS_COLUMNS * ResourcePackManager.ATLAS_COLUMNS);
         assertEquals(18, BlockType.AMETHYST_ORE.textureSlot());

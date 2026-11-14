@@ -16,6 +16,9 @@ class VillagerWorkplaceRulesTest {
         assertTrue(VillagerWorkplaceRules.isWorkplaceFor(CreatureType.VILLAGER_FARMER, BlockType.WHEAT_CROP));
         assertTrue(VillagerWorkplaceRules.isWorkplaceFor(CreatureType.VILLAGER_BLACKSMITH, BlockType.FURNACE));
         assertTrue(VillagerWorkplaceRules.isWorkplaceFor(CreatureType.VILLAGER_LIBRARIAN, BlockType.TREASURE_CHEST));
+        assertTrue(VillagerWorkplaceRules.isWorkplaceFor(CreatureType.VILLAGER_LIBRARIAN, BlockType.BOOKSHELF));
+        assertTrue(VillagerWorkplaceRules.isOtherWorkplaceFor(CreatureType.VILLAGER_FARMER, BlockType.FURNACE));
+        assertFalse(VillagerWorkplaceRules.isOtherWorkplaceFor(CreatureType.VILLAGER_FARMER, BlockType.FARMLAND));
         assertFalse(VillagerWorkplaceRules.isWorkplaceFor(CreatureType.VILLAGER_FARMER, BlockType.FURNACE));
         assertFalse(VillagerWorkplaceRules.isWorkplaceFor(CreatureType.VILLAGER_GUARD, BlockType.TREASURE_CHEST));
     }
@@ -56,6 +59,40 @@ class VillagerWorkplaceRulesTest {
         assertFalse(VillagerWorkplaceRules.shouldWork(CreatureType.VILLAGER_FARMER, 0.70f));
         assertFalse(VillagerWorkplaceRules.shouldWork(CreatureType.VILLAGER, 0.25f));
         assertFalse(VillagerWorkplaceRules.shouldWork(CreatureType.VILLAGER_GUARD, 0.25f));
+    }
+
+    @Test
+    void villagersCanVisitWorkplacesAssignedToOtherProfessions() {
+        VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
+        BlockPos farm = new BlockPos(1, 0, 0);
+        BlockPos smithy = new BlockPos(4, 0, 0);
+        BlockPos library = new BlockPos(7, 0, 0);
+        assertTrue(world.addBlock(farm, BlockType.FARMLAND));
+        assertTrue(world.addBlock(smithy, BlockType.FURNACE));
+        assertTrue(world.addBlock(library, BlockType.BOOKSHELF));
+
+        assertEquals(smithy, VillagerWorkplaceRules.findNearestOtherWorkplace(
+                CreatureType.VILLAGER_FARMER, 0.5f, 1f, 0.5f, world, 8));
+        assertEquals(farm, VillagerWorkplaceRules.findNearestOtherWorkplace(
+                CreatureType.VILLAGER_BLACKSMITH, 0.5f, 1f, 0.5f, world, 8));
+        assertEquals(farm, VillagerWorkplaceRules.findNearestOtherWorkplace(
+                CreatureType.VILLAGER_LIBRARIAN, 0.5f, 1f, 0.5f, world, 8));
+        assertEquals(farm, VillagerWorkplaceRules.findNearestOtherWorkplace(
+                CreatureType.VILLAGER, 0.5f, 1f, 0.5f, world, 8));
+    }
+
+    @Test
+    void findsNearbyBedsForNightRestAndIgnoresDistantBeds() {
+        VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
+        BlockPos bed = new BlockPos(3, 1, 0);
+        assertTrue(world.addBlock(bed, BlockType.VILLAGER_BED));
+
+        assertEquals(bed, VillagerWorkplaceRules.findNearestBed(
+                0.5f, 1f, 0.5f, world, 4));
+        assertNull(VillagerWorkplaceRules.findNearestBed(
+                0.5f, 1f, 0.5f, world, 1));
+        assertNull(VillagerWorkplaceRules.findNearestBed(
+                Float.NaN, 1f, 0f, world, 4));
     }
 
     @Test

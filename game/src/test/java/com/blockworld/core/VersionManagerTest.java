@@ -8,11 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class VersionManagerTest {
     @Test
     void includesAllProfilesAndDefaultsToLatestStableProfile() {
-        assertEquals(52, VersionManager.getSupportedVersions().size());
-        assertEquals("1.9.25", VersionManager.getDefaultVersion().id());
-        assertEquals("Villager Workplaces", VersionManager.find("1.9.25").displayName());
-        assertEquals(144, VersionManager.find("1.9.25").worldRadius());
-        assertTrue(VersionManager.find("1.9.25").survival());
+        assertEquals(53, VersionManager.getSupportedVersions().size());
+        assertEquals("1.9.26", VersionManager.getDefaultVersion().id());
+        assertEquals("Village Homes & Social Life", VersionManager.find("1.9.26").displayName());
+        assertEquals(144, VersionManager.find("1.9.26").worldRadius());
+        assertTrue(VersionManager.find("1.9.26").survival());
         assertEquals("Rabbit & Wildlife Update", VersionManager.find("1.8.1").displayName());
         assertEquals(144, VersionManager.find("1.8.1").worldRadius());
         assertTrue(VersionManager.find("1.8.1").survival());

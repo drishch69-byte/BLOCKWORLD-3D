@@ -195,6 +195,25 @@ class VoxelWorldChunkTest {
     }
 
     @Test
+    void villageBookshelvesAndBedsUseDetailedModelsInTheChunkMesh() {
+        VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
+        BlockPos shelf = new BlockPos(0, 1, 0);
+        BlockPos bed = new BlockPos(2, 1, 0);
+        assertTrue(world.addBlock(shelf, BlockType.BOOKSHELF));
+        assertTrue(world.addBlock(bed, BlockType.VILLAGER_BED));
+
+        world.updateStreaming(new Vector3f(1f, 4f, 4f), 1);
+
+        assertEquals(1, world.getRenderedChunkCount());
+        Geometry mesh = (Geometry) world.getNode().getChild(0);
+        assertTrue(mesh.getMesh().getVertexCount() > 24 * 8,
+                "Bookshelf and bed should be assembled from multiple cuboids");
+        assertNotNull(world.getHitFace(mesh, 0));
+        assertTrue(world.contains(shelf));
+        assertTrue(world.contains(bed));
+    }
+
+    @Test
     void lanternLightHasWarmDistanceFalloffAndDisappearsWhenLanternIsRemoved() {
         VoxelWorld world = new VoxelWorld(new DesktopAssetManager(true));
         BlockPos lantern = new BlockPos(0, 0, 0);
