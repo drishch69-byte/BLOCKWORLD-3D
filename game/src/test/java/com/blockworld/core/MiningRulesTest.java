@@ -27,6 +27,12 @@ class MiningRulesTest {
     }
 
     @Test
+    void decorativeFarmBlocksHaveConsistentWoodenMiningTime() {
+        assertEquals(0.85f, MiningRules.durationSeconds(BlockType.LANTERN, null));
+        assertEquals(0.85f, MiningRules.durationSeconds(BlockType.SCARECROW, null));
+    }
+
+    @Test
     void minimumDurationStaysPositive() {
         assertTrue(MiningRules.durationSeconds(BlockType.LEAVES, ToolType.WOODEN_HOE) >= 0.12f);
         assertEquals(0.5f, MiningRules.durationSeconds(null, null));

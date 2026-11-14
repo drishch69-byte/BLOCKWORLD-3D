@@ -92,8 +92,8 @@ final class InventoryVisualPanel {
 
         for (int index = 0; index < ItemType.values().length; index++) {
             ItemType item = ItemType.values()[index];
-            int column = index < 16 ? 0 : 1;
-            int row = index % 16;
+            int column = index / 12;
+            int row = index % 12;
             float x = left + column * 108f;
             float y = centerY + 108f - row * 20f;
 

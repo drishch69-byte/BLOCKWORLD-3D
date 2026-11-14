@@ -128,4 +128,31 @@ class VoxelWorldChunkTest {
         assertTrue(world.getChunkCount() > 40);
         assertEquals(42L, world.getSeed());
     }
+
+    @Test
+    void farmDecorationsUseDetailedModelsInsideTheExistingChunkMesh() {
+        AssetManager assets = new DesktopAssetManager(true);
+        VoxelWorld world = new VoxelWorld(assets);
+        BlockPos firstFence = new BlockPos(0, 1, 0);
+        BlockPos secondFence = new BlockPos(1, 1, 0);
+        BlockPos lantern = new BlockPos(3, 1, 0);
+        BlockPos scarecrow = new BlockPos(5, 1, 0);
+        assertTrue(world.addBlock(firstFence, BlockType.WOODEN_FENCE));
+        assertTrue(world.addBlock(secondFence, BlockType.WOODEN_FENCE));
+        assertTrue(world.addBlock(lantern, BlockType.LANTERN));
+        assertTrue(world.addBlock(scarecrow, BlockType.SCARECROW));
+
+        world.updateStreaming(new Vector3f(2f, 4f, 5f), 2);
+
+        assertEquals(1, world.getRenderedChunkCount());
+        Geometry mesh = (Geometry) world.getNode().getChild(0);
+        assertTrue(mesh.getMesh().getVertexCount() > 24 * 4,
+                "Fence, lantern and scarecrow must use multiple cuboids, not full cubes");
+        assertNotNull(world.getHitFace(mesh, 0));
+        assertTrue(world.contains(firstFence));
+        assertTrue(world.contains(lantern));
+        assertTrue(world.contains(scarecrow));
+        assertEquals(1, world.highestBlockY(3, 0));
+    }
+
 }

@@ -85,6 +85,14 @@ class CraftingRecipeTest {
         assertEquals(ItemType.WOODEN_GATE, recipes.get(20).result());
         assertEquals(4, recipes.get(20).itemCosts().get(ItemType.PLANKS));
         assertEquals(2, recipes.get(20).itemCosts().get(ItemType.STICKS));
+        assertEquals(23, recipes.size());
+        assertEquals(ItemType.LANTERN, recipes.get(21).result());
+        assertEquals(2, recipes.get(21).itemCosts().get(ItemType.COPPER_INGOT));
+        assertEquals(1, recipes.get(21).itemCosts().get(ItemType.TORCH));
+        assertEquals(ItemType.SCARECROW, recipes.get(22).result());
+        assertEquals(4, recipes.get(22).itemCosts().get(ItemType.PLANKS));
+        assertEquals(2, recipes.get(22).itemCosts().get(ItemType.STICKS));
+        assertEquals(1, recipes.get(22).itemCosts().get(ItemType.WHEAT));
     }
 
     @Test void farmProductCatalogAddsBucketAndShearsRecipesAfterExistingRecipes() {
