@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.15 — Farmstead Decorations
+- Replaced full-cube fence rendering with connected 3D posts and rails; neighboring fences and gates form continuous sections.
+- Added a decorative lantern model, crafted from 2 copper ingots and 1 torch.
+- Added a wooden scarecrow model, crafted from 4 planks, 2 sticks and 1 wheat.
+- Extended **Y** building selection and **G** placement to fence, feeder, gate, lantern and scarecrow.
+- Mining lanterns and scarecrows returns their crafted item; both block types are saved in world format 2.
+- Expanded the inventory layout to three columns so the new item entries remain visible.
+- Added model, recipe, mining-time and save/load tests.
+
 ## 1.9.14 — Gates & Smarter Animal Pens
 - Added a craftable wooden gate: **4 planks + 2 sticks → 1 gate**.
 - **Y** cycles between fence, feeder and gate; **G** places the selected building.

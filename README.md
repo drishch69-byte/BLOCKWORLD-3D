@@ -2,22 +2,29 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.14 — Gates & Smarter Animal Pens.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.15 — Farmstead Decorations.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
 > Minecraft 3D is an unofficial, independent voxel sandbox fan project. It is not affiliated with or endorsed by Mojang or Microsoft. It does not include Minecraft source code, textures, sounds, models, or other official assets. All game code and original assets in this repository are independently created.
 
-## Current release
+## Current version
 
-**1.9.14 — Gates & Smarter Animal Pens**
+**1.9.15 — Farmstead Decorations (development)**
 
-- Craft and place wooden gates as part of animal enclosures.
+- Wooden fences now use connected 3D posts and rails instead of solid cubes.
+- Craft a lantern with **2 copper ingots + 1 torch**.
+- Craft a scarecrow with **4 planks + 2 sticks + 1 wheat**.
+- Press **Y** to cycle through fence, feeder, gate, lantern and scarecrow; press **G** to place the selected building.
+- Lanterns and scarecrows have their own 3D models and return to the inventory when mined.
+- New blocks are saved with the existing world format **2**.
+
+**Previous: 1.9.14 — Gates & Smarter Animal Pens**
+
 - Aim at a gate and press **F** to open or close it. The open gate swings to the side and no longer blocks the doorway.
-- Open gate state is saved directly in the world file, alongside the block, without changing world format 2.
-- Farm animals turn away sooner when they reach a fence, reducing the time spent walking into enclosure walls.
+- Gate state is saved directly in the world file without changing world format 2.
+- Farm animals turn away sooner when they reach a fence.
 - **Y** cycles between fence, feeder and gate; **G** places the selected building.
-- All 1.9.13 feeders, animal products, breeding and save compatibility remain included.
 - Gate toggling and feeder stock management remain single-player only until their multiplayer interactions are synchronized.
 
 **Previous: 1.9.13 — Farm Pens & Smart Feeders**

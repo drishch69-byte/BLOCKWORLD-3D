@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.14",
+  "defaultVersion": "1.9.15",
   "versions": [
     {
       "id": "0.1.0",
@@ -204,6 +204,11 @@
     {
       "id": "1.9.14",
       "name": "Gates & Smarter Animal Pens",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.15",
+      "name": "Farmstead Decorations",
       "status": "current"
     }
   ]

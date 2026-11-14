@@ -160,7 +160,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.14  •  GATES & SMARTER ANIMAL PENS");
+        JLabel release = new JLabel("1.9.15  •  FARMSTEAD DECORATIONS");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);
