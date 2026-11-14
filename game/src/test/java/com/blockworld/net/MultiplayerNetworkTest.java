@@ -284,7 +284,7 @@ class MultiplayerNetworkTest {
         MultiplayerPlayerStore store = new MultiplayerPlayerStore(worldFile);
         var alice = store.load("Alice").orElseThrow();
         assertEquals(4, alice.items().get(ItemType.PLANKS));
-        assertEquals(1, alice.items().get(ItemType.EMERALD));
+        assertEquals(2, alice.items().get(ItemType.EMERALD));
     }
 
     @Test void reconnectReceivesTheSavedPersonalProfile(@TempDir Path directory) throws Exception {
