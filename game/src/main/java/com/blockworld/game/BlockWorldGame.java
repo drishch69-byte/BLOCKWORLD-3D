@@ -2264,6 +2264,11 @@ public final class BlockWorldGame extends SimpleApplication {
     }
 
     private void collectNearestAnimalProduct() {
+        if (multiplayerClient != null && multiplayerClient.isConnected()) {
+            statusMessage = "Сбор фермерской продукции пока доступен только в одиночном мире.";
+            updateHud();
+            return;
+        }
         if (!animalProductsEnabled || !version.survival() || !worldReady
                 || inventoryOpen || craftingOpen || furnaceOpen || tradeOpen || achievementsOpen
                 || creatureManager == null) return;

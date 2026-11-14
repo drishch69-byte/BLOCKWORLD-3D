@@ -9,6 +9,7 @@
 - Added craftable empty buckets (3 iron ingots) and reusable shears (2 iron ingots).
 - Added original 16×16 PNG icons for the empty bucket, shears, milk bucket, wool and egg.
 - Persisted per-animal production timers in the animal sidecar and included them in world backups; world save format remains 2.
+- Kept product collection single-player-only until per-animal timers and inventory changes are synchronized over multiplayer.
 
 ## 1.9.11 — Farm Life & Baby Animals
 - Added breeding for adult cows, sheep, pigs, and chickens in single-player survival. Bring two adults of the same species together, carry two feed items, and press **F** near either parent.

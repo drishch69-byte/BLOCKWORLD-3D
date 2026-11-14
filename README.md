@@ -18,6 +18,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 - Press **F** near two adult animals of the same species to breed them; product collection has its own key and does not conflict with breeding.
 - Added original 16×16 PNG inventory icons for empty buckets, shears, milk buckets, wool and eggs.
 - Added crafting recipes for empty buckets and reusable shears; animal product timers are saved and included in backups.
+- Farm-product collection is single-player only until animal timers and inventory changes are synchronized in multiplayer.
 - Kept world save format 2 and earlier profile behavior.
 
 **Previous: 1.9.11 — Farm Life & Baby Animals**
