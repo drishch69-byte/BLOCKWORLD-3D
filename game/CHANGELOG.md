@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.26 — Village Homes & Social Life
+- Added stable `bookshelf` and `villager_bed` block IDs with detailed cuboid models and texture-atlas slots 35 and 36.
+- Newly generated village homes in profile 1.9.26+ now include a bookshelf, furnace and two beds each.
+- Villagers find nearby beds at night, approach them using collision-aware movement and rest with a subtle breathing animation.
+- During daytime, villagers periodically visit public workstations assigned to other professions.
+- Added tests for furniture models, block ID save/load round trips, new village generation, old-profile compatibility, bed lookup and social visits.
+- World save format remains 2; old village profiles do not generate the new furniture.
+
 ## 1.9.25 — Villager Workplaces
 - Farmers search for nearby farmland or wheat, blacksmiths seek furnaces, and librarians visit village archive chests.
 - Professioned villagers approach their nearest matching workplace during daytime and use a subtle working-arm animation.

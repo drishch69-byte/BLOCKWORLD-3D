@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.25
-Codename: Villager Workplaces
+Version: 1.9.26
+Codename: Village Homes & Social Life
 Status: Development Build
