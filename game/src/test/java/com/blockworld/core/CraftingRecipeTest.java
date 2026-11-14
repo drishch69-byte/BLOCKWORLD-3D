@@ -76,7 +76,7 @@ class CraftingRecipeTest {
 
     @Test void farmBuildingCatalogAddsFenceAndAutomaticFeederRecipes() {
         var recipes = CraftingRecipe.farmBuildingRecipes();
-        assertEquals(21, recipes.size());
+        assertEquals(23, recipes.size());
         assertEquals(ItemType.WOODEN_FENCE, recipes.get(18).result());
         assertEquals(4, recipes.get(18).resultCount());
         assertEquals(ItemType.FEED_TROUGH, recipes.get(19).result());
