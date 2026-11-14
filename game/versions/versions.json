@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.19",
+  "defaultVersion": "1.9.20",
   "versions": [
     {
       "id": "0.1.0",
@@ -229,6 +229,11 @@
     {
       "id": "1.9.19",
       "name": "Launcher UI Polish",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.20",
+      "name": "Stability & Log Rotation",
       "status": "current"
     }
   ]

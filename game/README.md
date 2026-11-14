@@ -1,6 +1,12 @@
 # Minecraft 3D — Launcher UI Polish
 
-## 1.9.19 — LAUNCHER UI POLISH (DEVELOPMENT)
+## 1.9.20 — STABILITY & LOG ROTATION (DEVELOPMENT)
+
+- Runtime diagnostics are capped at 1 MiB per active log; the previous run is preserved as `latest-run.log.1`.
+- Logging I/O errors never interrupt gameplay.
+- Existing world saves remain compatible (format 2).
+
+## 1.9.19 — LAUNCHER UI POLISH
 
 - Окно модов показывает, включён ли мод, его версию и наличие BlockWorld API provider.
 - У выбранного мода отображаются сведения, а кнопки включения и удаления доступны только при выборе.

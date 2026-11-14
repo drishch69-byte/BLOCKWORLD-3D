@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.20 — Stability & Log Rotation
+- Added automatic log rotation at 1 MiB; the previous run is retained as `latest-run.log.1`.
+- Logging I/O failures remain non-fatal and never interrupt gameplay.
+- Added tests for rotation, append behavior and preservation of the previous run.
+- World save format remains 2; existing worlds and profile settings are unchanged.
+
 ## 1.9.19 — Launcher UI Polish
 - Redesigned the mods manager with clear enabled/disabled states, mod versions, API-provider status and selected-mod details.
 - Redesigned the resource-pack manager as a list with active-pack markers, metadata details, and refresh controls.

@@ -52,7 +52,8 @@ public final class VersionManager {
             new GameVersion("1.9.16", "Lantern Lighting", "Тёплое локальное освещение от фонарей с затуханием и обновлением соседних чанков", 144, true, true, true, true, true),
             new GameVersion("1.9.17", "Melee Combat Update", "Удары по мобам и игрокам мышью, проверка дальности и направления, синхронизация ударов в мультиплеере", 144, true, true, true, true, true),
             new GameVersion("1.9.18", "Launcher Backup Update", "Ручное создание резервных копий миров, обновлённая главная страница лаунчера и обновление списка клавишей F5", 144, true, true, true, true, true),
-            new GameVersion("1.9.19", "Launcher UI Polish", "Обновлённые окна модов, ресурс-паков и мультиплеера, статусы дополнений, активный ресурс-пак и проверка параметров сервера", 144, true, true, true, true, true)
+            new GameVersion("1.9.19", "Launcher UI Polish", "Обновлённые окна модов, ресурс-паков и мультиплеера, статусы дополнений, активный ресурс-пак и проверка параметров сервера", 144, true, true, true, true, true),
+            new GameVersion("1.9.20", "Stability & Log Rotation", "Ограничение размера журнала, архив предыдущего запуска и тесты устойчивости диагностики", 144, true, true, true, true, true)
     );
 
     private VersionManager() {

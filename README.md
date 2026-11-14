@@ -17,7 +17,7 @@
   <a href="PROMOTE.md">Share the project</a>
 </p>
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.18 — Launcher Backup Update.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.20 — Stability & Log Rotation.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -29,7 +29,13 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current version
 
-**1.9.19 — Launcher UI Polish (development)**
+**1.9.20 — Stability & Log Rotation (development)**
+
+- Runtime logs rotate automatically after 1 MiB, retaining the previous run for troubleshooting.
+- Logging failures remain non-fatal; tests cover rotation and append behavior.
+- Existing worlds and settings remain compatible; world save format stays at 2.
+
+**Previous: 1.9.19 — Launcher UI Polish**
 
 - The mods window now shows enabled/disabled state, mod version, BlockWorld API availability and a details panel.
 - Resource packs use a dedicated list that marks the active pack and shows its description and folder.
