@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.9",
+  "defaultVersion": "1.9.10",
   "versions": [
     {
       "id": "0.1.0",
@@ -179,6 +179,11 @@
     {
       "id": "1.9.9",
       "name": "Enchanted Grove & Artifact Collection",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.10",
+      "name": "Fox Companions & Taming",
       "status": "current"
     }
   ]

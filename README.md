@@ -2,7 +2,7 @@
 
 [![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.9 — Enchanted Grove & Artifact Collection.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current release: 1.9.10 — Fox Companions & Taming.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -10,7 +10,14 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current release
 
-**1.9.9 — Enchanted Grove & Artifact Collection**
+**1.9.10 — Fox Companions & Taming**
+
+- Feed a nearby fox cooked fish and press **F** to tame it in survival mode.
+- Tamed foxes follow you; press **N** near a dog or tamed fox to switch between **Follow** and **Stay**.
+- Fox taming is saved beside the world without changing world save format 2; older profiles and old saves remain supported.
+- Multiplayer fox taming is disabled until companion-state synchronization is implemented.
+
+**Previous: 1.9.9 — Enchanted Grove & Artifact Collection**
 
 - Added the rare **Enchanted Grove** surface biome with mossy ground, denser trees, glow crystals and ferns.
 - Added deterministic 1.9.9 biome sampling and a saved `enchantedBiomes` flag; 1.9.8 worlds keep their previous biome map.

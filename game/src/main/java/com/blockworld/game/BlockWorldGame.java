@@ -26,6 +26,7 @@ import com.blockworld.core.TreasureLoot;
 import com.blockworld.core.PlayerDataStore;
 import com.blockworld.core.PetDataStore;
 import com.blockworld.core.PetMode;
+import com.blockworld.core.PetRules;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
 import com.blockworld.core.GameSettings;
@@ -141,6 +142,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private final boolean release100Enabled;
     private final boolean explorationEnabled;
     private final boolean petsEnabled;
+    private final boolean foxCompanionsEnabled;
     private final List<CraftingRecipe> craftingRecipes;
     private final List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
     private final AchievementTracker achievements = new AchievementTracker();
@@ -267,6 +269,7 @@ public final class BlockWorldGame extends SimpleApplication {
         this.release100Enabled = supportsRelease100(version);
         this.explorationEnabled = WorldNavigation.supportsExploration(version.id());
         this.petsEnabled = version.id().compareTo("1.9.0") >= 0;
+        this.foxCompanionsEnabled = "1.9.10".equals(version.id());
         List<CraftingRecipe> allRecipes = release100Enabled ? CraftingRecipe.release100Recipes()
                 : agricultureEnabled ? CraftingRecipe.advancedRecipes() : CraftingRecipe.starterRecipes();
         this.craftingRecipes = equipmentEnabled ? allRecipes : List.copyOf(allRecipes.subList(0, 4));
@@ -2185,12 +2188,43 @@ public final class BlockWorldGame extends SimpleApplication {
             statusMessage = "Житель открыл торговлю. Нажми 1–4 для обмена; F — закрыть.";
         } else if (creature.type().isVillager()) {
             statusMessage = creature.type().displayName() + ": Добро пожаловать в нашу деревню!";
+        } else if (creature.type() == com.blockworld.core.CreatureType.FOX
+                && foxCompanionsEnabled && version.survival()) {
+            interactFox(creature);
         } else if (creature.type() == com.blockworld.core.CreatureType.SLIME) {
             statusMessage = "Слайм подпрыгивает рядом. Он не нападает.";
         } else {
             statusMessage = creature.type().displayName() + " рядом. Существо спокойно гуляет по траве.";
         }
         updateHud();
+    }
+
+    private void interactFox(com.blockworld.core.WorldCreature fox) {
+        if (multiplayerClient != null && multiplayerClient.isConnected()) {
+            statusMessage = "Приручение лис пока доступно только в одиночном мире.";
+            return;
+        }
+        if (creatureManager.isTamedFox(fox.id())) {
+            statusMessage = "Эта лиса уже твой компаньон. Нажми N рядом с ней, чтобы она осталась или пошла за тобой.";
+            return;
+        }
+        ItemType food = PetRules.tamingFood(fox.type());
+        if (food == null || craftedItems.getOrDefault(food, 0) <= 0) {
+            statusMessage = "Лиса любит приготовленную рыбу. Возьми её в инвентарь и снова нажми F рядом с лисой.";
+            return;
+        }
+        if (!creatureManager.tameFox(fox.id())) {
+            statusMessage = "Не удалось приручить эту лису. Попробуй подойти ближе.";
+            return;
+        }
+        craftedItems.merge(food, -1, Integer::sum);
+        saveWorld();
+        if (statusMessage.startsWith("Ошибка сохранения:")) {
+            statusMessage = "Лиса приручена, но сохранение не удалось: " + statusMessage;
+        } else {
+            statusMessage = "Лиса приручена! Она будет следовать за тобой. Нажми N рядом с питомцем, чтобы сменить команду.";
+        }
+        updateInventoryUi();
     }
 
     private void tradeWithVillager(int index) {
@@ -2780,10 +2814,10 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         Vector3f playerPosition = version.survival() ? playerEyePosition : cam.getLocation();
-        PetMode mode = creatureManager.toggleNearestDogMode(playerPosition, 12f);
-        if (mode == null) statusMessage = "Рядом нет пса-компаньона. Подойди ближе и нажми N.";
-        else if (mode == PetMode.STAY) statusMessage = "Пёс останется здесь. Нажми N рядом с ним, чтобы позвать обратно.";
-        else statusMessage = "Пёс снова следует за тобой.";
+        PetMode mode = creatureManager.toggleNearestPetMode(playerPosition, 12f);
+        if (mode == null) statusMessage = "Рядом нет питомца-компаньона. Подойди ближе и нажми N.";
+        else if (mode == PetMode.STAY) statusMessage = "Питомец останется здесь. Нажми N рядом с ним, чтобы позвать обратно.";
+        else statusMessage = "Питомец снова следует за тобой.";
         updateHud();
     }
 

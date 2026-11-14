@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.10 — Fox Companions & Taming
+- Added fox taming in survival mode: interact with a nearby fox using **F** while carrying cooked fish.
+- Tamed foxes follow the player and can be told to **Stay** or **Follow** again with **N**, alongside existing dog companions.
+- Saved tamed-fox state and companion commands in the existing pets sidecar; old dog commands and world save format 2 remain compatible.
+- Kept fox taming disabled in earlier version profiles and unavailable in multiplayer until companion tame-state synchronization is supported.
+- Added regression tests for taming rules, companion eligibility, profile registration, and persistence of a tamed fox in Follow mode.
+
+# Changelog
+
 ## 1.9.9 — Version Profile Manager
 - Added a manager for built-in game-version profiles, with activation, profile folder access, and shortcuts to profile-specific settings and mods.
 - Added independent settings files and enabled/disabled mod folders per version profile.

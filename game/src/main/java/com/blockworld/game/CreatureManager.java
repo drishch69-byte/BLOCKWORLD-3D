@@ -6,6 +6,7 @@ import com.blockworld.core.CreatureType;
 import com.blockworld.core.VoxelWorld;
 import com.blockworld.core.WorldCreature;
 import com.blockworld.core.PetMode;
+import com.blockworld.core.PetRules;
 import com.jme3.asset.AssetManager;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
@@ -58,8 +59,9 @@ public final class CreatureManager {
         if (savedModes == null) return;
         for (Map.Entry<Long, PetMode> entry : savedModes.entrySet()) {
             Visual visual = visuals.get(entry.getKey());
-            if (visual != null && visual.state.type() == CreatureType.DOG
-                    && entry.getValue() == PetMode.STAY) petModes.put(entry.getKey(), PetMode.STAY);
+            if (visual != null && PetRules.shouldPersistMode(visual.state.type(), entry.getValue())) {
+                petModes.put(entry.getKey(), entry.getValue());
+            }
         }
     }
 
@@ -67,35 +69,58 @@ public final class CreatureManager {
         Map<Long, PetMode> snapshot = new HashMap<>();
         for (Map.Entry<Long, PetMode> entry : petModes.entrySet()) {
             Visual visual = visuals.get(entry.getKey());
-            if (visual != null && visual.state.type() == CreatureType.DOG
-                    && entry.getValue() == PetMode.STAY) snapshot.put(entry.getKey(), PetMode.STAY);
+            if (visual != null && PetRules.shouldPersistMode(visual.state.type(), entry.getValue())) {
+                snapshot.put(entry.getKey(), entry.getValue());
+            }
         }
         return Map.copyOf(snapshot);
     }
 
-    public PetMode toggleNearestDogMode(Vector3f position, float maxDistance) {
+    public boolean isTamedFox(long creatureId) {
+        Visual visual = visuals.get(creatureId);
+        return visual != null && visual.state.type() == CreatureType.FOX
+                && petModes.containsKey(creatureId);
+    }
+
+    public boolean tameFox(long creatureId) {
+        Visual visual = visuals.get(creatureId);
+        if (visual == null || !PetRules.isTameable(visual.state.type())
+                || petModes.containsKey(creatureId)) return false;
+        petModes.put(creatureId, PetMode.FOLLOW);
+        return true;
+    }
+
+    public PetMode toggleNearestPetMode(Vector3f position, float maxDistance) {
         if (position == null || !Float.isFinite(position.x) || !Float.isFinite(position.y)
                 || !Float.isFinite(position.z) || !Float.isFinite(maxDistance) || maxDistance < 0f) return null;
         float limit = maxDistance * maxDistance;
-        Visual nearestDog = null;
+        Visual nearestPet = null;
         float bestDistance = limit;
         for (Visual visual : visuals.values()) {
-            if (visual.state.type() != CreatureType.DOG) continue;
+            if (!PetRules.isCompanion(visual.state.type(), petModes.containsKey(visual.state.id()))) continue;
             float dx = visual.state.x() - position.x;
             float dy = visual.state.y() - position.y;
             float dz = visual.state.z() - position.z;
             float distance = dx * dx + dy * dy + dz * dz;
             if (distance <= bestDistance) {
                 bestDistance = distance;
-                nearestDog = visual;
+                nearestPet = visual;
             }
         }
-        if (nearestDog == null) return null;
-        long id = nearestDog.state.id();
+        if (nearestPet == null) return null;
+        long id = nearestPet.state.id();
         PetMode next = petModes.getOrDefault(id, PetMode.FOLLOW).toggle();
-        if (next == PetMode.FOLLOW) petModes.remove(id);
-        else petModes.put(id, next);
+        if (nearestPet.state.type() == CreatureType.DOG && next == PetMode.FOLLOW) {
+            petModes.remove(id);
+        } else {
+            petModes.put(id, next);
+        }
         return next;
+    }
+
+    /** Backwards-compatible method name retained for existing integrations. */
+    public PetMode toggleNearestDogMode(Vector3f position, float maxDistance) {
+        return toggleNearestPetMode(position, maxDistance);
     }
 
     public String attackAlongRay(Vector3f origin, Vector3f direction, float reach,
@@ -282,7 +307,8 @@ public final class CreatureManager {
                     nextX = visual.nextX;
                     nextZ = visual.nextZ;
                 }
-            } else if (state.type() == CreatureType.DOG && playerPosition != null) {
+            } else if (PetRules.isCompanion(state.type(), petModes.containsKey(state.id()))
+                    && playerPosition != null) {
                 if (petModes.getOrDefault(state.id(), PetMode.FOLLOW) == PetMode.FOLLOW) {
                     float dx = playerPosition.x - state.x();
                     float dz = playerPosition.z - state.z();

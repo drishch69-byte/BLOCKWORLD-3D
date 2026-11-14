@@ -12,9 +12,9 @@ class PetDataStoreTest {
     @TempDir Path tempDir;
 
     @Test
-    void savesAndLoadsStayCommandsWithoutChangingWorldFile() throws Exception {
+    void savesDogCommandsAndTamedFoxFollowStateWithoutChangingWorldFile() throws Exception {
         Path world = tempDir.resolve("Companions.bwworld");
-        Map<Long, PetMode> expected = Map.of(12L, PetMode.STAY, 27L, PetMode.STAY);
+        Map<Long, PetMode> expected = Map.of(12L, PetMode.STAY, 27L, PetMode.STAY, 31L, PetMode.FOLLOW);
         PetDataStore.save(world, expected);
         Map<Long, PetMode> loaded = new HashMap<>();
         PetDataStore.load(world, loaded);

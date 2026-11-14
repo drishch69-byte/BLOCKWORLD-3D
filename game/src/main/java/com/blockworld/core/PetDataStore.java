@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
 
-/** Stores non-default companion commands without changing the established world format. */
+/** Stores companion commands and tame-state markers without changing the established world format. */
 public final class PetDataStore {
     private static final String PREFIX = "pet.";
     private static final int MAX_PETS = 256;

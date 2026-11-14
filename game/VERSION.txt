@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.9
-Codename: Enchanted Grove & Artifact Collection
+Version: 1.9.10
+Codename: Fox Companions & Taming
 Status: Feature Release

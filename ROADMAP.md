@@ -1,6 +1,6 @@
 # Minecraft 3D — Roadmap
 
-This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
+This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.10 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
 
 ## 1.1.0 — Wildlands & Crystal Caves (released)
 - Added taiga and swamp biomes, crystal-lined underground caves, and underground water pools.
@@ -8,6 +8,11 @@ This roadmap records implemented releases and future proposals. Versions 1.1.0, 
 - Expanded villages with a market stall and garden.
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
+
+## 1.9.10 — Fox Companions & Taming (released)
+- Tame a nearby fox with cooked fish using F in single-player survival.
+- Command dogs and tamed foxes to Follow or Stay with N.
+- Persist fox taming and companion modes in the existing pet sidecar; keep world save format 2 unchanged.
 
 ## 1.9.1 — World Creator & Seeds (released)
 - Added small, normal, and large world-size choices in the new-world dialog.
