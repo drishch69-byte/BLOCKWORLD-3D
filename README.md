@@ -31,7 +31,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 **1.9.26 — Village Homes & Social Life (development)**
 
-- New village homes contain visible 3D bookshelves, blacksmith furnaces and four villager beds across the two houses.
+- A separate public library has two rows of double-height 3D bookshelves; the village homes contain furnaces and four resident beds.
 - Villagers search for nearby beds at night and use a subtle breathing animation while resting.
 - During the day, villagers occasionally visit public workplaces belonging to other professions.
 - Added stable block IDs for bookshelves and beds, with round-trip save tests; world save format remains 2.
