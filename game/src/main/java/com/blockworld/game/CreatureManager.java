@@ -479,6 +479,12 @@ public final class CreatureManager {
     /** Updates local creature AI with optional profession-specific workplace routines. */
     public void update(float tpf, Vector3f playerPosition, VoxelWorld world,
                        float dayPhase, boolean workplacesEnabled) {
+        update(tpf, playerPosition, world, dayPhase, workplacesEnabled, false);
+    }
+
+    /** Enables beds and social workplace visits for the newest village profiles. */
+    public void update(float tpf, Vector3f playerPosition, VoxelWorld world,
+                       float dayPhase, boolean workplacesEnabled, boolean villageHomesEnabled) {
         if (animalBreedingEnabled) advanceAnimalTimers(tpf);
         List<Long> defeated = new ArrayList<>();
         // Determine which hostiles threaten a village once per tick, not once per guardian.
@@ -513,6 +519,9 @@ public final class CreatureManager {
             } else if (state.type().isVillager() && state.type() != CreatureType.VILLAGER_GUARD) {
                 Visual threat = nearestVillagerThreat(visual, protectedHostiles);
                 if (threat != null) {
+                    visual.sleeping = false;
+                    visual.working = false;
+                    visual.socialVisitTarget = null;
                     float dx = state.x() - threat.state.x();
                     float dz = state.z() - threat.state.z();
                     float distance = (float) Math.sqrt(dx * dx + dz * dz);
@@ -528,13 +537,27 @@ public final class CreatureManager {
                     visual.pauseTimer = 0f;
                 } else if (VillagerBehaviorRules.shouldRest(state.type(), dayPhase)) {
                     visual.working = false;
-                    visual.pauseTimer = Math.max(0f, visual.pauseTimer - Math.max(0f, tpf));
+                    visual.socialVisitTarget = null;
+                    if (villageHomesEnabled) {
+                        sleepAtNearestBed(visual, tpf, world);
+                        nextX = visual.nextX;
+                        nextZ = visual.nextZ;
+                    } else {
+                        visual.sleeping = false;
+                        visual.pauseTimer = Math.max(0f, visual.pauseTimer - Math.max(0f, tpf));
+                    }
+                } else if (villageHomesEnabled && visitOtherWorkplace(visual, tpf, world)) {
+                    visual.sleeping = false;
+                    nextX = visual.nextX;
+                    nextZ = visual.nextZ;
                 } else if (workplacesEnabled
                         && VillagerWorkplaceRules.shouldWork(state.type(), dayPhase)
                         && visitWorkplace(visual, tpf, world)) {
+                    visual.sleeping = false;
                     nextX = visual.nextX;
                     nextZ = visual.nextZ;
                 } else {
+                    visual.sleeping = false;
                     visual.working = false;
                     wander(visual, tpf, state);
                     nextX = visual.nextX;
@@ -620,6 +643,7 @@ public final class CreatureManager {
                     : state.type() == CreatureType.RABBIT
                     ? rabbitHop(visual.animationClock, walking)
                     : walking ? Math.abs(gaitSwing(visual.animationClock, true)) * .025f : 0f;
+            if (visual.sleeping) bob += (float) Math.sin(visual.animationClock * 1.4f) * 0.012f;
             visual.root.setLocalTranslation(state.x(), state.y() + bob, state.z());
             visual.root.setLocalRotation(new Quaternion().fromAngleAxis(state.yaw(), Vector3f.UNIT_Y));
             float scale = AnimalBreedingRules.isBaby(state.type()) ? 0.55f : 1f;
@@ -783,9 +807,126 @@ public final class CreatureManager {
         return threats;
     }
 
+    private boolean sleepAtNearestBed(Visual visual, float tpf, VoxelWorld world) {
+        WorldCreature state = visual.state;
+        float elapsed = Float.isFinite(tpf) ? Math.max(0f, tpf) : 0f;
+        visual.bedSearchTimer = Math.max(0f, visual.bedSearchTimer - elapsed);
+        if (visual.bed != null && world.getBlock(visual.bed) != BlockType.VILLAGER_BED) {
+            visual.bed = null;
+            visual.bedSearchTimer = 0f;
+        }
+        if (visual.bedSearchTimer <= 0f) {
+            visual.bed = VillagerWorkplaceRules.findNearestBed(
+                    state.x(), state.y(), state.z(), world, VillagerWorkplaceRules.SEARCH_RADIUS);
+            visual.bedSearchTimer = VillagerWorkplaceRules.SEARCH_INTERVAL_SECONDS;
+        }
+        if (visual.bed == null) {
+            // Villagers without a nearby bed still rest instead of wandering all night.
+            visual.sleeping = true;
+            visual.nextX = state.x();
+            visual.nextZ = state.z();
+            return true;
+        }
+
+        float stationX = visual.bed.x() + 0.5f;
+        float stationZ = visual.bed.z() + 0.5f;
+        float awayX = state.x() - stationX;
+        float awayZ = state.z() - stationZ;
+        float awayLength = (float) Math.sqrt(awayX * awayX + awayZ * awayZ);
+        if (awayLength < 0.001f) {
+            int direction = (int) (state.id() & 3L);
+            awayX = direction == 0 ? 1f : direction == 2 ? -1f : 0f;
+            awayZ = direction == 1 ? 1f : direction == 3 ? -1f : 0f;
+            awayLength = 1f;
+        }
+        float targetX = stationX + awayX / awayLength * 1.25f;
+        float targetZ = stationZ + awayZ / awayLength * 1.25f;
+        float dx = targetX - state.x();
+        float dz = targetZ - state.z();
+        float distance = (float) Math.sqrt(dx * dx + dz * dz);
+        if (distance > 0.32f) {
+            visual.sleeping = false;
+            visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+            float step = Math.min(distance - 0.32f,
+                    state.type().moveSpeed() * 1.1f * Math.min(elapsed, 0.05f));
+            visual.nextX = state.x() + (float) Math.sin(visual.yaw) * step;
+            visual.nextZ = state.z() + (float) Math.cos(visual.yaw) * step;
+        } else {
+            visual.sleeping = true;
+            visual.nextX = state.x();
+            visual.nextZ = state.z();
+            visual.yaw = com.jme3.math.FastMath.atan2(
+                    stationX - state.x(), stationZ - state.z());
+        }
+        return true;
+    }
+
+    private boolean visitOtherWorkplace(Visual visual, float tpf, VoxelWorld world) {
+        WorldCreature state = visual.state;
+        float elapsed = Float.isFinite(tpf) ? Math.max(0f, tpf) : 0f;
+        visual.socialVisitTimer = Math.max(0f, visual.socialVisitTimer - elapsed);
+        if (visual.socialVisitTarget != null
+                && !VillagerWorkplaceRules.isOtherWorkplaceFor(
+                        state.type(), world.getBlock(visual.socialVisitTarget))) {
+            visual.socialVisitTarget = null;
+            visual.socialVisitRemaining = 0f;
+            visual.socialVisitTimer = 2f;
+        }
+        if (visual.socialVisitTarget == null) {
+            if (visual.socialVisitTimer > 0f) return false;
+            visual.socialVisitTarget = VillagerWorkplaceRules.findNearestOtherWorkplace(
+                    state.type(), state.x(), state.y(), state.z(), world,
+                    VillagerWorkplaceRules.SEARCH_RADIUS);
+            if (visual.socialVisitTarget == null) {
+                visual.socialVisitTimer = 10f;
+                return false;
+            }
+            visual.socialVisitRemaining = 2.5f + visual.random.nextFloat() * 2f;
+        }
+
+        float stationX = visual.socialVisitTarget.x() + 0.5f;
+        float stationZ = visual.socialVisitTarget.z() + 0.5f;
+        float awayX = state.x() - stationX;
+        float awayZ = state.z() - stationZ;
+        float awayLength = (float) Math.sqrt(awayX * awayX + awayZ * awayZ);
+        if (awayLength < 0.001f) {
+            int direction = (int) (state.id() & 3L);
+            awayX = direction == 0 ? 1f : direction == 2 ? -1f : 0f;
+            awayZ = direction == 1 ? 1f : direction == 3 ? -1f : 0f;
+            awayLength = 1f;
+        }
+        float targetX = stationX + awayX / awayLength * 1.25f;
+        float targetZ = stationZ + awayZ / awayLength * 1.25f;
+        float dx = targetX - state.x();
+        float dz = targetZ - state.z();
+        float distance = (float) Math.sqrt(dx * dx + dz * dz);
+        if (distance > 0.32f) {
+            visual.working = false;
+            visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+            float step = Math.min(distance - 0.32f,
+                    state.type().moveSpeed() * 1.05f * Math.min(elapsed, 0.05f));
+            visual.nextX = state.x() + (float) Math.sin(visual.yaw) * step;
+            visual.nextZ = state.z() + (float) Math.cos(visual.yaw) * step;
+        } else {
+            visual.working = true;
+            visual.nextX = state.x();
+            visual.nextZ = state.z();
+            visual.yaw = com.jme3.math.FastMath.atan2(
+                    stationX - state.x(), stationZ - state.z());
+            visual.socialVisitRemaining -= elapsed;
+            if (visual.socialVisitRemaining <= 0f) {
+                visual.socialVisitTarget = null;
+                visual.socialVisitTimer = 16f + visual.random.nextFloat() * 12f;
+                visual.working = false;
+            }
+        }
+        return true;
+    }
+
     private boolean visitWorkplace(Visual visual, float tpf, VoxelWorld world) {
         WorldCreature state = visual.state;
         float elapsed = Float.isFinite(tpf) ? Math.max(0f, tpf) : 0f;
+        visual.sleeping = false;
         visual.workplaceSearchTimer = Math.max(0f, visual.workplaceSearchTimer - elapsed);
 
         if (visual.workplace != null
@@ -911,6 +1052,7 @@ public final class CreatureManager {
                     angle += side * (float) Math.sin(visual.animationClock * 3.2f) * 0.18f;
                 }
             }
+            if (visual.sleeping) angle *= 0.08f;
             part.getValue().setLocalRotation(new Quaternion().fromAngleAxis(angle, Vector3f.UNIT_X));
         }
     }
@@ -1215,8 +1357,14 @@ public final class CreatureManager {
         private float nextZ;
         private float workplaceSearchTimer;
         private BlockPos workplace;
+        private float bedSearchTimer;
+        private BlockPos bed;
+        private float socialVisitTimer;
+        private float socialVisitRemaining;
+        private BlockPos socialVisitTarget;
         private boolean walking;
         private boolean working;
+        private boolean sleeping;
 
         private Visual(WorldCreature state, Node root, Map<String, Geometry> animationParts) {
             this.state = state;
@@ -1228,6 +1376,7 @@ public final class CreatureManager {
             this.nextX = state.x();
             this.nextZ = state.z();
             this.turnTimer = 1f + random.nextFloat() * 3f;
+            this.socialVisitTimer = 8f + random.nextFloat() * 8f;
         }
     }
 }

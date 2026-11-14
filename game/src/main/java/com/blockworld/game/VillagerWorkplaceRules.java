@@ -29,9 +29,74 @@ final class VillagerWorkplaceRules {
             case VILLAGER_FARMER -> block == BlockType.FARMLAND || block == BlockType.WHEAT_CROP;
             case VILLAGER_BLACKSMITH -> block == BlockType.FURNACE;
             // The existing village archive chest serves as the librarian's book archive.
-            case VILLAGER_LIBRARIAN -> block == BlockType.TREASURE_CHEST;
+            case VILLAGER_LIBRARIAN -> block == BlockType.BOOKSHELF
+                    || block == BlockType.TREASURE_CHEST;
             default -> false;
         };
+    }
+
+    static boolean isOtherWorkplaceFor(CreatureType visitor, BlockType block) {
+        return isPublicWorkplace(block) && !isWorkplaceFor(visitor, block);
+    }
+
+    private static boolean isPublicWorkplace(BlockType block) {
+        return block == BlockType.FARMLAND || block == BlockType.WHEAT_CROP
+                || block == BlockType.FURNACE || block == BlockType.BOOKSHELF
+                || block == BlockType.TREASURE_CHEST;
+    }
+
+    static BlockPos findNearestOtherWorkplace(CreatureType type, float x, float y, float z,
+                                              VoxelWorld world, int radius) {
+        if (type == null || !type.isVillager() || type == CreatureType.VILLAGER_GUARD
+                || world == null || !Float.isFinite(x) || !Float.isFinite(y) || !Float.isFinite(z)
+                || radius < 0 || radius > 64) return null;
+        int centerX = (int) Math.floor(x);
+        int centerY = (int) Math.floor(y);
+        int centerZ = (int) Math.floor(z);
+        float bestDistance = radius * radius;
+        BlockPos best = null;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    BlockPos candidate = new BlockPos(centerX + dx, centerY + dy, centerZ + dz);
+                    if (!isOtherWorkplaceFor(type, world.getBlock(candidate))) continue;
+                    float distanceX = candidate.x() + 0.5f - x;
+                    float distanceZ = candidate.z() + 0.5f - z;
+                    float distance = distanceX * distanceX + distanceZ * distanceZ;
+                    if (distance <= bestDistance) {
+                        bestDistance = distance;
+                        best = candidate;
+                    }
+                }
+            }
+        }
+        return best;
+    }
+
+    static BlockPos findNearestBed(float x, float y, float z, VoxelWorld world, int radius) {
+        if (world == null || !Float.isFinite(x) || !Float.isFinite(y) || !Float.isFinite(z)
+                || radius < 0 || radius > 64) return null;
+        int centerX = (int) Math.floor(x);
+        int centerY = (int) Math.floor(y);
+        int centerZ = (int) Math.floor(z);
+        float bestDistance = radius * radius;
+        BlockPos best = null;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dy = -1; dy <= 1; dy++) {
+                    BlockPos candidate = new BlockPos(centerX + dx, centerY + dy, centerZ + dz);
+                    if (world.getBlock(candidate) != BlockType.VILLAGER_BED) continue;
+                    float distanceX = candidate.x() + 0.5f - x;
+                    float distanceZ = candidate.z() + 0.5f - z;
+                    float distance = distanceX * distanceX + distanceZ * distanceZ;
+                    if (distance <= bestDistance) {
+                        bestDistance = distance;
+                        best = candidate;
+                    }
+                }
+            }
+        }
+        return best;
     }
 
     static BlockPos findNearestWorkplace(CreatureType type, float x, float y, float z,

@@ -153,6 +153,7 @@ public final class BlockWorldGame extends SimpleApplication {
     private final boolean animalProductsEnabled;
     private final boolean animalFeedersEnabled;
     private final boolean villagerWorkplacesEnabled;
+    private final boolean villageHomesEnabled;
     private ItemType selectedFarmBuilding = ItemType.WOODEN_FENCE;
     private final List<CraftingRecipe> craftingRecipes;
     private final List<TradeRecipe> tradeRecipes = TradeRecipe.villageOffers();
@@ -286,6 +287,7 @@ public final class BlockWorldGame extends SimpleApplication {
         this.animalProductsEnabled = GameFeatureSupport.supportsAnimalProducts(version);
         this.animalFeedersEnabled = GameFeatureSupport.supportsAnimalFeeders(version);
         this.villagerWorkplacesEnabled = GameFeatureSupport.supportsVillagerWorkplaces(version);
+        this.villageHomesEnabled = GameFeatureSupport.supportsVillageHomes(version);
         List<CraftingRecipe> allRecipes = release100Enabled
                 ? animalFeedersEnabled ? CraftingRecipe.farmBuildingRecipes()
                 : animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
@@ -966,7 +968,7 @@ public final class BlockWorldGame extends SimpleApplication {
         if (worldReady && modLoader != null) modLoader.update(tpf);
         if (worldReady && creatureManager != null && world != null
                 && (multiplayerClient == null || !multiplayerClient.isConnected() || multiplayerClient.isHost())) {
-            creatureManager.update(tpf, version.survival() ? playerEyePosition : cam.getLocation(), world, dayClock, villagerWorkplacesEnabled);
+            creatureManager.update(tpf, version.survival() ? playerEyePosition : cam.getLocation(), world, dayClock, villagerWorkplacesEnabled, villageHomesEnabled);
             if (animalBreedingEnabled) {
                 animalSaveClock += Math.max(0f, tpf);
                 if (animalSaveClock >= 5f) {
