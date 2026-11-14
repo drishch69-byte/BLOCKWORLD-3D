@@ -468,6 +468,11 @@ public final class CreatureManager {
     }
 
     public void update(float tpf, Vector3f playerPosition, VoxelWorld world) {
+        update(tpf, playerPosition, world, 0.25f);
+    }
+
+    /** Updates local creature AI with the current normalized day phase (0..1). */
+    public void update(float tpf, Vector3f playerPosition, VoxelWorld world, float dayPhase) {
         if (animalBreedingEnabled) advanceAnimalTimers(tpf);
         List<Long> defeated = new ArrayList<>();
         // Determine which hostiles threaten a village once per tick, not once per guardian.
@@ -494,6 +499,29 @@ public final class CreatureManager {
                         pendingPlayerDamage += state.type().attackDamage();
                         visual.attackCooldown = 1.25f;
                     }
+                } else {
+                    wander(visual, tpf, state);
+                    nextX = visual.nextX;
+                    nextZ = visual.nextZ;
+                }
+            } else if (state.type().isVillager() && state.type() != CreatureType.VILLAGER_GUARD) {
+                Visual threat = nearestVillagerThreat(visual, protectedHostiles);
+                if (threat != null) {
+                    float dx = state.x() - threat.state.x();
+                    float dz = state.z() - threat.state.z();
+                    float distance = (float) Math.sqrt(dx * dx + dz * dz);
+                    if (distance > 0.001f) {
+                        visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+                    } else {
+                        visual.yaw += (float) Math.PI;
+                    }
+                    float step = state.type().moveSpeed() * VillagerBehaviorRules.FLEE_SPEED_MULTIPLIER
+                            * Math.min(Math.max(tpf, 0f), .05f);
+                    nextX += (float) Math.sin(visual.yaw) * step;
+                    nextZ += (float) Math.cos(visual.yaw) * step;
+                    visual.pauseTimer = 0f;
+                } else if (VillagerBehaviorRules.shouldRest(state.type(), dayPhase)) {
+                    visual.pauseTimer = Math.max(0f, visual.pauseTimer - Math.max(0f, tpf));
                 } else {
                     wander(visual, tpf, state);
                     nextX = visual.nextX;
@@ -740,6 +768,26 @@ public final class CreatureManager {
             }
         }
         return threats;
+    }
+
+    private Visual nearestVillagerThreat(Visual villager, List<Visual> protectedHostiles) {
+        Visual closest = null;
+        float radiusSquared = VillagerBehaviorRules.FLEE_RADIUS * VillagerBehaviorRules.FLEE_RADIUS;
+        float best = radiusSquared;
+        for (Visual candidate : protectedHostiles) {
+            if (!candidate.state.type().isHostile() || candidate.health <= 0f) continue;
+            float dx = candidate.state.x() - villager.state.x();
+            float dz = candidate.state.z() - villager.state.z();
+            float dy = Math.abs(candidate.state.y() - villager.state.y());
+            float distance = dx * dx + dz * dz;
+            if (dy <= 4f && VillagerBehaviorRules.shouldFlee(
+                    villager.state.type(), candidate.state.type(), distance,
+                    VillagerBehaviorRules.FLEE_RADIUS) && distance < best) {
+                best = distance;
+                closest = candidate;
+            }
+        }
+        return closest;
     }
 
     private Visual nearestProtectedHostile(Visual guardian, List<Visual> protectedHostiles) {

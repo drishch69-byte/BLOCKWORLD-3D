@@ -964,7 +964,7 @@ public final class BlockWorldGame extends SimpleApplication {
         if (worldReady && modLoader != null) modLoader.update(tpf);
         if (worldReady && creatureManager != null && world != null
                 && (multiplayerClient == null || !multiplayerClient.isConnected() || multiplayerClient.isHost())) {
-            creatureManager.update(tpf, version.survival() ? playerEyePosition : cam.getLocation(), world);
+            creatureManager.update(tpf, version.survival() ? playerEyePosition : cam.getLocation(), world, dayClock);
             if (animalBreedingEnabled) {
                 animalSaveClock += Math.max(0f, tpf);
                 if (animalSaveClock >= 5f) {
