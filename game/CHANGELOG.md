@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.9.28 — Village Economy
+- Added limited market stock for ordinary villagers, farmers, blacksmiths, librarians, and guards; each successful purchase consumes the matching merchant stock and adds the payment to the village ledger.
+- Farmers replenish bread and emeralds while working at their own farmland/crops; blacksmiths replenish iron ingots, tools, and guard-post gear; librarians replenish torches and lanterns.
+- Trade UI now shows the remaining reward stock and distinguishes an empty market from a player who lacks payment items.
+- Added atomic `.village.properties` sidecar persistence for stock and unfinished work cycles without changing world save format 2.
+- Multiplayer hosts report active workers; the server alone advances and persists market stock, validates stock-limited trades, and broadcasts market snapshots to connected players.
+- Added economy, persistence, backup/restore, version-gate, and server market exhaustion tests.
+- Added the village economy sidecar to world backups while retaining compatibility with older backup manifests.
+
 ## 1.9.27 — Village Trading
 - Added profession-specific offers for farmers, blacksmiths, librarians, and guards; ordinary villagers retain the original four-offer catalogue.
 - Farmer offers now cover wheat, seeds, eggs, and wool; blacksmith offers cover metal ingots, tools, and shears; librarians trade useful supplies and relics; guards trade iron equipment.

@@ -43,11 +43,13 @@ class WorldBackupManagerTest {
         Path achievements = AchievementDataStore.sidecar(world);
         Path pets = PetDataStore.sidecar(world);
         Path animals = AnimalDataStore.sidecar(world);
+        Path village = VillageEconomyDataStore.sidecar(world);
         Files.writeString(player, "inventory=old\n");
         Files.writeString(farm, "farm=old\n");
         Files.writeString(achievements, "achievement=old\n");
         Files.writeString(pets, "pet.17=stay\n");
         Files.writeString(animals, "baby.30=12.5\n");
+        Files.writeString(village, "market=old\n");
 
         Path backup = WorldBackupManager.create(world);
         Files.writeString(world, worldState("new"));
@@ -56,6 +58,7 @@ class WorldBackupManagerTest {
         Files.writeString(achievements, "achievement=new\n");
         Files.writeString(pets, "pet.17=follow\n");
         Files.writeString(animals, "baby.30=80.0\n");
+        Files.writeString(village, "market=new\n");
 
         WorldBackupManager.restore(world, backup);
 
@@ -64,6 +67,7 @@ class WorldBackupManagerTest {
         assertEquals("achievement=old\n", Files.readString(achievements));
         assertEquals("pet.17=stay\n", Files.readString(pets));
         assertEquals("baby.30=12.5\n", Files.readString(animals));
+        assertEquals("market=old\n", Files.readString(village));
         assertEquals(2, WorldBackupManager.list(world).size());
     }
 

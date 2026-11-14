@@ -24,6 +24,7 @@ import com.jme3.scene.shape.Box;
 import com.jme3.texture.Texture;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -407,6 +408,22 @@ public final class CreatureManager {
             }
         }
         return closest;
+    }
+
+    /** Counts only villagers actively animating at their own assigned workstation. */
+    public Map<CreatureType, Integer> activeWorkerCounts() {
+        EnumMap<CreatureType, Integer> counts = new EnumMap<>(CreatureType.class);
+        counts.put(CreatureType.VILLAGER_FARMER, 0);
+        counts.put(CreatureType.VILLAGER_BLACKSMITH, 0);
+        counts.put(CreatureType.VILLAGER_LIBRARIAN, 0);
+        for (Visual visual : visuals.values()) {
+            CreatureType type = visual.state.type();
+            if (visual.working && !visual.sleeping && visual.workplace != null
+                    && visual.socialVisitTarget == null && VillagerWorkplaceRules.hasWorkplace(type)) {
+                counts.merge(type, 1, (current, added) -> Math.min(16, current + added));
+            }
+        }
+        return Map.copyOf(counts);
     }
 
     public void sync(VoxelWorld world) {

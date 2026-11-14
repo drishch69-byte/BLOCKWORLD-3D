@@ -5,6 +5,8 @@ import com.blockworld.core.BlockPos;
 import com.blockworld.core.BlockType;
 import com.blockworld.core.ItemType;
 import com.blockworld.core.CreatureType;
+import com.blockworld.core.VillageEconomy;
+import com.blockworld.core.VillageEconomyDataStore;
 import com.blockworld.core.WorldCreature;
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -285,6 +287,48 @@ class MultiplayerNetworkTest {
         var alice = store.load("Alice").orElseThrow();
         assertEquals(4, alice.items().get(ItemType.PLANKS));
         assertEquals(2, alice.items().get(ItemType.EMERALD));
+    }
+
+    @Test void villageMarketStockIsAuthoritativeAndPersisted(@TempDir Path directory) throws Exception {
+        Path worldFile = directory.resolve("village-market.bwserver");
+        try (MultiplayerServer server = new MultiplayerServer("market-room", 2, worldFile);
+             MultiplayerClient player = new MultiplayerClient()) {
+            int port = server.start(0);
+            CountDownLatch profileEmpty = new CountDownLatch(1);
+            CountDownLatch profileSaved = new CountDownLatch(1);
+            CountDownLatch successfulTrades = new CountDownLatch(8);
+            CountDownLatch rejectedTrade = new CountDownLatch(1);
+            player.setEventListener(event -> {
+                if (event.equals("PROFILE_EMPTY")) profileEmpty.countDown();
+                if (event.equals("PROFILE_SAVED")) profileSaved.countDown();
+                if (event.equals("VILLAGE_TRADE_RESULT 1 true")) successfulTrades.countDown();
+                if (event.equals("VILLAGE_TRADE_RESULT 1 false")) rejectedTrade.countDown();
+            });
+            player.connect("127.0.0.1", port, "market-room", "MarketTester", ignored -> { });
+            assertTrue(profileEmpty.await(3, TimeUnit.SECONDS));
+
+            EnumMap<ItemType, Integer> items = new EnumMap<>(ItemType.class);
+            items.put(ItemType.WHEAT, 64);
+            player.sendPlayerProfile(Map.of(), items, java.util.Set.of());
+            assertTrue(profileSaved.await(3, TimeUnit.SECONDS));
+
+            for (int trade = 0; trade < 8; trade++) {
+                player.sendVillageTradeRequest(CreatureType.VILLAGER_FARMER, 1);
+            }
+            assertTrue(successfulTrades.await(5, TimeUnit.SECONDS));
+            player.sendVillageTradeRequest(CreatureType.VILLAGER_FARMER, 1);
+            assertTrue(rejectedTrade.await(3, TimeUnit.SECONDS));
+
+            MultiplayerPlayerStore store = new MultiplayerPlayerStore(worldFile);
+            var saved = store.load("MarketTester").orElseThrow();
+            assertEquals(32, saved.items().get(ItemType.WHEAT));
+            assertEquals(8, saved.items().get(ItemType.EMERALD));
+        }
+
+        VillageEconomy persisted = new VillageEconomy();
+        VillageEconomyDataStore.load(worldFile, persisted);
+        assertEquals(0, persisted.stock(CreatureType.VILLAGER_FARMER, ItemType.EMERALD));
+        assertEquals(32, persisted.stock(CreatureType.VILLAGER_FARMER, ItemType.WHEAT));
     }
 
     @Test void reconnectReceivesTheSavedPersonalProfile(@TempDir Path directory) throws Exception {

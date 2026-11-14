@@ -8,7 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GameFeatureSupportTest {
     @Test
     void laterProfilesKeepFeaturesIntroducedByEarlierUpdates() {
-        GameVersion latest = VersionManager.find("1.9.27");
+        GameVersion latest = VersionManager.find("1.9.28");
 
         assertTrue(GameFeatureSupport.supportsPets(latest));
         assertTrue(GameFeatureSupport.supportsFoxCompanions(latest));
@@ -18,6 +18,7 @@ class GameFeatureSupportTest {
         assertTrue(GameFeatureSupport.supportsVillagerWorkplaces(latest));
         assertTrue(GameFeatureSupport.supportsVillageHomes(latest));
         assertTrue(GameFeatureSupport.supportsProfessionTrading(latest));
+        assertTrue(GameFeatureSupport.supportsVillageEconomy(latest));
     }
 
     @Test
@@ -36,6 +37,8 @@ class GameFeatureSupportTest {
         assertTrue(GameFeatureSupport.supportsVillageHomes(VersionManager.find("1.9.26")));
         assertFalse(GameFeatureSupport.supportsProfessionTrading(VersionManager.find("1.9.26")));
         assertTrue(GameFeatureSupport.supportsProfessionTrading(VersionManager.find("1.9.27")));
+        assertFalse(GameFeatureSupport.supportsVillageEconomy(VersionManager.find("1.9.27")));
+        assertTrue(GameFeatureSupport.supportsVillageEconomy(VersionManager.find("1.9.28")));
     }
 
     @Test

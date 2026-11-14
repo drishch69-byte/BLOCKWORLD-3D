@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.27",
+  "defaultVersion": "1.9.28",
   "versions": [
     {
       "id": "0.1.0",
@@ -269,6 +269,11 @@
     {
       "id": "1.9.27",
       "name": "Village Trading",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.28",
+      "name": "Village Economy",
       "status": "current"
     }
   ]

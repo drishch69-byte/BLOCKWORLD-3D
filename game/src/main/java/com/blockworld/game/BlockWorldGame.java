@@ -34,6 +34,8 @@ import com.blockworld.core.AnimalProductRules;
 import com.blockworld.core.AnimalFeederRules;
 import com.blockworld.core.PlayerProfileStore;
 import com.blockworld.core.GameVersion;
+import com.blockworld.core.VillageEconomy;
+import com.blockworld.core.VillageEconomyDataStore;
 import com.blockworld.core.GameFeatureSupport;
 import com.blockworld.core.GameSettings;
 import com.blockworld.core.GamePaths;
@@ -156,6 +158,10 @@ public final class BlockWorldGame extends SimpleApplication {
     private final boolean villagerWorkplacesEnabled;
     private final boolean villageHomesEnabled;
     private final boolean professionTradingEnabled;
+    private final boolean villageEconomyEnabled;
+    private final VillageEconomy villageEconomy = new VillageEconomy();
+    private float villageEconomySaveClock;
+    private float villageWorkSyncClock;
     private CreatureType tradingVillagerType = CreatureType.VILLAGER;
     private ItemType selectedFarmBuilding = ItemType.WOODEN_FENCE;
     private final List<CraftingRecipe> craftingRecipes;
@@ -292,6 +298,7 @@ public final class BlockWorldGame extends SimpleApplication {
         this.villagerWorkplacesEnabled = GameFeatureSupport.supportsVillagerWorkplaces(version);
         this.villageHomesEnabled = GameFeatureSupport.supportsVillageHomes(version);
         this.professionTradingEnabled = GameFeatureSupport.supportsProfessionTrading(version);
+        this.villageEconomyEnabled = GameFeatureSupport.supportsVillageEconomy(version);
         List<CraftingRecipe> allRecipes = release100Enabled
                 ? animalFeedersEnabled ? CraftingRecipe.farmBuildingRecipes()
                 : animalProductsEnabled ? CraftingRecipe.farmProductRecipes() : CraftingRecipe.release100Recipes()
@@ -514,6 +521,15 @@ public final class BlockWorldGame extends SimpleApplication {
             } else {
                 pendingAnimalData = AnimalDataStore.State.empty();
             }
+            if (loaded && villageEconomyEnabled) {
+                try { VillageEconomyDataStore.load(saveFile, villageEconomy); }
+                catch (IOException ex) {
+                    villageEconomy.reset();
+                    GameLog.error("Не удалось загрузить запасы деревенского рынка; используются стартовые запасы", ex);
+                }
+            } else {
+                villageEconomy.reset();
+            }
             if (release100Enabled) {
                 achievements.setExtendedBiomeSet(world.hasExtendedBiomes());
                 achievements.setEnchantedBiomeSet(world.hasEnchantedBiomes());
@@ -581,6 +597,7 @@ public final class BlockWorldGame extends SimpleApplication {
                     if (version.survival()) PlayerDataStore.save(saveFile, inventory, craftedItems, equippedArmor);
                     if (agricultureEnabled) FarmDataStore.save(saveFile, farmGrowth);
                     if (release100Enabled) AchievementDataStore.save(saveFile, achievements);
+                    if (villageEconomyEnabled) VillageEconomyDataStore.save(saveFile, villageEconomy);
                     statusMessage += " Новый мир создан. Seed: " + newSeed + ".";
                 } catch (IOException ex) {
                     statusMessage += " Мир создан, но не сохранён: " + ex.getMessage();
@@ -978,6 +995,32 @@ public final class BlockWorldGame extends SimpleApplication {
                 if (animalSaveClock >= 5f) {
                     animalSaveClock = 0f;
                     saveAnimalDataQuietly();
+                }
+            }
+            if (villageEconomyEnabled) {
+                if (multiplayerClient != null && multiplayerClient.isConnected()) {
+                    if (multiplayerClient.isHost()) {
+                        villageWorkSyncClock += Math.max(0f, tpf);
+                        if (villageWorkSyncClock >= 5f) {
+                            villageWorkSyncClock = 0f;
+                            Map<CreatureType, Integer> workers = creatureManager.activeWorkerCounts();
+                            try {
+                                multiplayerClient.sendVillageWorkSnapshot(
+                                        workers.getOrDefault(CreatureType.VILLAGER_FARMER, 0),
+                                        workers.getOrDefault(CreatureType.VILLAGER_BLACKSMITH, 0),
+                                        workers.getOrDefault(CreatureType.VILLAGER_LIBRARIAN, 0));
+                            } catch (IOException | IllegalArgumentException error) {
+                                GameLog.error("Не удалось отправить серверу состояние работающих жителей", error);
+                            }
+                        }
+                    }
+                } else {
+                    villageEconomy.advanceWork(creatureManager.activeWorkerCounts(), tpf);
+                    villageEconomySaveClock += Math.max(0f, tpf);
+                    if (villageEconomySaveClock >= 5f) {
+                        villageEconomySaveClock = 0f;
+                        saveVillageEconomyQuietly();
+                    }
                 }
             }
             float incomingDamage = creatureManager.consumePlayerDamage();
@@ -1504,6 +1547,34 @@ public final class BlockWorldGame extends SimpleApplication {
                         if (success) unlockAchievement(Achievement.FIRST_TRADE);
                         updateInventoryUi();
                         updateHud();
+                    }
+                }
+                case "VILLAGE_TRADE_RESULT" -> {
+                    if (parts.length == 3) {
+                        multiplayerTradePending = false;
+                        int number = Integer.parseInt(parts[1]);
+                        boolean success = Boolean.parseBoolean(parts[2]);
+                        TradeRecipe offer = tradeRecipes.stream().filter(entry -> entry.number() == number)
+                                .findFirst().orElse(null);
+                        statusMessage = success && offer != null
+                                ? "Обмен завершён. Получено: " + offer.result().displayName() + " ×" + offer.resultCount() + "."
+                                : "Обмен недоступен: закончился запас товара или не хватает ресурсов.";
+                        if (success) unlockAchievement(Achievement.FIRST_TRADE);
+                        updateInventoryUi();
+                        updateHud();
+                    }
+                }
+                case "VILLAGE_STOCK" -> {
+                    if (parts.length == 4 && villageEconomyEnabled) {
+                        try {
+                            CreatureType profession = CreatureType.valueOf(parts[1]);
+                            ItemType item = ItemType.valueOf(parts[2]);
+                            int count = Integer.parseInt(parts[3]);
+                            villageEconomy.setStock(profession, item, count);
+                            if (tradeOpen) updateInventoryUi();
+                        } catch (IllegalArgumentException error) {
+                            GameLog.info("Игнорируется некорректная строка запасов деревни.");
+                        }
                     }
                 }
                 case "WORLD_BEGIN" -> {
@@ -2559,6 +2630,16 @@ public final class BlockWorldGame extends SimpleApplication {
         }
     }
 
+    private void saveVillageEconomyQuietly() {
+        if (!villageEconomyEnabled || villageEconomy == null
+                || (multiplayerClient != null && multiplayerClient.isConnected())) return;
+        try {
+            VillageEconomyDataStore.save(saveFile, villageEconomy);
+        } catch (IOException error) {
+            GameLog.error("Не удалось сохранить запасы деревенского рынка", error);
+        }
+    }
+
     private void tradeWithVillager(int index) {
         if (!tradeOpen || !release100Enabled || index < 0 || index >= tradeRecipes.size()) return;
         TradeRecipe offer = tradeRecipes.get(index);
@@ -2567,10 +2648,17 @@ public final class BlockWorldGame extends SimpleApplication {
                 statusMessage = "Подожди синхронизации инвентаря или завершения предыдущей операции.";
             } else {
                 try {
-                    if (professionTradingEnabled) multiplayerClient.sendTradeRequest(tradingVillagerType, offer.number());
-                    else multiplayerClient.sendTradeRequest(offer.number());
+                    if (villageEconomyEnabled) {
+                        multiplayerClient.sendVillageTradeRequest(tradingVillagerType, offer.number());
+                    } else if (professionTradingEnabled) {
+                        multiplayerClient.sendTradeRequest(tradingVillagerType, offer.number());
+                    } else {
+                        multiplayerClient.sendTradeRequest(offer.number());
+                    }
                     multiplayerTradePending = true;
-                    statusMessage = "Сервер проверяет предметы и выполняет обмен...";
+                    statusMessage = villageEconomyEnabled
+                            ? "Сервер проверяет склад деревни и выполняет обмен..."
+                            : "Сервер проверяет предметы и выполняет обмен...";
                 } catch (IOException | IllegalArgumentException error) {
                     statusMessage = "Не удалось отправить запрос обмена: " + error.getMessage();
                 }
@@ -2579,12 +2667,21 @@ public final class BlockWorldGame extends SimpleApplication {
             updateHud();
             return;
         }
-        if (offer.trade(craftedItems)) {
+        boolean playerHasCost = offer.canTrade(craftedItems);
+        boolean marketHasStock = !villageEconomyEnabled
+                || villageEconomy.stock(tradingVillagerType, offer.result()) >= offer.resultCount();
+        boolean traded = villageEconomyEnabled
+                ? villageEconomy.trade(tradingVillagerType, offer, craftedItems)
+                : offer.trade(craftedItems);
+        if (traded) {
             statusMessage = "Сделка завершена: " + offer.description() + ". Получено "
                     + offer.result().displayName() + " ×" + offer.resultCount() + ".";
             unlockAchievement(Achievement.FIRST_TRADE);
             playSound(GameSounds.Effect.TRADE);
             savePlayerDataQuietly();
+            if (villageEconomyEnabled) saveVillageEconomyQuietly();
+        } else if (villageEconomyEnabled && playerHasCost && !marketHasStock) {
+            statusMessage = "У торговца закончился этот товар. Житель пополнит склад во время работы.";
         } else {
             statusMessage = "Не хватает предметов для сделки: " + offer.costText() + ".";
         }
@@ -3022,7 +3119,18 @@ public final class BlockWorldGame extends SimpleApplication {
             for (int i = 0; i < tradeRecipes.size(); i++) {
                 TradeRecipe offer = tradeRecipes.get(i);
                 text.append(i + 1).append(". ").append(offer.description()).append("\n   Нужно: ")
-                        .append(offer.costText()).append(offer.canTrade(craftedItems) ? "  [ГОТОВО]" : "  [НЕ ХВАТАЕТ]").append("\n");
+                        .append(offer.costText());
+                if (villageEconomyEnabled) {
+                    int stock = villageEconomy.stock(tradingVillagerType, offer.result());
+                    text.append(" | склад: ").append(stock).append(" ")
+                            .append(offer.result().displayName())
+                            .append(villageEconomy.canTrade(tradingVillagerType, offer, craftedItems)
+                                    ? "  [ГОТОВО]" : offer.canTrade(craftedItems)
+                                    ? "  [НЕТ В НАЛИЧИИ]" : "  [НЕ ХВАТАЕТ РЕСУРСОВ]");
+                } else {
+                    text.append(offer.canTrade(craftedItems) ? "  [ГОТОВО]" : "  [НЕ ХВАТАЕТ]");
+                }
+                text.append("\n");
             }
             text.append("\nНажми 1–4 для обмена, F — закрыть.");
         } else if (achievementsOpen) {
@@ -3256,7 +3364,8 @@ public final class BlockWorldGame extends SimpleApplication {
             if (animalBreedingEnabled && creatureManager != null)
                 AnimalDataStore.save(saveFile, creatureManager.animalDataSnapshot());
             if (release100Enabled) AchievementDataStore.save(saveFile, achievements);
-            statusMessage = "Мир, инвентарь, питомцы, животные, ферма и достижения сохранены!";
+            if (villageEconomyEnabled) saveVillageEconomyQuietly();
+            statusMessage = "Мир, инвентарь, питомцы, животные, ферма, торговля и достижения сохранены!";
         } catch (IOException ex) {
             statusMessage = "Ошибка сохранения: " + ex.getMessage();
             GameLog.error("Ошибка сохранения мира " + saveFile, ex);

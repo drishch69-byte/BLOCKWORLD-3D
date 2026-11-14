@@ -272,6 +272,21 @@ public final class MultiplayerClient implements AutoCloseable {
         sendLine("TRADE_REQUEST " + profession.name() + " " + offerNumber);
     }
 
+    public synchronized void sendVillageTradeRequest(CreatureType profession, int offerNumber) throws IOException {
+        if (profession == null || !profession.isVillager()) throw new IllegalArgumentException("Invalid village trader");
+        if (offerNumber < 1 || offerNumber > 4) throw new IllegalArgumentException("Invalid village offer");
+        sendLine("VILLAGE_TRADE_REQUEST " + profession.name() + " " + offerNumber);
+    }
+
+    /** Sends current active workplace counts; the server accepts this only from its host player. */
+    public synchronized void sendVillageWorkSnapshot(int farmers, int blacksmiths, int librarians) throws IOException {
+        if (farmers < 0 || farmers > 16 || blacksmiths < 0 || blacksmiths > 16
+                || librarians < 0 || librarians > 16) {
+            throw new IllegalArgumentException("Invalid village worker counts");
+        }
+        sendLine("VILLAGE_WORK " + farmers + " " + blacksmiths + " " + librarians);
+    }
+
     /** Sends the host's complete current world. Call from a background thread. */
     public synchronized void sendWorldSnapshot(long seed, boolean activeBiomes, boolean extendedBiomes,
                                                 int worldRadius, Map<BlockPos, BlockType> blocks) throws IOException {

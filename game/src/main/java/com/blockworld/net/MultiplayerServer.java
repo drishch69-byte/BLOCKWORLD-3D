@@ -9,6 +9,8 @@ import com.blockworld.core.CraftingRecipe;
 import com.blockworld.core.ItemType;
 import com.blockworld.core.TradeRecipe;
 import com.blockworld.core.TreasureLoot;
+import com.blockworld.core.VillageEconomy;
+import com.blockworld.core.VillageEconomyDataStore;
 import com.blockworld.core.WorldCreature;
 import java.nio.file.Path;
 
@@ -41,6 +43,9 @@ public final class MultiplayerServer implements AutoCloseable {
     private final AtomicInteger nextPlayerId = new AtomicInteger(0);
     private final Map<BlockPos, BlockType> worldBlocks = new HashMap<>();
     private final Map<Long, WorldCreature> worldCreatures = new HashMap<>();
+    private final VillageEconomy villageEconomy = new VillageEconomy();
+    private final Path hostedWorldFile;
+    private long lastVillageWorkNanos;
 
     private volatile boolean running;
     private volatile ServerSocket socket;
@@ -66,6 +71,7 @@ public final class MultiplayerServer implements AutoCloseable {
         this.password = password == null ? "" : password;
         if (maxPlayers < 1 || maxPlayers > 32) throw new IllegalArgumentException("maxPlayers must be 1..32");
         this.maxPlayers = maxPlayers;
+        this.hostedWorldFile = worldFile;
         this.worldStore = worldFile == null ? null : new MultiplayerWorldStore(worldFile);
         this.playerStore = worldFile == null ? null : new MultiplayerPlayerStore(worldFile);
         this.accountStore = accountsEnabled && worldFile != null ? new MultiplayerAccountStore(worldFile) : null;
@@ -76,6 +82,14 @@ public final class MultiplayerServer implements AutoCloseable {
         if (running) throw new IllegalStateException("Server already running");
         if (port < 0 || port > 65535) throw new IllegalArgumentException("Invalid port");
         restoreWorld();
+        if (hostedWorldFile != null) {
+            try { VillageEconomyDataStore.load(hostedWorldFile, villageEconomy); }
+            catch (IOException error) {
+                villageEconomy.reset();
+                System.err.println("BLOCKWORLD 3D: village market data could not be loaded; using default stock: "
+                        + error.getMessage());
+            }
+        }
         if (accountStore != null) accountStore.load();
         if (chestStore != null) sharedChests.putAll(chestStore.load());
         ServerSocket candidate = new ServerSocket();
@@ -168,6 +182,63 @@ public final class MultiplayerServer implements AutoCloseable {
             }
         } catch (IOException error) {
             target.send("PROFILE_ERROR");
+        }
+        sendVillageStockSnapshot(target);
+    }
+
+    private void sendVillageStockSnapshot(ClientHandler target) {
+        List<String> lines = new ArrayList<>();
+        for (CreatureType profession : VillageEconomy.marketProfessions()) {
+            for (ItemType item : ItemType.values()) {
+                lines.add("VILLAGE_STOCK " + profession.name() + " " + item.name()
+                        + " " + villageEconomy.stock(profession, item));
+            }
+        }
+        target.sendBatch(lines);
+    }
+
+    private void broadcastVillageStockSnapshot() {
+        for (ClientHandler client : clients) sendVillageStockSnapshot(client);
+    }
+
+    private void processVillageWork(ClientHandler sender, String[] parts) {
+        if (sender.id != hostPlayerId || !worldReady || parts.length != 4) return;
+        try {
+            int farmers = boundedWorkerCount(parts[1]);
+            int blacksmiths = boundedWorkerCount(parts[2]);
+            int librarians = boundedWorkerCount(parts[3]);
+            long now = System.nanoTime();
+            if (lastVillageWorkNanos == 0L) {
+                lastVillageWorkNanos = now;
+                return;
+            }
+            float elapsed = Math.min(10f, Math.max(0f, (now - lastVillageWorkNanos) / 1_000_000_000f));
+            lastVillageWorkNanos = now;
+            EnumMap<CreatureType, Integer> workers = new EnumMap<>(CreatureType.class);
+            workers.put(CreatureType.VILLAGER_FARMER, farmers);
+            workers.put(CreatureType.VILLAGER_BLACKSMITH, blacksmiths);
+            workers.put(CreatureType.VILLAGER_LIBRARIAN, librarians);
+            if (villageEconomy.advanceWork(workers, elapsed)) {
+                persistVillageEconomy();
+                broadcastVillageStockSnapshot();
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Ignore invalid worker reports from the network.
+        }
+    }
+
+    private static int boundedWorkerCount(String value) {
+        int count = Integer.parseInt(value);
+        if (count < 0 || count > 16) throw new IllegalArgumentException("Invalid worker count");
+        return count;
+    }
+
+    private void persistVillageEconomy() {
+        if (hostedWorldFile == null) return;
+        try {
+            VillageEconomyDataStore.save(hostedWorldFile, villageEconomy);
+        } catch (IOException error) {
+            System.err.println("BLOCKWORLD 3D: failed to save village economy: " + error.getMessage());
         }
     }
 
@@ -486,6 +557,48 @@ public final class MultiplayerServer implements AutoCloseable {
             target.send("CRAFT_RESULT 0 false");
         }
     
+        }
+    }
+
+    private void processVillageTradeRequest(ClientHandler target, String[] parts) {
+        synchronized (profileLock) {
+            if (parts.length != 3 || target.profile == null) {
+                target.send("VILLAGE_TRADE_RESULT 0 false");
+                return;
+            }
+            VillageEconomy.Snapshot before = villageEconomy.snapshot();
+            int number = 0;
+            try {
+                CreatureType profession = CreatureType.valueOf(parts[1]);
+                if (!profession.isVillager()) throw new IllegalArgumentException("Not a villager");
+                int requestedNumber = Integer.parseInt(parts[2]);
+                number = requestedNumber;
+                TradeRecipe offer = TradeRecipe.offersFor(profession).stream()
+                        .filter(entry -> entry.number() == requestedNumber).findFirst().orElse(null);
+                if (offer == null) {
+                    target.send("VILLAGE_TRADE_RESULT " + number + " false");
+                    return;
+                }
+                EnumMap<ItemType, Integer> items = target.profile.mutableItems();
+                if (!villageEconomy.trade(profession, offer, items)) {
+                    target.send("VILLAGE_TRADE_RESULT " + number + " false");
+                    return;
+                }
+                MultiplayerPlayerStore.Snapshot updated = new MultiplayerPlayerStore.Snapshot(
+                        target.profile.blocks(), items, target.profile.armor(),
+                        target.profile.health(), target.profile.hunger(), target.profile.foodCount());
+                if (hostedWorldFile != null) VillageEconomyDataStore.save(hostedWorldFile, villageEconomy);
+                if (playerStore != null) playerStore.save(target.name, updated);
+                target.profile = updated;
+                sendProfile(target, updated);
+                target.send("VILLAGE_TRADE_RESULT " + number + " true");
+                broadcastVillageStockSnapshot();
+            } catch (IOException | IllegalArgumentException error) {
+                villageEconomy.restore(before);
+                persistVillageEconomy();
+                target.send("PROFILE_ERROR");
+                target.send("VILLAGE_TRADE_RESULT " + number + " false");
+            }
         }
     }
 
@@ -1053,6 +1166,10 @@ public final class MultiplayerServer implements AutoCloseable {
                 processCraftRequest(this, line.split(" "));
             } else if (line.startsWith("TRADE_REQUEST ")) {
                 processTradeRequest(this, line.split(" "));
+            } else if (line.startsWith("VILLAGE_TRADE_REQUEST ")) {
+                processVillageTradeRequest(this, line.split(" "));
+            } else if (line.startsWith("VILLAGE_WORK ")) {
+                processVillageWork(this, line.split(" "));
             } else if (line.startsWith("CHAT ")) {
                 String message = decode(line.substring(5));
                 if (message.length() > 240) message = message.substring(0, 240);
