@@ -5,6 +5,7 @@
 - Cows produce a milk bucket when the player has an empty bucket; they have a 90-second cooldown.
 - Sheep produce two wool when the player has shears; wool regrows after 180 seconds. Shears are reusable.
 - Chickens lay one egg every 75 seconds; no tool is needed to collect it.
+- Milk can be consumed with **E**, restores 6 hunger, and returns the empty bucket.
 - Added craftable empty buckets (3 iron ingots) and reusable shears (2 iron ingots).
 - Added original 16×16 PNG icons for the empty bucket, shears, milk bucket, wool and egg.
 - Persisted per-animal production timers in the animal sidecar and included them in world backups; world save format remains 2.

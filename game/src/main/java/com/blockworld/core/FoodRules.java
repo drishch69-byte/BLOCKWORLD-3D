@@ -6,6 +6,7 @@ public final class FoodRules {
     public static final float BERRY_RESTORATION = 6f;
     public static final float BREAD_RESTORATION = 8f;
     public static final float COOKED_FISH_RESTORATION = 10f;
+    public static final float MILK_RESTORATION = 6f;
 
     private FoodRules() { }
 

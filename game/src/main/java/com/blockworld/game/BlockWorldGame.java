@@ -2959,6 +2959,12 @@ public final class BlockWorldGame extends SimpleApplication {
             hunger = FoodRules.restoreHunger(hunger, FoodRules.COOKED_FISH_RESTORATION);
             statusMessage = "Ты съел приготовленную рыбу. Голод восстановлен на 10.";
             savePlayerDataQuietly();
+        } else if (animalProductsEnabled && craftedItems.getOrDefault(ItemType.MILK_BUCKET, 0) > 0) {
+            craftedItems.merge(ItemType.MILK_BUCKET, -1, Integer::sum);
+            craftedItems.merge(ItemType.EMPTY_BUCKET, 1, Integer::sum);
+            hunger = FoodRules.restoreHunger(hunger, FoodRules.MILK_RESTORATION);
+            statusMessage = "Ты выпил молоко. Голод восстановлен на 6; пустое ведро возвращено.";
+            savePlayerDataQuietly();
         } else if (agricultureEnabled && craftedItems.getOrDefault(ItemType.BREAD, 0) > 0) {
             craftedItems.merge(ItemType.BREAD, -1, Integer::sum);
             hunger = FoodRules.restoreHunger(hunger, FoodRules.BREAD_RESTORATION);

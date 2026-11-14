@@ -14,7 +14,7 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 - Press **U** near a cow with an empty bucket to collect a milk bucket; cows need 90 seconds before producing milk again.
 - Press **U** near a sheep with shears to collect two wool; wool regrows in three minutes.
-- Chickens lay one egg every 75 seconds; press **U** nearby to collect it.
+- Chickens lay one egg every 75 seconds; press **U** nearby to collect it. Press **E** to drink milk, restore 6 hunger and get the empty bucket back.
 - Press **F** near two adult animals of the same species to breed them; product collection has its own key and does not conflict with breeding.
 - Added original 16×16 PNG inventory icons for empty buckets, shears, milk buckets, wool and eggs.
 - Added crafting recipes for empty buckets and reusable shears; animal product timers are saved and included in backups.

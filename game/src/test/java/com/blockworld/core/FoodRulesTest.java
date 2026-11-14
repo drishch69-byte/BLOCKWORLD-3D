@@ -9,6 +9,12 @@ class FoodRulesTest {
         assertEquals(13f, FoodRules.restoreHunger(5f, FoodRules.BREAD_RESTORATION));
     }
 
+    @Test void milkRestoresHungerAndItsContainerCanBeReused() {
+        assertEquals(11f, FoodRules.restoreHunger(5f, FoodRules.MILK_RESTORATION));
+        assertEquals(20f, FoodRules.restoreHunger(18f, FoodRules.MILK_RESTORATION));
+        assertEquals(6f, FoodRules.MILK_RESTORATION);
+    }
+
     @Test void restorationNeverExceedsMaximumOrFallsBelowZero() {
         assertEquals(20f, FoodRules.restoreHunger(18f, 10f));
         assertEquals(0f, FoodRules.restoreHunger(-4f, Float.NaN));
