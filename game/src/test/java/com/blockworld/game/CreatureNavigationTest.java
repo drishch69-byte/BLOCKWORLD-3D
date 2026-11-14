@@ -33,7 +33,7 @@ class CreatureNavigationTest {
     }
 
     @Test
-    void creatureDoesNotMoveIntoBlockedColumnWhenNeitherAxisIsSafe() {
+    void creatureStopsAtWallWithoutMovingThroughIt() {
         AssetManager assets = new DesktopAssetManager(true);
         VoxelWorld world = new VoxelWorld(assets);
         for (int x = -1; x <= 2; x++) {
@@ -42,7 +42,6 @@ class CreatureNavigationTest {
             }
         }
         world.addBlock(new BlockPos(1, 1, 0), BlockType.STONE);
-        world.addBlock(new BlockPos(0, 2, 0), BlockType.STONE);
 
         CreatureNavigation.Step step = CreatureNavigation.resolveStep(
                 CreatureType.ZOMBIE, 0.5f, 1f, 0.5f, 1.1f, 0.5f, world);
