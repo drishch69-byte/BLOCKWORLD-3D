@@ -1,10 +1,30 @@
-# Minecraft 3D — Unofficial Fan Project
+# BLOCKWORLD 3D — Unofficial Voxel Sandbox Fan Project
 
-[![Java CI](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg)](https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml)
+<p align="center">
+  <img src="docs/cover.svg" alt="BLOCKWORLD 3D voxel island cover" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/windows-package.yml"><img alt="Windows builds" src="https://img.shields.io/badge/Windows-builds-4b8fcb?logo=windows&logoColor=white"></a>
+  <a href="https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/linux-macos-package.yml"><img alt="Linux and macOS builds" src="https://img.shields.io/badge/Linux%20%7C%20macOS-builds-4f9b64?logo=linux&logoColor=white"></a>
+  <a href="https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml"><img alt="Java CI" src="https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/java-ci.yml/badge.svg"></a>
+</p>
+
+<p align="center">
+  <b>Explore · Build · Craft · Create your world</b><br>
+  <a href="https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/windows-package.yml">Windows download</a> ·
+  <a href="https://github.com/drishch69-byte/BLOCKWORLD-3D/actions/workflows/linux-macos-package.yml">Linux / macOS downloads</a> ·
+  <a href="https://github.com/drishch69-byte/BLOCKWORLD-3D/blob/main/docs/PLAYER_GUIDE.md">Player guide</a> ·
+  <a href="PROMOTE.md">Share the project</a>
+</p>
 
 **An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.15 — Farmstead Decorations.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
+
+**Project website:** the multilingual site source is in [docs/index.html](docs/index.html). To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
+
+**Want to help?** Share [the project](https://github.com/drishch69-byte/BLOCKWORLD-3D), try a build, [report a bug](https://github.com/drishch69-byte/BLOCKWORLD-3D/issues/new/choose), or suggest a feature.
 
 > Minecraft 3D is an unofficial, independent voxel sandbox fan project. It is not affiliated with or endorsed by Mojang or Microsoft. It does not include Minecraft source code, textures, sounds, models, or other official assets. All game code and original assets in this repository are independently created.
 
@@ -192,7 +212,7 @@ Workflow artifacts are retained for 30 days. A fresh package is generated when c
 
 ## Download
 
-[**Download latest source ZIP (1.9.14)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.15 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 
@@ -215,6 +235,9 @@ The GitHub Actions Java CI workflow runs the same Maven verification on pushes a
 Launch scripts are provided for Windows (run.bat) and Linux/macOS (run.sh).
 
 ## Project documentation
+
+- [Multilingual project website](docs/index.html) — English, Ukrainian and Russian landing page.
+- [Promotion kit](PROMOTE.md) — ready-to-share descriptions and official project links.
 
 - [Player guide](docs/PLAYER_GUIDE.md) — controls, survival loop, and save reminders.
 - [Roadmap](ROADMAP.md) — proposed features for versions 1.1.0 through 2.0.0.
