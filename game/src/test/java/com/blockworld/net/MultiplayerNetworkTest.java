@@ -218,8 +218,18 @@ class MultiplayerNetworkTest {
             });
             guest.connect("127.0.0.1", port, "", "Guest", ignored -> { });
             assertFalse(guest.isHost());
+
+            // WELCOME can reach the client just before the server finishes registering
+            // the socket in its connected-player set. Wait for that registration so the
+            // test never disconnects the host before the guest is eligible for promotion.
+            long joinDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (server.playerCount() < 2 && System.nanoTime() < joinDeadline) {
+                Thread.sleep(10);
+            }
+            assertEquals(2, server.playerCount(), "Guest must be registered before host disconnects");
+
             host.close();
-            assertTrue(promoted.await(3, TimeUnit.SECONDS));
+            assertTrue(promoted.await(5, TimeUnit.SECONDS));
             assertTrue(guest.isHost());
         }
     }
