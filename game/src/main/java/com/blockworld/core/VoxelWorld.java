@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -435,10 +436,11 @@ public final class VoxelWorld {
         Set<BlockPos> members = chunkBlocks.get(chunk);
         if (members == null || members.isEmpty()) return;
 
-        List<Float> positions = new ArrayList<>();
-        List<Float> colors = new ArrayList<>();
-        List<Float> texCoords = texturedChunks ? new ArrayList<>() : null;
-        List<Integer> indices = new ArrayList<>();
+        FloatBuilder positions = new FloatBuilder(Math.max(64, members.size() * 24));
+        FloatBuilder colors = new FloatBuilder(Math.max(64, members.size() * 32));
+        FloatBuilder texCoords = texturedChunks
+                ? new FloatBuilder(Math.max(32, members.size() * 16)) : null;
+        IntBuilder indices = new IntBuilder(Math.max(32, members.size() * 12));
         List<BlockHit> hits = new ArrayList<>();
         int baseX = chunk.minBlockX();
         int baseZ = chunk.minBlockZ();
@@ -505,15 +507,15 @@ public final class VoxelWorld {
             }
         }
 
-        if (indices.isEmpty()) return;
-        float[] positionArray = toFloatArray(positions);
-        float[] colorArray = toFloatArray(colors);
-        int[] indexArray = indices.stream().mapToInt(Integer::intValue).toArray();
+        if (indices.size() == 0) return;
+        float[] positionArray = positions.toArray();
+        float[] colorArray = colors.toArray();
+        int[] indexArray = indices.toArray();
         Mesh mesh = new Mesh();
         mesh.setMode(Mesh.Mode.Triangles);
         mesh.setBuffer(VertexBuffer.Type.Position, 3, BufferUtils.createFloatBuffer(positionArray));
         mesh.setBuffer(VertexBuffer.Type.Color, 4, BufferUtils.createFloatBuffer(colorArray));
-        if (texturedChunks) mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, BufferUtils.createFloatBuffer(toFloatArray(texCoords)));
+        if (texturedChunks) mesh.setBuffer(VertexBuffer.Type.TexCoord, 2, BufferUtils.createFloatBuffer(texCoords.toArray()));
         mesh.setBuffer(VertexBuffer.Type.Index, 3, BufferUtils.createIntBuffer(indexArray));
         mesh.updateBound();
         mesh.setStatic();
@@ -530,10 +532,40 @@ public final class VoxelWorld {
 
     private float clamp(float value) { return Math.max(0f, Math.min(1f, value)); }
 
-    private float[] toFloatArray(List<Float> values) {
-        float[] result = new float[values.size()];
-        for (int i = 0; i < values.size(); i++) result[i] = values.get(i);
-        return result;
+    private static final class FloatBuilder {
+        private float[] values;
+        private int size;
+
+        private FloatBuilder(int initialCapacity) {
+            values = new float[Math.max(16, initialCapacity)];
+        }
+
+        private void add(float value) {
+            if (size == values.length) values = Arrays.copyOf(values, values.length + (values.length >> 1) + 1);
+            values[size++] = value;
+        }
+
+        private int size() { return size; }
+
+        private float[] toArray() { return Arrays.copyOf(values, size); }
+    }
+
+    private static final class IntBuilder {
+        private int[] values;
+        private int size;
+
+        private IntBuilder(int initialCapacity) {
+            values = new int[Math.max(16, initialCapacity)];
+        }
+
+        private void add(int value) {
+            if (size == values.length) values = Arrays.copyOf(values, values.length + (values.length >> 1) + 1);
+            values[size++] = value;
+        }
+
+        private int size() { return size; }
+
+        private int[] toArray() { return Arrays.copyOf(values, size); }
     }
 
     private long columnKey(int x, int z) {
@@ -582,9 +614,9 @@ public final class VoxelWorld {
             int minY = version.caves() ? -12 : -2;
             for (int x = -radius; x <= radius; x++) {
                 for (int z = -radius; z <= radius; z++) {
-                    int surface = terrainHeightFor(x, z);
-                    // Biome is constant for a vertical column; calculate it once, not per block.
+                    // Reuse this column's biome for both terrain height and surface selection.
                     BiomeType biome = getBiomeAt(x, z);
+                    int surface = terrainHeightFor(x, z, biome);
                     for (int y = minY; y <= surface; y++) {
                         if (version.caves() && y < surface - 2 && y > minY + 1 && isCave(x, y, z)) continue;
                         BlockType type;

@@ -303,36 +303,15 @@ public final class CreatureManager {
                     visual.pauseTimer = Math.max(visual.pauseTimer, .8f);
             }
 
-            int blockX = (int) Math.floor(nextX);
-            int blockZ = (int) Math.floor(nextZ);
-            boolean caveSentinel = state.type() == CreatureType.CRYSTAL_SENTINEL;
-            boolean templeWarden = state.type() == CreatureType.TEMPLE_WARDEN;
-            int surfaceY = caveSentinel
-                    ? world.highestBlockYAtOrBelow(blockX, blockZ, (int) Math.floor(state.y() - 0.2f))
-                    : world.highestBlockY(blockX, blockZ);
-            if (surfaceY >= -12 && Math.abs((surfaceY + 1f) - state.y()) <= 1.25f) {
-                BlockType surface = world.getBlock(new BlockPos(blockX, surfaceY, blockZ));
-                boolean safeSurface = caveSentinel
-                        ? surface == BlockType.STONE || surface == BlockType.AMETHYST_ORE
-                            || surface == BlockType.GLOWING_CRYSTAL || surface == BlockType.RUBY_ORE
-                            || surface == BlockType.SAPPHIRE_ORE
-                        : surface == BlockType.GRASS || surface == BlockType.DIRT
-                            || surface == BlockType.SAND || surface == BlockType.PODZOL
-                            || surface == BlockType.MUD || surface == BlockType.SNOW
-                            || (templeWarden && surface == BlockType.SANDSTONE);
-                boolean clearAbove = !world.contains(new BlockPos(blockX, surfaceY + 1, blockZ))
-                        && !world.contains(new BlockPos(blockX, surfaceY + 2, blockZ))
-                        && (!(caveSentinel || templeWarden)
-                            || !world.contains(new BlockPos(blockX, surfaceY + 3, blockZ)));
-                if (safeSurface && clearAbove) {
-                    state = new WorldCreature(state.id(), state.type(), nextX, surfaceY + 1f, nextZ, visual.yaw);
-                    visual.state = state;
-                    world.updateCreature(state);
-                } else {
-                    visual.pauseTimer = 1f;
-                }
+            CreatureNavigation.Step resolved = CreatureNavigation.resolveStep(
+                    state.type(), state.x(), state.y(), state.z(), nextX, nextZ, world);
+            if (resolved != null) {
+                state = new WorldCreature(state.id(), state.type(),
+                        resolved.x(), resolved.y(), resolved.z(), visual.yaw);
+                visual.state = state;
+                world.updateCreature(state);
             } else {
-                visual.pauseTimer = 1f;
+                visual.pauseTimer = Math.max(visual.pauseTimer, 0.25f);
             }
 
             boolean walking = (state.x() - previousX) * (state.x() - previousX)
