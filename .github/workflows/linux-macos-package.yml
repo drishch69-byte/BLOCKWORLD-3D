@@ -1,4 +1,4 @@
-name: Linux and macOS Portable Builds
+name: Cross-platform Portable Builds
 
 on:
   push:
@@ -183,3 +183,163 @@ jobs:
           path: game/${{ steps.package.outputs.archive_name }}
           if-no-files-found: error
           retention-days: 30
+
+  build-windows:
+    name: Build portable Windows x64 release
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+    defaults:
+      run:
+        working-directory: game
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          cache-dependency-path: game/pom.xml
+
+      - name: Validate application version
+        id: version
+        shell: pwsh
+        run: |
+          [xml]$pom = Get-Content -Raw pom.xml
+          $version = [string]$pom.project.version
+          $versionLine = Get-Content VERSION.txt | Where-Object { $_ -match '^Version:' } | Select-Object -First 1
+          $metadataVersion = ($versionLine -split ':', 2)[1].Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+(\.\d+)?$' -or $metadataVersion -ne $version) {
+            throw "Version mismatch: pom.xml=$version, VERSION.txt=$metadataVersion"
+          }
+          if ($env:GITHUB_REF -match '^refs/tags/v(.+)$' -and $Matches[1] -ne $version) {
+            throw "Release tag $env:GITHUB_REF does not match application version $version"
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build and run tests
+        run: mvn --batch-mode --no-transfer-progress clean verify
+
+      - name: Create portable Windows application
+        id: package
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.value }}"
+          $jarName = "blockworld-3d-$version.jar"
+          $jarPath = Join-Path $PWD "target/$jarName"
+          if (-not (Test-Path -LiteralPath $jarPath)) {
+            throw "Shaded application JAR was not produced: $jarPath"
+          }
+
+          $inputDir = Join-Path $PWD "package-input"
+          $distDir = Join-Path $PWD "dist"
+          New-Item -ItemType Directory -Force -Path $inputDir | Out-Null
+          New-Item -ItemType Directory -Force -Path $distDir | Out-Null
+          Copy-Item -LiteralPath $jarPath -Destination (Join-Path $inputDir $jarName)
+
+          jpackage --type app-image --name "BLOCKWORLD 3D" --input $inputDir --main-jar $jarName --main-class com.blockworld.ui.Launcher --app-version $version --dest $distDir
+          if ($LASTEXITCODE -ne 0) {
+            throw "jpackage failed with exit code $LASTEXITCODE"
+          }
+
+          $appDir = Join-Path $distDir "BLOCKWORLD 3D"
+          $launcher = Join-Path $appDir "BLOCKWORLD 3D.exe"
+          if (-not (Test-Path -LiteralPath $launcher)) {
+            throw "Windows launcher was not created: $launcher"
+          }
+
+          $instructions = @"
+          BLOCKWORLD 3D — Windows x64 (portable)
+          Version: $version
+
+          START
+          1. Extract this ZIP archive to a folder.
+          2. Open the extracted "BLOCKWORLD 3D" folder.
+          3. Double-click "BLOCKWORLD 3D.exe".
+
+          The Java runtime is included. Java and Maven are not required.
+          Keep the complete folder together.
+
+          Worlds and settings:
+          %USERPROFILE%\\.blockworld3d
+
+          Project:
+          https://github.com/drishch69-byte/BLOCKWORLD-3D
+          "@
+          Set-Content -LiteralPath (Join-Path $appDir "README-WINDOWS.txt") -Value $instructions -Encoding utf8
+
+          $zipName = "BLOCKWORLD-3D-$version-Windows-x64.zip"
+          $zipPath = Join-Path $PWD $zipName
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path $appDir -DestinationPath $zipPath -CompressionLevel Optimal
+          if (-not (Test-Path -LiteralPath $zipPath)) {
+            throw "Portable Windows archive was not created."
+          }
+          "zip_name=$zipName" >> $env:GITHUB_OUTPUT
+
+      - name: Upload Windows release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: game/${{ steps.package.outputs.zip_name }}
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-release:
+    name: Publish one release with all platform builds
+    needs: [build, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Windows package
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-package
+          path: release-assets
+
+      - name: Download Linux package
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-package
+          path: release-assets
+
+      - name: Download macOS Apple silicon package
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-arm64-package
+          path: release-assets
+
+      - name: Download macOS Intel package
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-x64-package
+          path: release-assets
+
+      - name: Verify all four release archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            "release-assets/BLOCKWORLD-3D-${GITHUB_REF_NAME#v}-Windows-x64.zip" \
+            "release-assets/BLOCKWORLD-3D-${GITHUB_REF_NAME#v}-Linux-x64.tar.gz" \
+            "release-assets/BLOCKWORLD-3D-${GITHUB_REF_NAME#v}-macOS-arm64.zip" \
+            "release-assets/BLOCKWORLD-3D-${GITHUB_REF_NAME#v}-macOS-x64.zip"; do
+            test -s "$file" || { echo "Missing release file: $file" >&2; exit 1; }
+          done
+          ls -lh release-assets
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: BLOCKWORLD 3D ${{ needs.build-windows.outputs.version }}
+          files: release-assets/*
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          make_latest: true
