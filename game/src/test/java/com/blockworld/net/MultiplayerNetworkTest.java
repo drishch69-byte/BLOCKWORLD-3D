@@ -494,10 +494,36 @@ class MultiplayerNetworkTest {
             assertTrue(defenderProfileSaved.await(3, TimeUnit.SECONDS));
 
             attacker.sendPosition(0f, 4f, 0f, 0f, false);
-            defender.sendPosition(2f, 4f, 0f, 0f, false);
+            defender.sendPosition(0f, 4f, -2f, 0f, false);
             assertTrue(defenderPositionSeen.await(3, TimeUnit.SECONDS));
-            attacker.sendChat("/hit Defender");
+            attacker.sendPlayerAttack();
             assertTrue(defenderWasHit.await(3, TimeUnit.SECONDS));
         }
     }
+    @Test void guestCreatureAttackIsRelayedToTheAuthoritativeHost() throws Exception {
+        try (MultiplayerServer server = new MultiplayerServer("mob-hit", 3);
+             MultiplayerClient host = new MultiplayerClient();
+             MultiplayerClient guest = new MultiplayerClient()) {
+            int port = server.start(0);
+            CountDownLatch hostAccepted = new CountDownLatch(1);
+            CountDownLatch guestPositionSeen = new CountDownLatch(1);
+            CountDownLatch relayedAttack = new CountDownLatch(1);
+            host.setEventListener(event -> {
+                if (event.equals("WORLD_ACCEPTED")) hostAccepted.countDown();
+                if (event.startsWith("PLAYER_POS ")) guestPositionSeen.countDown();
+                if (event.startsWith("REMOTE_CREATURE_ATTACK 2 ")) relayedAttack.countDown();
+            });
+            host.connect("127.0.0.1", port, "mob-hit", "Host", ignored -> { });
+            host.sendWorldSnapshot(9123L, false, false, 16,
+                    Map.of(new BlockPos(0, 1, 0), BlockType.GRASS), List.of());
+            assertTrue(hostAccepted.await(3, TimeUnit.SECONDS));
+
+            guest.connect("127.0.0.1", port, "mob-hit", "Guest", ignored -> { });
+            guest.sendPosition(4f, 2f, 3f, 0f, false);
+            assertTrue(guestPositionSeen.await(3, TimeUnit.SECONDS));
+            guest.sendCreatureAttack(4f, 2f, 3f, 0f, 0f, -1f);
+            assertTrue(relayedAttack.await(3, TimeUnit.SECONDS));
+        }
+    }
+
 }

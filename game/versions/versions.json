@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.16",
+  "defaultVersion": "1.9.17",
   "versions": [
     {
       "id": "0.1.0",
@@ -214,6 +214,11 @@
     {
       "id": "1.9.16",
       "name": "Lantern Lighting",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.17",
+      "name": "Melee Combat Update",
       "status": "current"
     }
   ]

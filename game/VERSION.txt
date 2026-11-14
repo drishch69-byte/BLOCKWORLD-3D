@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.16
-Codename: Lantern Lighting
+Version: 1.9.17
+Codename: Melee Combat Update
 Status: Development Build

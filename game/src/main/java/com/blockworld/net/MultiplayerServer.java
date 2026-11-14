@@ -301,33 +301,63 @@ public final class MultiplayerServer implements AutoCloseable {
 
     private void processPlayerAttack(ClientHandler sender, String message) {
         String[] fields = message.strip().split("\\s+");
-        if (fields.length != 2 || !"/hit".equalsIgnoreCase(fields[0])) {
-            sender.send("CHAT " + encode("Использование: /hit Ник (игрок должен быть рядом)."));
-            return;
+        boolean aimedAttack = "ATTACK".equalsIgnoreCase(message.strip());
+        ClientHandler target = null;
+        PlayerState attackerPosition = players.get(sender.id);
+
+        if (aimedAttack) {
+            if (attackerPosition == null || !attackerPosition.hasPosition) return;
+            float closestDistance = 3.25f * 3.25f;
+            for (ClientHandler candidate : clients) {
+                if (candidate == sender) continue;
+                PlayerState candidatePosition = players.get(candidate.id);
+                if (candidatePosition == null || !candidatePosition.hasPosition) continue;
+                if (!CombatRules.inMeleeRange(attackerPosition.x, attackerPosition.y, attackerPosition.z,
+                        candidatePosition.x, candidatePosition.y, candidatePosition.z, 3.25f)
+                        || !CombatRules.isFacingTarget(attackerPosition.x, attackerPosition.z,
+                                attackerPosition.yaw, candidatePosition.x, candidatePosition.z)) continue;
+                float dx = candidatePosition.x - attackerPosition.x;
+                float dy = candidatePosition.y - attackerPosition.y;
+                float dz = candidatePosition.z - attackerPosition.z;
+                float distance = dx * dx + dy * dy + dz * dz;
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    target = candidate;
+                }
+            }
+            // A normal mouse click is silent when no other player is close and in front.
+            if (target == null) return;
+        } else {
+            if (fields.length != 2 || !"/hit".equalsIgnoreCase(fields[0])) {
+                sender.send("CHAT " + encode("Использование: /hit Ник (старый способ; теперь можно нажать ЛКМ)."));
+                return;
+            }
+            target = clients.stream()
+                    .filter(client -> client.name.equalsIgnoreCase(fields[1])).findFirst().orElse(null);
+            if (target == null || target == sender) {
+                sender.send("CHAT " + encode("Игрок не найден или нельзя атаковать самого себя."));
+                return;
+            }
         }
-        ClientHandler target = clients.stream()
-                .filter(client -> client.name.equalsIgnoreCase(fields[1])).findFirst().orElse(null);
-        if (target == null || target == sender) {
-            sender.send("CHAT " + encode("Игрок не найден или нельзя атаковать самого себя."));
-            return;
-        }
+
         long now = System.nanoTime();
         if (sender.lastPlayerAttackNanos > 0L && now - sender.lastPlayerAttackNanos < 650_000_000L) {
-            sender.send("CHAT " + encode("Подожди перед следующим ударом."));
+            if (!aimedAttack) sender.send("CHAT " + encode("Подожди перед следующим ударом."));
             return;
         }
-        PlayerState attackerPosition = players.get(sender.id);
         PlayerState targetPosition = players.get(target.id);
         if (attackerPosition == null || targetPosition == null
                 || !attackerPosition.hasPosition || !targetPosition.hasPosition
                 || !CombatRules.inMeleeRange(attackerPosition.x, attackerPosition.y, attackerPosition.z,
-                        targetPosition.x, targetPosition.y, targetPosition.z, 3.25f)) {
-            sender.send("CHAT " + encode("Слишком далеко: подойди к игроку ближе."));
+                        targetPosition.x, targetPosition.y, targetPosition.z, 3.25f)
+                || (aimedAttack && !CombatRules.isFacingTarget(attackerPosition.x, attackerPosition.z,
+                        attackerPosition.yaw, targetPosition.x, targetPosition.z))) {
+            if (!aimedAttack) sender.send("CHAT " + encode("Слишком далеко: подойди к игроку ближе."));
             return;
         }
         synchronized (profileLock) {
             if (sender.profile == null || target.profile == null) {
-                sender.send("CHAT " + encode("Профиль одного из игроков ещё загружается."));
+                if (!aimedAttack) sender.send("CHAT " + encode("Профиль одного из игроков ещё загружается."));
                 return;
             }
             float damage = CombatRules.applyArmor(4f, target.profile.armor());
@@ -344,7 +374,7 @@ public final class MultiplayerServer implements AutoCloseable {
                         + "; урон " + Math.round(damage) + "."));
                 target.send("CHAT " + encode(sender.name + " ударил тебя! Урон " + Math.round(damage) + "."));
             } catch (IOException error) {
-                sender.send("CHAT " + encode("Не удалось сохранить результат удара."));
+                if (!aimedAttack) sender.send("CHAT " + encode("Не удалось сохранить результат удара."));
             }
         }
     }
@@ -573,6 +603,43 @@ public final class MultiplayerServer implements AutoCloseable {
         }
     }
 
+    private void relayCreatureAttack(ClientHandler sender, String line) {
+        if (!worldReady || sender.id == hostPlayerId) return;
+        String[] fields = line.split(" ");
+        if (fields.length != 7) return;
+        try {
+            float ox = Float.parseFloat(fields[1]);
+            float oy = Float.parseFloat(fields[2]);
+            float oz = Float.parseFloat(fields[3]);
+            float dx = Float.parseFloat(fields[4]);
+            float dy = Float.parseFloat(fields[5]);
+            float dz = Float.parseFloat(fields[6]);
+            if (!Float.isFinite(ox) || !Float.isFinite(oy) || !Float.isFinite(oz)
+                    || !Float.isFinite(dx) || !Float.isFinite(dy) || !Float.isFinite(dz)
+                    || Math.abs(ox) > MAX_COORDINATE || Math.abs(oz) > MAX_COORDINATE
+                    || oy < -512f || oy > 2048f) return;
+            float directionLength = dx * dx + dy * dy + dz * dz;
+            if (directionLength < 0.7f || directionLength > 1.3f) return;
+
+            PlayerState player = players.get(sender.id);
+            if (player == null || !player.hasPosition) return;
+            float px = ox - player.x, py = oy - player.y, pz = oz - player.z;
+            if (px * px + py * py + pz * pz > 36f) return;
+
+            long now = System.nanoTime();
+            if (sender.lastCreatureAttackNanos > 0L
+                    && now - sender.lastCreatureAttackNanos < 180_000_000L) return;
+            ClientHandler host = clients.stream().filter(candidate -> candidate.id == hostPlayerId)
+                    .findFirst().orElse(null);
+            if (host == null) return;
+            sender.lastCreatureAttackNanos = now;
+            host.send("REMOTE_CREATURE_ATTACK " + sender.id + " " + ox + " " + oy + " " + oz
+                    + " " + dx + " " + dy + " " + dz);
+        } catch (NumberFormatException ignored) {
+            // Ignore malformed or non-finite attack packets.
+        }
+    }
+
     private void handlePosition(ClientHandler sender, String line) {
         String[] parts = line.split(" ");
         if (parts.length != 6) return;
@@ -699,6 +766,7 @@ public final class MultiplayerServer implements AutoCloseable {
         private int pendingWorldRadius;
         private MultiplayerPlayerStore.Snapshot profile;
         private long lastPlayerAttackNanos;
+        private long lastCreatureAttackNanos;
         private EnumMap<BlockType, Integer> pendingProfileBlocks;
         private EnumMap<ItemType, Integer> pendingProfileItems;
         private EnumSet<ArmorSlot> pendingProfileArmor;
@@ -986,6 +1054,10 @@ public final class MultiplayerServer implements AutoCloseable {
                     else if (message.startsWith("/")) send("CHAT " + encode("Команды: /trade Ник ПРЕДМЕТ Количество ПРЕДМЕТ Количество; /hit Ник."));
                     else broadcastChat(name + ": " + message);
                 }
+            } else if (line.equals("ATTACK_PLAYER")) {
+                processPlayerAttack(this, "ATTACK");
+            } else if (line.startsWith("ATTACK_CREATURE ")) {
+                relayCreatureAttack(this, line);
             } else if (line.startsWith("POS ")) {
                 handlePosition(this, line);
             } else if (line.startsWith("BLOCK_ADD ")) {

@@ -1,6 +1,6 @@
 # Minecraft 3D — Roadmap
 
-This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.16 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
+This roadmap records implemented releases and future proposals. Versions 1.1.0, 1.2.0, 1.8.0, 1.8.1, and 1.9.0 through 1.9.17 are present in the current source. Older proposed milestones may be delivered out of sequence as the project evolves.
 
 ## 1.1.0 — Wildlands & Crystal Caves (released)
 - Added taiga and swamp biomes, crystal-lined underground caves, and underground water pools.
@@ -9,7 +9,12 @@ This roadmap records implemented releases and future proposals. Versions 1.1.0, 
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
 
-## 1.9.16 — Lantern Lighting (in progress)
+## 1.9.17 — Melee Combat Update (in progress)
+- Let left-click hit mobs in front of the player without allowing hits through blocks.
+- Add server-validated player-versus-player melee attacks with range, facing and armor checks.
+- Relay guest mob attacks to the host so creature health remains authoritative in multiplayer.
+
+## 1.9.16 — Lantern Lighting (released)
 - Make placed lanterns cast warm, distance-attenuated light onto nearby block surfaces.
 - Refresh nearby visible chunk meshes when a lantern is placed or mined.
 - Support textured and color-only rendering without changing world save format 2.

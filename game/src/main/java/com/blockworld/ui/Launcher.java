@@ -160,7 +160,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.16  •  LANTERN LIGHTING");
+        JLabel release = new JLabel("1.9.17  •  MELEE COMBAT UPDATE");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);

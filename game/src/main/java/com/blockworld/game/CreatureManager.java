@@ -12,9 +12,11 @@ import com.blockworld.core.AnimalDataStore;
 import com.blockworld.core.AnimalFeederRules;
 import com.blockworld.core.AnimalProductRules;
 import com.jme3.asset.AssetManager;
+import com.jme3.collision.CollisionResults;
 import com.jme3.material.Material;
 import com.jme3.math.ColorRGBA;
 import com.jme3.math.Quaternion;
+import com.jme3.math.Ray;
 import com.jme3.math.Vector3f;
 import com.jme3.scene.Geometry;
 import com.jme3.scene.Node;
@@ -309,28 +311,15 @@ public final class CreatureManager {
         return toggleNearestPetMode(position, maxDistance);
     }
 
+    public boolean hasAttackTargetAlongRay(Vector3f origin, Vector3f direction, float reach,
+                                            float hitRadius, VoxelWorld world) {
+        return findAttackTargetAlongRay(origin, direction, reach, hitRadius, world) != null;
+    }
+
     public String attackAlongRay(Vector3f origin, Vector3f direction, float reach,
                                  float hitRadius, float damage, VoxelWorld world) {
-        if (origin == null || direction == null || world == null || direction.lengthSquared() < 0.0001f
-                || !Float.isFinite(reach) || reach <= 0f || !Float.isFinite(hitRadius) || hitRadius < 0f
-                || !Float.isFinite(damage) || damage <= 0f) return null;
-        Vector3f ray = direction.normalize();
-        Visual target = null;
-        float closest = reach;
-        for (Visual visual : visuals.values()) {
-            float targetHeight = visual.state.type() == CreatureType.CRYSTAL_SENTINEL ? 1.25f : .72f;
-            float targetRadius = visual.state.type() == CreatureType.CRYSTAL_SENTINEL
-                    ? Math.max(hitRadius, 1.05f) : hitRadius;
-            Vector3f center = new Vector3f(visual.state.x(), visual.state.y() + targetHeight, visual.state.z());
-            Vector3f offset = center.subtract(origin);
-            float along = offset.dot(ray);
-            if (along < 0f || along > closest) continue;
-            float missSquared = offset.lengthSquared() - along * along;
-            if (missSquared <= targetRadius * targetRadius) {
-                closest = along;
-                target = visual;
-            }
-        }
+        if (!Float.isFinite(damage) || damage <= 0f) return null;
+        Visual target = findAttackTargetAlongRay(origin, direction, reach, hitRadius, world);
         if (target == null) return null;
         target.health = Math.max(0f, target.health - damage);
         if (target.health <= 0f) {
@@ -345,6 +334,41 @@ public final class CreatureManager {
         }
         return "Попадание по " + target.state.type().displayName() + ": здоровье "
                 + Math.round(target.health) + "/" + Math.round(target.state.type().maxHealth()) + ".";
+    }
+
+    private Visual findAttackTargetAlongRay(Vector3f origin, Vector3f direction, float reach,
+                                            float hitRadius, VoxelWorld world) {
+        if (origin == null || direction == null || world == null
+                || direction.lengthSquared() < 0.0001f
+                || !Float.isFinite(reach) || reach <= 0f
+                || !Float.isFinite(hitRadius) || hitRadius < 0f) return null;
+        Vector3f ray = direction.normalize();
+        float effectiveReach = reach;
+        CollisionResults blockHits = new CollisionResults();
+        Ray blockRay = new Ray(origin, ray);
+        blockRay.setLimit(reach);
+        world.getNode().collideWith(blockRay, blockHits);
+        if (blockHits.size() > 0) {
+            effectiveReach = Math.min(effectiveReach, blockHits.getClosestCollision().getDistance());
+        }
+        if (effectiveReach <= 0f) return null;
+        Visual target = null;
+        float closest = effectiveReach;
+        for (Visual visual : visuals.values()) {
+            float targetHeight = visual.state.type() == CreatureType.CRYSTAL_SENTINEL ? 1.25f : .72f;
+            float targetRadius = visual.state.type() == CreatureType.CRYSTAL_SENTINEL
+                    ? Math.max(hitRadius, 1.05f) : hitRadius;
+            Vector3f center = new Vector3f(visual.state.x(), visual.state.y() + targetHeight, visual.state.z());
+            Vector3f offset = center.subtract(origin);
+            float along = offset.dot(ray);
+            if (along < 0f || along > closest) continue;
+            float missSquared = offset.lengthSquared() - along * along;
+            if (missSquared <= targetRadius * targetRadius) {
+                closest = along;
+                target = visual;
+            }
+        }
+        return target;
     }
 
     public float consumePlayerDamage() {

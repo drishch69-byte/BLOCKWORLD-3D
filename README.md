@@ -18,7 +18,7 @@
   <a href="PROMOTE.md">Share the project</a>
 </p>
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.16 — Lantern Lighting.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.17 — Melee Combat Update.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
@@ -30,11 +30,18 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current version
 
-**1.9.16 — Lantern Lighting (development)**
+**1.9.17 — Melee Combat Update (development)**
 
-- Lanterns now cast a warm glow on nearby block surfaces, fading smoothly over a radius of about **7 blocks**.
-- Placing or mining a lantern refreshes nearby visible chunk meshes so the glow appears or disappears without reloading the world.
-- Lighting works with both PNG texture packs and the fallback color renderer; world save format remains **2**.
+- **ЛКМ** наносит удар мобам, если они находятся перед игроком и ничто не закрывает цель.
+- В мультиплеере ЛКМ позволяет ударить другого игрока рядом; сервер проверяет дистанцию, направление и броню.
+- Удары гостя по мобам передаются хосту, который сохраняет авторитетное состояние существ.
+- Если перед игроком нет цели, ЛКМ продолжает добывать блоки; атака через стены не проходит.
+
+**Previous: 1.9.16 — Lantern Lighting**
+
+- Lanterns cast a warm glow on nearby block surfaces, fading over a radius of about **7 blocks**.
+- Placing or mining a lantern refreshes nearby visible chunk meshes.
+- Lighting works with PNG texture packs and the fallback color renderer; world save format remains **2**.
 
 **Previous: 1.9.15 — Farmstead Decorations**
 
@@ -217,7 +224,7 @@ Workflow artifacts are retained for 30 days. A fresh package is generated when c
 
 ## Download
 
-[**Download latest source ZIP (1.9.16 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
+[**Download latest source ZIP (1.9.17 development)**](https://github.com/drishch69-byte/BLOCKWORLD-3D/archive/refs/heads/main.zip)
 
 The complete source project is available in [game/](game/), including Java sources, JUnit tests, sound resources, example resource packs, and an example mod. The GitHub repository URL and legacy save-data folder remain unchanged for compatibility. The older [1.0.0 snapshot ZIP](BLOCKWORLD_3D_1.0.0_TRADING_FISHING_ACHIEVEMENTS_UPDATE.zip) is retained as a previous snapshot.
 

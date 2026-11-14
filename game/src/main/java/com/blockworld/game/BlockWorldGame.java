@@ -1223,6 +1223,21 @@ public final class BlockWorldGame extends SimpleApplication {
         try {
             String[] parts = event.split(" ");
             switch (parts[0]) {
+                case "REMOTE_CREATURE_ATTACK" -> {
+                    if (parts.length == 8 && multiplayerClient != null && multiplayerClient.isHost()
+                            && creatureManager != null && world != null) {
+                        Vector3f origin = new Vector3f(Float.parseFloat(parts[2]),
+                                Float.parseFloat(parts[3]), Float.parseFloat(parts[4]));
+                        Vector3f direction = new Vector3f(Float.parseFloat(parts[5]),
+                                Float.parseFloat(parts[6]), Float.parseFloat(parts[7]));
+                        String result = creatureManager.attackAlongRay(origin, direction,
+                                3.4f, .82f, CombatRules.unarmedContactDamage(), world);
+                        if (result != null) {
+                            statusMessage = "Удар гостя: " + result;
+                            updateHud();
+                        }
+                    }
+                }
                 case "PLAYER_JOIN" -> {
                     if (parts.length >= 3) {
                         int id = Integer.parseInt(parts[1]);
@@ -1897,6 +1912,72 @@ public final class BlockWorldGame extends SimpleApplication {
         }
     }
 
+    private boolean tryMeleeAttack() {
+        if (!worldReady || world == null || cam == null) return false;
+        Vector3f origin = thirdPersonView && playerEyePosition != null
+                ? playerEyePosition.clone() : cam.getLocation().clone();
+        Vector3f direction = thirdPersonView
+                ? PlayerCamera.forwardDirection(yaw) : cam.getDirection().normalize();
+        boolean connected = multiplayerClient != null && multiplayerClient.isConnected();
+
+        if (connected && isAimingAtRemotePlayer(origin, direction)) {
+            try {
+                multiplayerClient.sendPlayerAttack();
+                statusMessage = "Удар по игроку отправлен.";
+            } catch (IOException error) {
+                statusMessage = "Не удалось отправить удар игроку: " + error.getMessage();
+                GameLog.error("Не удалось отправить PvP-атаку", error);
+            }
+            updateHud();
+            return true;
+        }
+
+        if (creatureManager == null) return false;
+        if (connected && !multiplayerClient.isHost()) {
+            if (!creatureManager.hasAttackTargetAlongRay(origin, direction, 3.4f, .82f, world)) {
+                return false;
+            }
+            try {
+                multiplayerClient.sendCreatureAttack(origin.x, origin.y, origin.z,
+                        direction.x, direction.y, direction.z);
+                statusMessage = "Удар по мобу отправлен хосту.";
+            } catch (IOException error) {
+                statusMessage = "Не удалось отправить удар мобу: " + error.getMessage();
+                GameLog.error("Не удалось передать атаку моба хосту", error);
+            }
+            updateHud();
+            return true;
+        }
+
+        String combatMessage = creatureManager.attackAlongRay(origin, direction,
+                3.4f, .82f, CombatRules.unarmedContactDamage(), world);
+        if (combatMessage == null) return false;
+        statusMessage = combatMessage;
+        updateHud();
+        return true;
+    }
+
+    private boolean isAimingAtRemotePlayer(Vector3f origin, Vector3f direction) {
+        if (remotePlayers.isEmpty()) return false;
+        Vector3f rayDirection = direction.normalize();
+        CollisionResults blockHits = new CollisionResults();
+        Ray ray = new Ray(origin, rayDirection);
+        ray.setLimit(3.25f);
+        world.getNode().collideWith(ray, blockHits);
+        float maxDistance = blockHits.size() == 0 ? 3.25f
+                : Math.min(3.25f, blockHits.getClosestCollision().getDistance());
+        for (RemotePlayerState remote : remotePlayers.values()) {
+            if (!remote.hasPosition) continue;
+            // Network positions are player-eye coordinates, so aim for the head/upper torso.
+            Vector3f offset = remote.position.subtract(origin);
+            float along = offset.dot(rayDirection);
+            if (along <= 0f || along > maxDistance) continue;
+            float missSquared = offset.lengthSquared() - along * along;
+            if (missSquared <= 0.82f * 0.82f) return true;
+        }
+        return false;
+    }
+
     private BlockHit getTargetBlock() {
         if (!worldReady) return null;
         CollisionResults results = new CollisionResults();
@@ -1911,31 +1992,22 @@ public final class BlockWorldGame extends SimpleApplication {
     private void beginMining() {
         if (paused || !worldReady || inventoryOpen || craftingOpen || furnaceOpen
                 || tradeOpen || chestOpen || achievementsOpen) return;
-        if (!version.survival() || version.id().compareTo("1.9.4") < 0) {
-            breakTargetBlock();
-            return;
-        }
         if (multiplayerClient != null && multiplayerClient.isConnected()
                 && (!multiplayerSyncReady || multiplayerCraftPending || multiplayerTradePending)) {
             statusMessage = "Подожди завершения синхронизации общего мира.";
             updateHud();
             return;
         }
+        if (tryMeleeAttack()) {
+            cancelMining();
+            return;
+        }
+        if (!version.survival() || version.id().compareTo("1.9.4") < 0) {
+            breakTargetBlock();
+            return;
+        }
 
         BlockHit hit = getTargetBlock();
-        Vector3f attackOrigin = cam.getLocation();
-        boolean blockBlocksAttack = hit != null && attackOrigin.distance(new Vector3f(
-                hit.position().x() + .5f, hit.position().y() + .5f, hit.position().z() + .5f)) <= 3.4f;
-        if (!blockBlocksAttack && creatureManager != null) {
-            String combatMessage = creatureManager.attackAlongRay(attackOrigin, cam.getDirection(),
-                    3.4f, .82f, CombatRules.unarmedContactDamage(), world);
-            if (combatMessage != null) {
-                cancelMining();
-                statusMessage = combatMessage;
-                updateHud();
-                return;
-            }
-        }
         if (hit == null) {
             cancelMining();
             statusMessage = "Наведи прицел на блок и удерживай ЛКМ для добычи.";
@@ -2033,18 +2105,6 @@ public final class BlockWorldGame extends SimpleApplication {
             return;
         }
         BlockHit hit = getTargetBlock();
-        Vector3f attackOrigin = cam.getLocation();
-        boolean blockBlocksAttack = hit != null && attackOrigin.distance(new Vector3f(
-                hit.position().x() + .5f, hit.position().y() + .5f, hit.position().z() + .5f)) <= 3.4f;
-        if (!blockBlocksAttack && creatureManager != null) {
-            String combatMessage = creatureManager.attackAlongRay(attackOrigin, cam.getDirection(),
-                    3.4f, .82f, CombatRules.unarmedContactDamage(), world);
-            if (combatMessage != null) {
-                statusMessage = combatMessage;
-                updateHud();
-                return;
-            }
-        }
         if (hit == null) {
             statusMessage = "Рядом нет блока или противника.";
             updateHud();

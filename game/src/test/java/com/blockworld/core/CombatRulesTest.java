@@ -20,4 +20,11 @@ class CombatRulesTest {
         assertFalse(CombatRules.inMeleeRange(0, 0, 0, 1, 5, 0, 3));
         assertFalse(CombatRules.inMeleeRange(Float.NaN, 0, 0, 1, 0, 0, 3));
     }
+    @Test void facingRuleAllowsTargetsAheadAndRejectsTargetsBehindOrBeside() {
+        assertTrue(CombatRules.isFacingTarget(0f, 0f, 0f, 0f, -2f));
+        assertFalse(CombatRules.isFacingTarget(0f, 0f, 0f, 0f, 2f));
+        assertFalse(CombatRules.isFacingTarget(0f, 0f, 0f, 2f, 0f));
+        assertFalse(CombatRules.isFacingTarget(Float.NaN, 0f, 0f, 0f, -2f));
+    }
+
 }

@@ -49,7 +49,8 @@ public final class VersionManager {
             new GameVersion("1.9.13", "Farm Pens & Smart Feeders", "Деревянные загоны, кормушки с запасом пшеницы и семян, автоматическое кормление и ускорение роста животных", 144, true, true, true, true, true),
             new GameVersion("1.9.14", "Gates & Smarter Animal Pens", "Открывающиеся калитки, проход через открытые двери и более умное поведение животных в загонах", 144, true, true, true, true, true),
             new GameVersion("1.9.15", "Farmstead Decorations", "Объёмные деревянные заборы, декоративные фонари и пугала для фермы и деревни", 144, true, true, true, true, true),
-            new GameVersion("1.9.16", "Lantern Lighting", "Тёплое локальное освещение от фонарей с затуханием и обновлением соседних чанков", 144, true, true, true, true, true)
+            new GameVersion("1.9.16", "Lantern Lighting", "Тёплое локальное освещение от фонарей с затуханием и обновлением соседних чанков", 144, true, true, true, true, true),
+            new GameVersion("1.9.17", "Melee Combat Update", "Удары по мобам и игрокам мышью, проверка дальности и направления, синхронизация ударов в мультиплеере", 144, true, true, true, true, true)
     );
 
     private VersionManager() {

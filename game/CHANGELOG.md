@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.9.17 — Melee Combat Update
+- Left-click now hits a mob when the mob is in front of the player and no world block is between them.
+- Multiplayer left-click can attack a nearby player; the server checks reach, facing direction and armor.
+- Guest attacks against mobs are forwarded to the host for authoritative damage and creature synchronization.
+- Block mining remains available when no mob or player is under the melee aim.
+- Added tests for facing checks, multiplayer player attacks and guest-to-host creature attack forwarding.
+
 ## 1.9.16 — Lantern Lighting
 - Lanterns now cast a warm glow on nearby block surfaces with smooth distance falloff up to 7 blocks.
 - Placing or mining a lantern refreshes nearby visible chunk meshes so its glow appears or disappears immediately.

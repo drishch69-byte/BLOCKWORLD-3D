@@ -167,6 +167,19 @@ public final class MultiplayerClient implements AutoCloseable {
         sendLine("POS " + x + " " + y + " " + z + " " + yaw + " " + moving);
     }
 
+    public synchronized void sendPlayerAttack() throws IOException {
+        sendLine("ATTACK_PLAYER");
+    }
+
+    public synchronized void sendCreatureAttack(float ox, float oy, float oz,
+                                                float dx, float dy, float dz) throws IOException {
+        if (!Float.isFinite(ox) || !Float.isFinite(oy) || !Float.isFinite(oz)
+                || !Float.isFinite(dx) || !Float.isFinite(dy) || !Float.isFinite(dz)) return;
+        float lengthSquared = dx * dx + dy * dy + dz * dz;
+        if (lengthSquared < 0.7f || lengthSquared > 1.3f) return;
+        sendLine("ATTACK_CREATURE " + ox + " " + oy + " " + oz + " " + dx + " " + dy + " " + dz);
+    }
+
     public synchronized void sendBlockAdd(BlockPos pos, BlockType type) throws IOException {
         if (pos == null || type == null) throw new IllegalArgumentException("Block position and type are required");
         sendLine("BLOCK_ADD " + pos.x() + " " + pos.y() + " " + pos.z() + " " + type.name());

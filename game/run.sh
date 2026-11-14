@@ -7,7 +7,7 @@ MAVEN_OPTS="${MAVEN_OPTS:-} -XX:ErrorFile=.logs/hs_err_pid%p.log -XX:+HeapDumpOn
 export MAVEN_OPTS
 {
   echo "============================================================"
-  echo "Minecraft 3D 1.9.16 - LANTERN LIGHTING"
+  echo "Minecraft 3D 1.9.17 - MELEE COMBAT UPDATE"
   date
   echo "Project: $PWD"
   echo "============================================================"
