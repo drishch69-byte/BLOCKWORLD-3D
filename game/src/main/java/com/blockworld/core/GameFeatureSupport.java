@@ -46,4 +46,8 @@ public final class GameFeatureSupport {
     public static boolean supportsAnimalFeeders(GameVersion version) {
         return versionAtLeast(version, 1, 9, 13);
     }
+
+    public static boolean supportsVillagerWorkplaces(GameVersion version) {
+        return versionAtLeast(version, 1, 9, 25);
+    }
 }

@@ -473,6 +473,12 @@ public final class CreatureManager {
 
     /** Updates local creature AI with the current normalized day phase (0..1). */
     public void update(float tpf, Vector3f playerPosition, VoxelWorld world, float dayPhase) {
+        update(tpf, playerPosition, world, dayPhase, false);
+    }
+
+    /** Updates local creature AI with optional profession-specific workplace routines. */
+    public void update(float tpf, Vector3f playerPosition, VoxelWorld world,
+                       float dayPhase, boolean workplacesEnabled) {
         if (animalBreedingEnabled) advanceAnimalTimers(tpf);
         List<Long> defeated = new ArrayList<>();
         // Determine which hostiles threaten a village once per tick, not once per guardian.
@@ -521,8 +527,15 @@ public final class CreatureManager {
                     nextZ += (float) Math.cos(visual.yaw) * step;
                     visual.pauseTimer = 0f;
                 } else if (VillagerBehaviorRules.shouldRest(state.type(), dayPhase)) {
+                    visual.working = false;
                     visual.pauseTimer = Math.max(0f, visual.pauseTimer - Math.max(0f, tpf));
+                } else if (workplacesEnabled
+                        && VillagerWorkplaceRules.shouldWork(state.type(), dayPhase)
+                        && visitWorkplace(visual, tpf, world)) {
+                    nextX = visual.nextX;
+                    nextZ = visual.nextZ;
                 } else {
+                    visual.working = false;
                     wander(visual, tpf, state);
                     nextX = visual.nextX;
                     nextZ = visual.nextZ;
@@ -770,6 +783,61 @@ public final class CreatureManager {
         return threats;
     }
 
+    private boolean visitWorkplace(Visual visual, float tpf, VoxelWorld world) {
+        WorldCreature state = visual.state;
+        float elapsed = Float.isFinite(tpf) ? Math.max(0f, tpf) : 0f;
+        visual.workplaceSearchTimer = Math.max(0f, visual.workplaceSearchTimer - elapsed);
+
+        if (visual.workplace != null
+                && !VillagerWorkplaceRules.isWorkplaceFor(
+                        state.type(), world.getBlock(visual.workplace))) {
+            visual.workplace = null;
+            visual.workplaceSearchTimer = 0f;
+        }
+        if (visual.workplaceSearchTimer <= 0f) {
+            visual.workplace = VillagerWorkplaceRules.findNearestWorkplace(
+                    state.type(), state.x(), state.y(), state.z(), world,
+                    VillagerWorkplaceRules.SEARCH_RADIUS);
+            visual.workplaceSearchTimer = VillagerWorkplaceRules.SEARCH_INTERVAL_SECONDS;
+        }
+        if (visual.workplace == null) {
+            visual.working = false;
+            return false;
+        }
+
+        float stationX = visual.workplace.x() + 0.5f;
+        float stationZ = visual.workplace.z() + 0.5f;
+        float awayX = state.x() - stationX;
+        float awayZ = state.z() - stationZ;
+        float awayLength = (float) Math.sqrt(awayX * awayX + awayZ * awayZ);
+        if (awayLength < 0.001f) {
+            int direction = (int) (state.id() & 3L);
+            awayX = direction == 0 ? 1f : direction == 2 ? -1f : 0f;
+            awayZ = direction == 1 ? 1f : direction == 3 ? -1f : 0f;
+            awayLength = 1f;
+        }
+        float targetX = stationX + awayX / awayLength * 1.25f;
+        float targetZ = stationZ + awayZ / awayLength * 1.25f;
+        float dx = targetX - state.x();
+        float dz = targetZ - state.z();
+        float distance = (float) Math.sqrt(dx * dx + dz * dz);
+        if (distance > 0.32f) {
+            visual.working = false;
+            visual.yaw = com.jme3.math.FastMath.atan2(dx, dz);
+            float step = Math.min(distance - 0.32f,
+                    state.type().moveSpeed() * 1.15f * Math.min(elapsed, 0.05f));
+            visual.nextX = state.x() + (float) Math.sin(visual.yaw) * step;
+            visual.nextZ = state.z() + (float) Math.cos(visual.yaw) * step;
+        } else {
+            visual.working = true;
+            visual.nextX = state.x();
+            visual.nextZ = state.z();
+            visual.yaw = com.jme3.math.FastMath.atan2(
+                    stationX - state.x(), stationZ - state.z());
+        }
+        return true;
+    }
+
     private Visual nearestVillagerThreat(Visual villager, List<Visual> protectedHostiles) {
         Visual closest = null;
         float radiusSquared = VillagerBehaviorRules.FLEE_RADIUS * VillagerBehaviorRules.FLEE_RADIUS;
@@ -838,6 +906,10 @@ public final class CreatureManager {
                 if (name.contains("right")) angle = -angle;
             } else if (name.contains("arm")) {
                 angle = name.contains("right") ? -swing * 0.7f : swing * 0.7f;
+                if (visual.working) {
+                    float side = name.contains("right") ? -1f : 1f;
+                    angle += side * (float) Math.sin(visual.animationClock * 3.2f) * 0.18f;
+                }
             }
             part.getValue().setLocalRotation(new Quaternion().fromAngleAxis(angle, Vector3f.UNIT_X));
         }
@@ -1141,7 +1213,10 @@ public final class CreatureManager {
         private float health;
         private float nextX;
         private float nextZ;
+        private float workplaceSearchTimer;
+        private BlockPos workplace;
         private boolean walking;
+        private boolean working;
 
         private Visual(WorldCreature state, Node root, Map<String, Geometry> animationParts) {
             this.state = state;
