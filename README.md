@@ -17,11 +17,11 @@
   <a href="PROMOTE.md">Share the project</a>
 </p>
 
-**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.26 — Village Homes & Social Life.**
+**An unofficial, independently developed 3D voxel sandbox fan project built with Java 17 and jMonkeyEngine 3.9.0. Current development version: 1.9.27 — Village Trading.**
 
 Explore a block-based world, gather resources, build structures, discover creatures, farm crops, craft equipment, trade with villagers, fish, and unlock achievements.
 
-**Project website:** the multilingual site source is in [docs/index.html](docs/index.html), with a separate [version history](docs/versions.html) covering updates from 1.1.0 to 1.9.26. To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
+**Project website:** the multilingual site source is in [docs/index.html](docs/index.html), with a separate [version history](docs/versions.html) covering updates from 1.1.0 to 1.9.27. To publish it, open **Settings → Pages**, select **GitHub Actions** as the build and deployment source, and save. The included workflow then deploys the site on updates to `main` at [drishch69-byte.github.io/BLOCKWORLD-3D](https://drishch69-byte.github.io/BLOCKWORLD-3D/).
 
 **Want to help?** Share [the project](https://github.com/drishch69-byte/BLOCKWORLD-3D), try a build, [report a bug](https://github.com/drishch69-byte/BLOCKWORLD-3D/issues/new/choose), or suggest a feature.
 
@@ -29,7 +29,15 @@ Explore a block-based world, gather resources, build structures, discover creatu
 
 ## Current version
 
-**1.9.26 — Village Homes & Social Life (development)**
+**1.9.27 — Village Trading (development)**
+
+- Farmers, blacksmiths, librarians and guards now have separate sets of four trade offers.
+- Farmers trade crops and animal products; blacksmiths trade metals and tools; librarians offer supplies and relics; guards offer iron armor.
+- Multiplayer trade requests include the selected profession, and the server validates and persists the exchange.
+- Ordinary villagers and older version profiles retain the original four trade offers.
+- World save format remains 2; no saved block, item or creature IDs changed.
+
+**Previous: 1.9.26 — Village Homes & Social Life**
 
 - A separate public library has two rows of double-height 3D bookshelves; the village homes contain furnaces and four resident beds.
 - Villagers search for nearby beds at night and use a subtle breathing animation while resting.

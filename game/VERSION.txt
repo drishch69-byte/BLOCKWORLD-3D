@@ -1,4 +1,4 @@
 Minecraft 3D
-Version: 1.9.26
-Codename: Village Homes & Social Life
+Version: 1.9.27
+Codename: Village Trading
 Status: Development Build

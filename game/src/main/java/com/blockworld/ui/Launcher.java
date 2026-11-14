@@ -164,7 +164,7 @@ public final class Launcher {
         heading.setOpaque(false);
         heading.add(title);
         heading.add(subtitle);
-        JLabel release = new JLabel("1.9.26  •  VILLAGE HOMES & SOCIAL LIFE");
+        JLabel release = new JLabel("1.9.27  •  VILLAGE TRADING");
         release.setForeground(new java.awt.Color(224, 245, 226));
         release.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
         header.add(heading, BorderLayout.CENTER);
@@ -247,7 +247,11 @@ public final class Launcher {
         center.add(selectionArea, BorderLayout.NORTH);
 
         JTextArea details = new JTextArea(
-                "ДОМА ДЕРЕВНИ И СОЦИАЛЬНАЯ ЖИЗНЬ — 1.9.26\n\n" +
+                "ДОМА ДЕРЕВНИ И СОЦИАЛЬНАЯ ЖИЗНЬ — 1.9.27\n\n" +
+                "• Фермеры, кузнецы, библиотекари и стражи предлагают разные обмены.\n" +
+                "• В сетевой игре сервер проверяет профессию торговца и сохраняет сделку.\n" +
+                "• Обычные жители и старые профили сохраняют прежние предложения.\n\n" +
+                "ПРЕДЫДУЩАЯ ВЕРСИЯ 1.9.26\n\n" +
                 "• Построена отдельная общественная библиотека с двумя рядами книжных полок.\n" +
                 "• В домах есть печи и кровати; ночью жители спят, днём навещают другие рабочие места.\n" +
                 "• Формат сохранения мира остаётся 2.\n\n" +

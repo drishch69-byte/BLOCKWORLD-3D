@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.27 — Village Trading
+- Added profession-specific offers for farmers, blacksmiths, librarians, and guards; ordinary villagers retain the original four-offer catalogue.
+- Farmer offers now cover wheat, seeds, eggs, and wool; blacksmith offers cover metal ingots, tools, and shears; librarians trade useful supplies and relics; guards trade iron equipment.
+- Added a 1.9.27 feature gate so earlier profiles keep the original village-trader offers.
+- Multiplayer trade requests now include the selected villager profession; the server validates the profession and offer before consuming items and persisting the updated player profile.
+- Added tests for profession catalogues, legacy behavior, version thresholds, and server-side profession trade persistence.
+- World save format remains 2; no block, item, or creature IDs were changed.
+
 ## 1.9.26 — Village Homes & Social Life
 - Added stable `bookshelf` and `villager_bed` block IDs with detailed cuboid models and texture-atlas slots 35 and 36.
 - Profile 1.9.26+ generates a separate public library with double-height bookcase rows; each village home includes a furnace and two beds.

@@ -1,5 +1,5 @@
 {
-  "defaultVersion": "1.9.26",
+  "defaultVersion": "1.9.27",
   "versions": [
     {
       "id": "0.1.0",
@@ -264,6 +264,11 @@
     {
       "id": "1.9.26",
       "name": "Village Homes & Social Life",
+      "status": "previous"
+    },
+    {
+      "id": "1.9.27",
+      "name": "Village Trading",
       "status": "current"
     }
   ]
