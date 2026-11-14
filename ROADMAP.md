@@ -9,10 +9,12 @@ This roadmap records implemented releases and future proposals. Versions 1.1.0, 
 - Added four player color palettes, selectable with V.
 - Kept world save format 2 with an optional extended-biome property.
 
-## 1.9.14 — Gates & Smarter Animal Pens (in progress)
-- Add a wooden gate with persistent open and closed states.
-- Let players and penned animals move through an open gate.
-- Improve animal turn behavior at pen boundaries.
+## 1.9.14 — Gates & Smarter Animal Pens (released)
+- Craft wooden gates with 4 planks and 2 sticks; use **Y** to select a building and **G** to place it.
+- Aim at a gate and press **F** to open or close it.
+- Open gates remain visible but are non-solid, allowing players and animals to pass through.
+- Save open and closed gate states in world format 2.
+- Improve animal turns around pen walls; keep gate editing single-player-only until multiplayer synchronization is ready.
 
 ## 1.9.13 — Farm Pens & Smart Feeders (released)
 - Craft and place wooden fence blocks to build animal pens.

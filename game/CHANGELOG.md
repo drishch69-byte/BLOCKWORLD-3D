@@ -1,23 +1,14 @@
 # Changelog
 
 ## 1.9.14 — Gates & Smarter Animal Pens
-- Added craftable wooden gates for animal enclosures (4 planks and 2 sticks).
-- Press **F** while aiming at a gate to open or close it.
-- Open gates swing to the side and remain visible without blocking player or creature movement; closed gates block the doorway.
-- Saved gate state in the regular world file without changing world save format 2.
-- Improved farm-animal movement near enclosure walls so animals turn away sooner instead of continually walking into fences.
-- Added **Y** selection for fence, feeder, and gate building pieces; **G** places the selected piece.
-- Gate toggling remains single-player-only until its state is synchronized in multiplayer.
+- Added a craftable wooden gate: **4 planks + 2 sticks → 1 gate**.
+- **Y** cycles between fence, feeder and gate; **G** places the selected building.
+- Aim at a gate and press **F** to open or close it.
+- The open gate swings to the side and no longer blocks player or creature movement; the closed gate blocks the doorway.
+- Both gate states are stored as normal world blocks. The world save format remains **2**.
+- Farm animals turn away sooner when they reach pen walls instead of repeatedly pushing into fences.
+- Gate toggling and placement remain single-player-only until multiplayer block-state synchronization is implemented.
 
-## 1.9.14 — Gates & Smarter Animal Pens
-- Added a craftable wooden gate (4 planks + 2 sticks) with separate closed and open block IDs.
-- Press **F** while targeting a gate to open or close it; the open panel is drawn swung against the side post.
-- Open gates are non-solid for player collision and creature navigation; closed gates remain barriers.
-- Persisted both gate states directly in world format 2; no new sidecar or migration is required.
-- Farm animals now turn away sooner after reaching a fence instead of lingering against the enclosure wall.
-- Added a gate item icon, default block texture patterns, recipe/profile tests, navigation coverage, and save/load coverage.
-- **Y** now cycles between fence, feeder and gate; **G** places the selected building.
-- Gate toggling is single-player-only until gate state synchronization is implemented for multiplayer.
 
 ## 1.9.13 — Farm Pens & Smart Feeders
 - Added wooden fence and feed trough block/item types with stable appended IDs and original texture patterns.
